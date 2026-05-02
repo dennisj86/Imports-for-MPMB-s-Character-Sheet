@@ -1,0 +1,37 @@
+{
+  "importTimestamp": "2026-05-02T14:12:55.226Z",
+  "apiVersion": "v2",
+  "preset": "open5e-both",
+  "selectedDocumentKeys": [
+    "open5e",
+    "srd-2014",
+    "open5e-2024",
+    "srd-2024"
+  ],
+  "counts": {
+    "raw": {
+      "classes": 65,
+      "species": 23,
+      "spells": 660,
+      "backgrounds": 7,
+      "feats": 18,
+      "items": 440,
+      "weapons": 75,
+      "armor": 25
+    },
+    "normalized": {
+      "sources": 4,
+      "classes": 24,
+      "subclasses": 41,
+      "species": 23,
+      "backgrounds": 7,
+      "feats": 18,
+      "spells": 660,
+      "equipment": 446
+    }
+  },
+  "warnings": [
+    "Merge replaced entries: classes=0, subclasses=0, species=0, backgrounds=0, feats=0, spells=0, equipment=0"
+  ],
+  "skipped": []
+}

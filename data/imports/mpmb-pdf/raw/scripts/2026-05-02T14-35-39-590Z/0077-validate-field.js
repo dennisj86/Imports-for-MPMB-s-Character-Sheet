@@ -1,0 +1,2 @@
+
+ApplyArmor(event.value);

@@ -1,0 +1,1 @@
+ValidateBonus(event.target.readonly);

@@ -1,0 +1,2 @@
+
+ApplyShield(event.value);
