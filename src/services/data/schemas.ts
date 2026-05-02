@@ -21,6 +21,17 @@ export const sourceMetaSchema = z.object({
   dataStatus: z.enum(["complete", "partial", "pending", "manual"]).optional(),
 });
 
+export const compatibilityMetaSchema = z.object({
+  contentVersion: z.enum(["2014", "2024", "legacy", "unknown"]),
+  canonicalKey: z.string(),
+  replacementGroup: z.string(),
+  replacedBy2024: z.boolean().optional(),
+  legacyCompatibleIn2024: z.boolean().optional(),
+  conversionMode: z.enum(["native", "2024-converted", "legacy-only"]).optional(),
+  notes: z.array(z.string()).optional(),
+  subclassUnlockLevel: z.number().optional(),
+});
+
 export const classSchema = z.object({
   id: z.string(),
   key: z.string(),
@@ -32,6 +43,7 @@ export const classSchema = z.object({
   spellcastingFactor: z.union([z.number(), z.string(), z.null(), z.unknown()]).optional(),
   spellcastingKnown: z.unknown().optional(),
   features: z.array(featureSchema),
+  compatibility: compatibilityMetaSchema.optional(),
 });
 
 export const subclassSchema = z.object({
@@ -46,6 +58,7 @@ export const subclassSchema = z.object({
   spellcastingFactor: z.union([z.number(), z.string(), z.null(), z.unknown()]).optional(),
   spellcastingKnown: z.unknown().optional(),
   features: z.array(featureSchema),
+  compatibility: compatibilityMetaSchema.optional(),
 });
 
 export const speciesSchema = z.object({
@@ -58,6 +71,7 @@ export const speciesSchema = z.object({
   size: z.string().optional(),
   traits: z.string().optional(),
   variantOfId: z.string().optional(),
+  compatibility: compatibilityMetaSchema.optional(),
 });
 
 export const backgroundSchema = z.object({
@@ -71,6 +85,7 @@ export const backgroundSchema = z.object({
   equipmentText: z.string().optional(),
   traitText: z.string().optional(),
   bonusFeat: z.string().optional(),
+  compatibility: compatibilityMetaSchema.optional(),
 });
 
 export const featSchema = z.object({
@@ -81,6 +96,7 @@ export const featSchema = z.object({
   sourceMeta: sourceMetaSchema.optional(),
   description: z.string().optional(),
   prerequisite: z.string().optional(),
+  compatibility: compatibilityMetaSchema.optional(),
 });
 
 export const spellSchema = z.object({
@@ -98,6 +114,7 @@ export const spellSchema = z.object({
   ritual: z.boolean(),
   classes: z.array(z.string()),
   description: z.string().optional(),
+  compatibility: compatibilityMetaSchema.optional(),
 });
 
 export const equipmentSchema = z.object({
@@ -111,6 +128,7 @@ export const equipmentSchema = z.object({
   rarity: z.string().optional(),
   weight: z.union([z.number(), z.string()]).optional(),
   description: z.string().optional(),
+  compatibility: compatibilityMetaSchema.optional(),
 });
 
 export const sourceSchema = z.object({

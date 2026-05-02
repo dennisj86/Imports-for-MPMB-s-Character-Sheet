@@ -1,3 +1,5 @@
+import type { RulesMode } from "./content";
+
 export interface AbilityScores {
   str: number;
   dex: number;
@@ -64,8 +66,10 @@ export interface DerivedSummary {
 
 export interface CharacterDraft {
   id: string;
-  version: 1;
+  version: 2;
   name: string;
+  provider: "open5e" | "mpmb";
+  rulesMode: RulesMode;
   createdAt: string;
   updatedAt: string;
   abilityScores: AbilityScores;

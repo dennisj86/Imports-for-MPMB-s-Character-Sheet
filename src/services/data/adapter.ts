@@ -6,13 +6,36 @@ import type {
   FeatDefinition,
   FeatureDefinition,
   MpmContentSnapshot,
+  RulesMode,
   SourceDefinition,
   SpeciesDefinition,
   SpellDefinition,
   SubclassDefinition,
 } from "../../domain/content";
+import type { AppliedCharacterRules } from "../../domain/appliedRules";
 import { getFeaturesForLevel } from "../../domain/derived";
 import { resolveSourceProvider, type SourceProvider } from "./sourceProvider";
+import type { CharacterDraft } from "../../domain/character";
+import {
+  getConvertedBackgroundBenefits,
+  getConvertedSpeciesTraits,
+  resolveBackgrounds,
+  resolveClasses,
+  resolveEquipment,
+  resolveFeats,
+  resolveSpecies,
+  resolveSpells,
+  resolveSubclasses,
+  type RulesQueryContext,
+} from "./rulesModeResolver";
+import { resolveAppliedCharacterRules } from "./appliedRulesResolver";
+
+function normalizeKey(value: string | undefined): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 export type SpellFilters = {
   query?: string;
@@ -26,6 +49,11 @@ export type EquipmentFilters = {
   query?: string;
   category?: EquipmentDefinition["category"];
   rarity?: string;
+};
+
+export type DataQueryContext = RulesQueryContext & {
+  provider?: SourceProvider | "all";
+  rulesMode?: RulesMode;
 };
 
 const fullSnapshot = contentSnapshot;
@@ -99,43 +127,48 @@ export function regenerateContentForSelectedSources(sourceKeys: string[]) {
   };
 }
 
-export function getClasses(): ClassDefinition[] {
-  return activeSnapshot.classes;
+export function getClasses(context: DataQueryContext = {}): ClassDefinition[] {
+  return resolveClasses(activeSnapshot.classes, context);
 }
 
-export function getClassById(id: string): ClassDefinition | undefined {
-  return activeSnapshot.classes.find((entry) => entry.id === id);
+export function getClassById(id: string, context: DataQueryContext = {}): ClassDefinition | undefined {
+  return getClasses(context).find((entry) => entry.id === id);
 }
 
-export function getSubclassesForClass(classId: string): SubclassDefinition[] {
-  const parentClass = activeSnapshot.classes.find((entry) => entry.id === classId);
+export function getSubclassesForClass(classId: string, context: DataQueryContext = {}): SubclassDefinition[] {
+  const classes = getClasses(context);
+  const parentClass = classes.find((entry) => entry.id === classId);
   if (!parentClass) {
     return [];
   }
-  const parentCanonical = parentClass.canonicalClassKey ?? parentClass.key.toLowerCase();
-  return activeSnapshot.subclasses.filter((entry) => {
+  const resolved = resolveSubclasses(activeSnapshot.subclasses, classes, {
+    ...context,
+    selectedClassId: parentClass.id,
+  });
+  const parentCanonical = normalizeKey(parentClass.compatibility?.canonicalKey ?? parentClass.canonicalClassKey ?? parentClass.key);
+  return resolved.filter((entry) => {
     if (entry.classId === classId) {
       return true;
     }
-    const subclassCanonical = entry.canonicalClassKey ?? entry.classKey.toLowerCase();
-    return subclassCanonical === parentCanonical;
+    const subclassClassCanonical = normalizeKey(entry.canonicalClassKey ?? entry.classKey);
+    return subclassClassCanonical === parentCanonical;
   });
 }
 
-export function getSpecies(): SpeciesDefinition[] {
-  return activeSnapshot.species;
+export function getSpecies(context: DataQueryContext = {}): SpeciesDefinition[] {
+  return resolveSpecies(activeSnapshot.species, context);
 }
 
-export function getBackgrounds(): BackgroundDefinition[] {
-  return activeSnapshot.backgrounds;
+export function getBackgrounds(context: DataQueryContext = {}): BackgroundDefinition[] {
+  return resolveBackgrounds(activeSnapshot.backgrounds, context);
 }
 
-export function getBackgroundById(id: string): BackgroundDefinition | undefined {
-  return activeSnapshot.backgrounds.find((entry) => entry.id === id);
+export function getBackgroundById(id: string, context: DataQueryContext = {}): BackgroundDefinition | undefined {
+  return getBackgrounds(context).find((entry) => entry.id === id);
 }
 
-export function getFeats(): FeatDefinition[] {
-  return activeSnapshot.feats;
+export function getFeats(context: DataQueryContext = {}): FeatDefinition[] {
+  return resolveFeats(activeSnapshot.feats, context);
 }
 
 function normalizeLookup(value: string): string {
@@ -146,21 +179,22 @@ function normalizeLookup(value: string): string {
     .trim();
 }
 
-export function findFeatByNameLike(name: string): FeatDefinition | undefined {
+export function findFeatByNameLike(name: string, context: DataQueryContext = {}): FeatDefinition | undefined {
   const needle = normalizeLookup(name);
   if (!needle) {
     return undefined;
   }
-  const feats = getFeats();
+  const feats = getFeats(context);
   return (
     feats.find((entry) => normalizeLookup(entry.name) === needle || normalizeLookup(entry.key) === needle) ??
     feats.find((entry) => normalizeLookup(entry.name).startsWith(needle) || normalizeLookup(entry.key).startsWith(needle))
   );
 }
 
-export function getSpells(filters: SpellFilters = {}): SpellDefinition[] {
+export function getSpells(filters: SpellFilters = {}, context: DataQueryContext = {}): SpellDefinition[] {
   const query = filters.query?.toLowerCase().trim();
-  return activeSnapshot.spells.filter((spell) => {
+  const spellRows = resolveSpells(activeSnapshot.spells, context);
+  return spellRows.filter((spell) => {
     if (query && !spell.name.toLowerCase().includes(query) && !spell.key.toLowerCase().includes(query)) {
       return false;
     }
@@ -180,14 +214,15 @@ export function getSpells(filters: SpellFilters = {}): SpellDefinition[] {
   });
 }
 
-export function getSpellById(id: string): SpellDefinition | undefined {
-  return activeSnapshot.spells.find((entry) => entry.id === id);
+export function getSpellById(id: string, context: DataQueryContext = {}): SpellDefinition | undefined {
+  return resolveSpells(activeSnapshot.spells, context).find((entry) => entry.id === id);
 }
 
-export function getEquipmentCatalog(filters: EquipmentFilters = {}): EquipmentDefinition[] {
+export function getEquipmentCatalog(filters: EquipmentFilters = {}, context: DataQueryContext = {}): EquipmentDefinition[] {
   const query = filters.query?.toLowerCase().trim();
   const rarity = filters.rarity?.toLowerCase().trim();
-  return activeSnapshot.equipment.filter((item) => {
+  const equipmentRows = resolveEquipment(activeSnapshot.equipment, context);
+  return equipmentRows.filter((item) => {
     if (query && !item.name.toLowerCase().includes(query) && !item.key.toLowerCase().includes(query)) {
       return false;
     }
@@ -205,11 +240,65 @@ export function getFeaturesForClassLevel(
   classId: string | undefined,
   subclassId: string | undefined,
   level: number,
+  context: DataQueryContext = {},
 ): FeatureDefinition[] {
-  const classDef = classId ? getClassById(classId) : undefined;
-  const subclassDef = subclassId ? activeSnapshot.subclasses.find((entry) => entry.id === subclassId) : undefined;
+  const classDef = classId ? getClassById(classId, context) : undefined;
+  const subclassDef =
+    classId && subclassId
+      ? getSubclassesForClass(classId, {
+          ...context,
+          classLevel: level,
+        }).find((entry) => entry.id === subclassId)
+      : undefined;
   return getFeaturesForLevel(classDef, subclassDef, level);
 }
+
+export function getAppliedCharacterRules(draft: CharacterDraft, context: DataQueryContext = {}): AppliedCharacterRules {
+  const effectiveContext: DataQueryContext = {
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  };
+  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
+  const subclassDef =
+    classDef && draft.subclassSelection.subclassId
+      ? getSubclassesForClass(classDef.id, {
+          ...effectiveContext,
+          classLevel: draft.classSelection.level,
+        }).find((entry) => entry.id === draft.subclassSelection.subclassId)
+      : undefined;
+  const speciesDef = draft.speciesSelection.speciesId
+    ? getSpecies(effectiveContext).find((entry) => entry.id === draft.speciesSelection.speciesId)
+    : undefined;
+  const backgroundDef = draft.backgroundSelection.backgroundId
+    ? getBackgrounds(effectiveContext).find((entry) => entry.id === draft.backgroundSelection.backgroundId)
+    : undefined;
+  const featCatalog = getFeats(effectiveContext);
+  const selectedSpells = draft.spellSelection.selectedSpellIds
+    .map((idValue) => getSpellById(idValue, effectiveContext))
+    .filter((entry): entry is SpellDefinition => Boolean(entry));
+  const levelFeatures = getFeaturesForClassLevel(
+    draft.classSelection.classId,
+    draft.subclassSelection.subclassId,
+    draft.classSelection.level,
+    {
+      ...effectiveContext,
+      classLevel: draft.classSelection.level,
+    },
+  );
+
+  return resolveAppliedCharacterRules({
+    draft,
+    classDef,
+    subclassDef,
+    speciesDef,
+    backgroundDef,
+    featCatalog,
+    selectedSpells,
+    levelFeatures,
+  });
+}
+
+export { getConvertedBackgroundBenefits, getConvertedSpeciesTraits };
 
 export function getContentMeta() {
   return {

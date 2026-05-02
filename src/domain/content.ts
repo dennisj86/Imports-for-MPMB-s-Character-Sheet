@@ -19,6 +19,21 @@ export interface SourceMeta {
   dataStatus?: "complete" | "partial" | "pending" | "manual";
 }
 
+export type RulesMode = "2014" | "2024";
+export type ContentVersion = "2014" | "2024" | "legacy" | "unknown";
+export type ConversionMode = "native" | "2024-converted" | "legacy-only";
+
+export interface CompatibilityMeta {
+  contentVersion: ContentVersion;
+  canonicalKey: string;
+  replacementGroup: string;
+  replacedBy2024?: boolean;
+  legacyCompatibleIn2024?: boolean;
+  conversionMode?: ConversionMode;
+  notes?: string[];
+  subclassUnlockLevel?: number;
+}
+
 export interface ClassDefinition {
   id: string;
   key: string;
@@ -30,6 +45,7 @@ export interface ClassDefinition {
   spellcastingFactor?: unknown;
   spellcastingKnown?: unknown;
   features: FeatureDefinition[];
+  compatibility?: CompatibilityMeta;
 }
 
 export interface SubclassDefinition {
@@ -44,6 +60,7 @@ export interface SubclassDefinition {
   spellcastingFactor?: unknown;
   spellcastingKnown?: unknown;
   features: FeatureDefinition[];
+  compatibility?: CompatibilityMeta;
 }
 
 export interface SpeciesDefinition {
@@ -56,6 +73,7 @@ export interface SpeciesDefinition {
   size?: string;
   traits?: string;
   variantOfId?: string;
+  compatibility?: CompatibilityMeta;
 }
 
 export interface BackgroundDefinition {
@@ -69,6 +87,7 @@ export interface BackgroundDefinition {
   equipmentText?: string;
   traitText?: string;
   bonusFeat?: string;
+  compatibility?: CompatibilityMeta;
 }
 
 export interface FeatDefinition {
@@ -79,6 +98,7 @@ export interface FeatDefinition {
   sourceMeta?: SourceMeta;
   description?: string;
   prerequisite?: string;
+  compatibility?: CompatibilityMeta;
 }
 
 export interface SpellDefinition {
@@ -96,6 +116,7 @@ export interface SpellDefinition {
   ritual: boolean;
   classes: string[];
   description?: string;
+  compatibility?: CompatibilityMeta;
 }
 
 export interface EquipmentDefinition {
@@ -109,6 +130,7 @@ export interface EquipmentDefinition {
   rarity?: string;
   weight?: number | string;
   description?: string;
+  compatibility?: CompatibilityMeta;
 }
 
 export interface SourceDefinition {

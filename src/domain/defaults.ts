@@ -13,8 +13,10 @@ export function createCharacterDraft(id: string, name: string): CharacterDraft {
   const timestamp = new Date().toISOString();
   return {
     id,
-    version: 1,
+    version: 2,
     name,
+    provider: "mpmb",
+    rulesMode: "2024",
     createdAt: timestamp,
     updatedAt: timestamp,
     abilityScores: { ...DEFAULT_ABILITY_SCORES },

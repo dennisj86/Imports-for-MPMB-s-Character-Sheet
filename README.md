@@ -118,6 +118,43 @@ The merged app snapshot remains:
 - The selection is persisted locally for the next app start.
 - `Outlander / Wanderer` is primarily expected from native imported/generated data; manual fallback is only injected when no native Outlander/Wanderer entry exists.
 
+### Provider vs Rules Mode
+The builder now separates data origin from rules interpretation:
+
+- `provider`: `mpmb | open5e`
+- `rulesMode`: `2014 | 2024`
+
+These are independent fields on each character draft.
+
+Behavior summary:
+- In `rulesMode=2024`, 2024 entries replace 2014 core equivalents when both exist.
+- Legacy species remain selectable in 2024 mode, but their legacy species ASI is not applied automatically.
+- Legacy backgrounds remain selectable in 2024 mode, use 2024 background ASI handling, and require/select an Origin Feat if no feat is present.
+- Legacy subclasses can still be used with 2024 classes when no direct 2024 replacement exists; unlock level follows 2024 class progression.
+- In `rulesMode=2014`, no automatic 2024 override is applied.
+
+Resolver/adapter logic for this lives in:
+- `src/services/data/rulesModeResolver.ts`
+- `src/services/data/adapter.ts`
+
+### Applied Rules Output
+The builder and sheet now consume a deterministic applied rules layer derived from the draft:
+
+- `src/services/data/appliedRulesResolver.ts`
+- `src/domain/appliedRules.ts`
+
+What this layer materializes:
+- species/background conversion results (not only notes)
+- applied and pending ability-score adjustments
+- class baseline output (proficiency bonus, saving throw proficiencies, class skill-choice requirements)
+- background feat grants / origin-feat requirements
+- pending choices for the current build
+
+Determinism rules:
+- explicit mapping tables are used first (`src/services/data/mappings/*`)
+- text-based fallback parsing is secondary and marked in notes/data status
+- `CharacterDraft` remains the persisted source of truth; applied output is recalculated at runtime
+
 &nbsp;
 
 ## Different Versions

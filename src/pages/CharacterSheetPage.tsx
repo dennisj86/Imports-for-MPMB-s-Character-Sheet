@@ -2,7 +2,16 @@ import { Link, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { Panel } from "../components/ui/Panel";
 import { abilityModifier, deriveSummary } from "../domain/derived";
-import { getBackgrounds, getClassById, getFeats, getFeaturesForClassLevel, getSpecies, getSpellById, getSubclassesForClass } from "../services/data/adapter";
+import {
+  getBackgrounds,
+  getAppliedCharacterRules,
+  getClassById,
+  getFeats,
+  getFeaturesForClassLevel,
+  getSpecies,
+  getSpellById,
+  getSubclassesForClass,
+} from "../services/data/adapter";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
 
@@ -13,9 +22,16 @@ export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>();
   const characters = useCharacterStore((state) => state.characters);
   const draft = characters.find((entry) => entry.id === id);
-  const speciesById = useMemo(() => new Map(getSpecies().map((entry) => [entry.id, entry])), [generation]);
-  const backgroundById = useMemo(() => new Map(getBackgrounds().map((entry) => [entry.id, entry])), [generation]);
-  const featById = useMemo(() => new Map(getFeats().map((entry) => [entry.id, entry])), [generation]);
+  const dataContext = useMemo(
+    () => ({
+      provider: draft?.provider ?? "mpmb",
+      rulesMode: draft?.rulesMode ?? "2024",
+    }),
+    [draft?.provider, draft?.rulesMode],
+  );
+  const speciesById = useMemo(() => new Map(getSpecies(dataContext).map((entry) => [entry.id, entry])), [dataContext, generation]);
+  const backgroundById = useMemo(() => new Map(getBackgrounds(dataContext).map((entry) => [entry.id, entry])), [dataContext, generation]);
+  const featById = useMemo(() => new Map(getFeats(dataContext).map((entry) => [entry.id, entry])), [dataContext, generation]);
 
   if (!draft) {
     return (
@@ -28,16 +44,23 @@ export function CharacterSheetPage() {
     );
   }
 
-  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId) : undefined;
+  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, dataContext) : undefined;
   const subclassDef = classDef
-    ? getSubclassesForClass(classDef.id).find((entry) => entry.id === draft.subclassSelection.subclassId)
+    ? getSubclassesForClass(classDef.id, {
+        ...dataContext,
+        classLevel: draft.classSelection.level,
+      }).find((entry) => entry.id === draft.subclassSelection.subclassId)
     : undefined;
   const speciesDef = draft.speciesSelection.speciesId ? speciesById.get(draft.speciesSelection.speciesId) : undefined;
   const backgroundDef = draft.backgroundSelection.backgroundId ? backgroundById.get(draft.backgroundSelection.backgroundId) : undefined;
   const selectedFeats = draft.featIds.map((idValue) => featById.get(idValue)).filter(isDefined);
-  const selectedSpells = draft.spellSelection.selectedSpellIds.map((idValue) => getSpellById(idValue)).filter(isDefined);
-  const features = getFeaturesForClassLevel(draft.classSelection.classId, draft.subclassSelection.subclassId, draft.classSelection.level);
+  const selectedSpells = draft.spellSelection.selectedSpellIds.map((idValue) => getSpellById(idValue, dataContext)).filter(isDefined);
+  const features = getFeaturesForClassLevel(draft.classSelection.classId, draft.subclassSelection.subclassId, draft.classSelection.level, {
+    ...dataContext,
+    classLevel: draft.classSelection.level,
+  });
   const derived = deriveSummary(draft, classDef, subclassDef);
+  const appliedRules = getAppliedCharacterRules(draft, dataContext);
 
   return (
     <div className="space-y-4">
@@ -58,6 +81,10 @@ export function CharacterSheetPage() {
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <dt className="text-slate-600">Level</dt>
             <dd>{draft.classSelection.level}</dd>
+            <dt className="text-slate-600">Provider</dt>
+            <dd>{draft.provider}</dd>
+            <dt className="text-slate-600">Rules Mode</dt>
+            <dd>{draft.rulesMode}</dd>
             <dt className="text-slate-600">Class</dt>
             <dd>{classDef?.name ?? "—"}</dd>
             <dt className="text-slate-600">Subclass</dt>
@@ -69,9 +96,28 @@ export function CharacterSheetPage() {
           </dl>
           {backgroundDef ? (
             <div className="mt-3 space-y-1 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
-              {backgroundDef.bonusFeat ? <p>Bonus feat: {backgroundDef.bonusFeat}</p> : null}
-              {backgroundDef.skillText ? <p>Skill proficiencies: {backgroundDef.skillText}</p> : null}
-              {backgroundDef.toolText ? <p>Tool proficiencies: {backgroundDef.toolText}</p> : null}
+              {appliedRules.backgroundResult.grantedFeatNames.length ? (
+                <p>Granted feat(s): {appliedRules.backgroundResult.grantedFeatNames.join(", ")}</p>
+              ) : null}
+              {appliedRules.backgroundResult.originFeatRequirement?.required && !appliedRules.backgroundResult.originFeatRequirement.satisfied ? (
+                <p>Origin feat selection required.</p>
+              ) : null}
+              {appliedRules.backgroundResult.skillProficiencies.length ? (
+                <p>Skill proficiencies: {appliedRules.backgroundResult.skillProficiencies.join(", ")}</p>
+              ) : null}
+              {appliedRules.backgroundResult.toolProficiencies.length ? (
+                <p>Tool proficiencies: {appliedRules.backgroundResult.toolProficiencies.join(", ")}</p>
+              ) : null}
+              {appliedRules.backgroundResult.notes.map((entry) => (
+                <p key={entry}>{entry}</p>
+              ))}
+            </div>
+          ) : null}
+          {appliedRules.speciesResult.entity?.notes.length ? (
+            <div className="mt-3 space-y-1 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+              {appliedRules.speciesResult.entity.notes.map((entry) => (
+                <p key={entry}>{entry}</p>
+              ))}
             </div>
           ) : null}
         </Panel>
@@ -109,7 +155,7 @@ export function CharacterSheetPage() {
         </Panel>
 
         <Panel title="Spellcasting">
-          <p className="mb-2 text-sm text-slate-700">{derived.spellcasting.notes}</p>
+          <p className="mb-2 text-sm text-slate-700">{appliedRules.spellcasting.notes[0] ?? derived.spellcasting.notes}</p>
           {selectedSpells.length === 0 ? (
             <p className="text-sm text-slate-500">No spells selected.</p>
           ) : (
@@ -158,6 +204,30 @@ export function CharacterSheetPage() {
             <li>MPMB imperative hooks are not ported.</li>
             <li>Complex feature interactions require a future rules engine phase.</li>
           </ul>
+        </Panel>
+
+        <Panel title="Applied Rules Output">
+          <dl className="grid grid-cols-2 gap-2 text-sm">
+            <dt className="text-slate-600">Proficiency Bonus</dt>
+            <dd>+{appliedRules.classResult.proficiencyBonus}</dd>
+            <dt className="text-slate-600">Save Proficiencies</dt>
+            <dd>{appliedRules.proficiencies.savingThrows.join(", ") || "—"}</dd>
+            <dt className="text-slate-600">Skill Proficiencies</dt>
+            <dd>{appliedRules.proficiencies.skills.join(", ") || "—"}</dd>
+            <dt className="text-slate-600">Tool Proficiencies</dt>
+            <dd>{appliedRules.proficiencies.tools.join(", ") || "—"}</dd>
+            <dt className="text-slate-600">Species Rule</dt>
+            <dd>{appliedRules.speciesResult.entity?.conversionMode ?? "native"}</dd>
+            <dt className="text-slate-600">Background Rule</dt>
+            <dd>{appliedRules.backgroundResult.abilityScoreRule}</dd>
+          </dl>
+          {appliedRules.pendingChoices.length ? (
+            <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+              {appliedRules.pendingChoices.map((choice) => (
+                <p key={choice.id}>{choice.description}</p>
+              ))}
+            </div>
+          ) : null}
         </Panel>
       </div>
     </div>
