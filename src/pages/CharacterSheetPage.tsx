@@ -1,11 +1,13 @@
 import { Link, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { Panel } from "../components/ui/Panel";
-import { abilityModifier, deriveSummary } from "../domain/derived";
 import {
   getBackgrounds,
+  getCharacterActionResources,
   getAppliedCharacterRules,
+  getCharacterProgression,
   getClassById,
+  getDerivedCharacterStats,
   getFeats,
   getFeaturesForClassLevel,
   getSpecies,
@@ -59,8 +61,10 @@ export function CharacterSheetPage() {
     ...dataContext,
     classLevel: draft.classSelection.level,
   });
-  const derived = deriveSummary(draft, classDef, subclassDef);
   const appliedRules = getAppliedCharacterRules(draft, dataContext);
+  const derivedStats = getDerivedCharacterStats(draft, dataContext);
+  const progression = getCharacterProgression(draft, dataContext);
+  const actionResources = getCharacterActionResources(draft, dataContext);
 
   return (
     <div className="space-y-4">
@@ -93,6 +97,14 @@ export function CharacterSheetPage() {
             <dd>{speciesDef?.name ?? "—"}</dd>
             <dt className="text-slate-600">Background</dt>
             <dd>{backgroundDef?.name ?? "—"}</dd>
+            <dt className="text-slate-600">Initiative</dt>
+            <dd>{derivedStats.initiative >= 0 ? "+" : ""}{derivedStats.initiative}</dd>
+            <dt className="text-slate-600">Speed</dt>
+            <dd>{derivedStats.speed.walking ? `${derivedStats.speed.walking} ft` : "—"}</dd>
+            <dt className="text-slate-600">Armor Class</dt>
+            <dd>{derivedStats.armorClass.value}</dd>
+            <dt className="text-slate-600">HP Max (Base)</dt>
+            <dd>{derivedStats.hitPoints.max}</dd>
           </dl>
           {backgroundDef ? (
             <div className="mt-3 space-y-1 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
@@ -127,14 +139,53 @@ export function CharacterSheetPage() {
             {abilities.map((ability) => (
               <div key={ability} className="rounded border border-slate-200 p-2 text-sm">
                 <p className="text-xs uppercase text-slate-500">{ability}</p>
-                <p className="text-lg font-semibold">{draft.abilityScores[ability]}</p>
+                <p className="text-lg font-semibold">{derivedStats.abilityScores[ability].finalScore}</p>
                 <p className="text-xs text-slate-600">
-                  Modifier {abilityModifier(draft.abilityScores[ability]) >= 0 ? "+" : ""}
-                  {abilityModifier(draft.abilityScores[ability])}
+                  Modifier {derivedStats.abilityScores[ability].modifier >= 0 ? "+" : ""}
+                  {derivedStats.abilityScores[ability].modifier}
                 </p>
               </div>
             ))}
           </div>
+        </Panel>
+
+        <Panel title="Saves">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {abilities.map((ability) => {
+              const save = derivedStats.savingThrows[ability];
+              return (
+                <div key={ability} className="rounded border border-slate-200 p-2 text-sm">
+                  <p className="text-xs uppercase text-slate-500">{ability}</p>
+                  <p className="font-semibold">
+                    {save.total >= 0 ? "+" : ""}
+                    {save.total}
+                  </p>
+                  <p className="text-xs text-slate-600">{save.proficient ? "Proficient" : "Not proficient"}</p>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+
+        <Panel title="Skills">
+          <div className="grid gap-1 text-sm">
+            {Object.values(derivedStats.skills).map((skill) => (
+              <div key={skill.key} className="flex items-center justify-between rounded border border-slate-200 px-2 py-1">
+                <span>
+                  {skill.label} ({skill.ability.toUpperCase()})
+                  {skill.proficient ? " *" : ""}
+                </span>
+                <span className="font-medium">
+                  {skill.total >= 0 ? "+" : ""}
+                  {skill.total}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-slate-600">
+            Passive Perception {derivedStats.passivePerception} · Passive Investigation {derivedStats.passiveInvestigation} · Passive Insight{" "}
+            {derivedStats.passiveInsight}
+          </p>
         </Panel>
 
         <Panel title="Features & Traits">
@@ -155,7 +206,31 @@ export function CharacterSheetPage() {
         </Panel>
 
         <Panel title="Spellcasting">
-          <p className="mb-2 text-sm text-slate-700">{appliedRules.spellcasting.notes[0] ?? derived.spellcasting.notes}</p>
+          <p className="mb-2 text-sm text-slate-700">{derivedStats.spellcasting.notes[0] ?? "No spellcasting basis resolved."}</p>
+          {derivedStats.spellcasting.available ? (
+            <dl className="mb-2 grid grid-cols-2 gap-2 text-sm">
+              <dt className="text-slate-600">Spellcasting Ability</dt>
+              <dd>{derivedStats.spellcasting.ability?.toUpperCase() ?? "Pending"}</dd>
+              <dt className="text-slate-600">Spell Save DC</dt>
+              <dd>{derivedStats.spellcasting.spellSaveDC ?? "Pending"}</dd>
+              <dt className="text-slate-600">Spell Attack</dt>
+              <dd>
+                {derivedStats.spellcasting.spellAttackModifier === undefined
+                  ? "Pending"
+                  : `${derivedStats.spellcasting.spellAttackModifier >= 0 ? "+" : ""}${derivedStats.spellcasting.spellAttackModifier}`}
+              </dd>
+              <dt className="text-slate-600">Progression Mode</dt>
+              <dd>{progression.spellProgression.mode}</dd>
+            </dl>
+          ) : null}
+          {Object.keys(progression.spellProgression.spellSlots).length ? (
+            <p className="mb-2 text-xs text-slate-700">
+              Slots:{" "}
+              {Object.entries(progression.spellProgression.spellSlots)
+                .map(([slotLevel, count]) => `${slotLevel}:${count}`)
+                .join(" · ")}
+            </p>
+          ) : null}
           {selectedSpells.length === 0 ? (
             <p className="text-sm text-slate-500">No spells selected.</p>
           ) : (
@@ -198,11 +273,118 @@ export function CharacterSheetPage() {
           )}
         </Panel>
 
+        <Panel title="Level Progression">
+          <dl className="grid grid-cols-2 gap-2 text-sm">
+            <dt className="text-slate-600">Current Level</dt>
+            <dd>{progression.currentLevel}</dd>
+            <dt className="text-slate-600">Subclass Requirement</dt>
+            <dd>
+              {progression.subclassRequirement
+                ? progression.subclassRequirement.satisfied
+                  ? "Satisfied"
+                  : `Required at L${progression.subclassRequirement.unlockLevel}`
+                : "—"}
+            </dd>
+            <dt className="text-slate-600">ASI / Feat Choices</dt>
+            <dd>{progression.asiOrFeatChoices.length}</dd>
+            <dt className="text-slate-600">Pending Progression Choices</dt>
+            <dd>{progression.pendingChoices.length}</dd>
+          </dl>
+          {progression.pendingChoices.length ? (
+            <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+              {progression.pendingChoices.map((choice) => (
+                <p key={choice.id}>{choice.description}</p>
+              ))}
+            </div>
+          ) : null}
+        </Panel>
+
+        <Panel title="Actions">
+          {actionResources.actionSet.actions.length === 0 ? (
+            <p className="text-sm text-slate-500">No explicit action entries resolved.</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {actionResources.actionSet.actions.map((entry) => (
+                <li key={entry.id} className="rounded border border-slate-200 p-2">
+                  <p className="font-medium">{entry.name}</p>
+                  {entry.requiresResourceIds.length ? <p className="text-xs text-slate-600">Uses resource(s)</p> : null}
+                  {entry.dataStatus !== "complete" ? <p className="text-xs text-amber-700">Status: {entry.dataStatus}</p> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel title="Bonus Actions / Reactions">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase text-slate-500">Bonus Actions</p>
+              {actionResources.actionSet.bonusActions.length === 0 ? (
+                <p className="text-sm text-slate-500">—</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {actionResources.actionSet.bonusActions.map((entry) => (
+                    <li key={entry.id} className="rounded border border-slate-200 p-2">
+                      {entry.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase text-slate-500">Reactions</p>
+              {actionResources.actionSet.reactions.length === 0 ? (
+                <p className="text-sm text-slate-500">—</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {actionResources.actionSet.reactions.map((entry) => (
+                    <li key={entry.id} className="rounded border border-slate-200 p-2">
+                      {entry.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          {actionResources.actionSet.utilityActions.length ? (
+            <div className="mt-3">
+              <p className="mb-1 text-xs font-medium uppercase text-slate-500">Utility / Special</p>
+              <ul className="space-y-1 text-sm">
+                {actionResources.actionSet.utilityActions.map((entry) => (
+                  <li key={entry.id} className="rounded border border-slate-200 p-2">
+                    {entry.name}
+                    {entry.dataStatus !== "complete" ? <span className="ml-2 text-xs text-amber-700">({entry.dataStatus})</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </Panel>
+
+        <Panel title="Resources">
+          {actionResources.resourceSet.resources.length === 0 ? (
+            <p className="text-sm text-slate-500">No limited-use resources resolved.</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {actionResources.resourceSet.resources.map((resource) => (
+                <li key={resource.id} className="rounded border border-slate-200 p-2">
+                  <p className="font-medium">{resource.name}</p>
+                  <p className="text-xs text-slate-600">
+                    Max: {resource.usesMax ?? "—"} · Recharge: {resource.recharge.label}
+                  </p>
+                  {resource.dataStatus !== "complete" ? <p className="text-xs text-amber-700">Status: {resource.dataStatus}</p> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
         <Panel title="Not Automated Yet">
           <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
-            <li>AC / HP / Saves / Skills remain manual in this phase.</li>
+            <li>AC / HP / Saves / Skills now provide deterministic baseline values.</li>
+            <li>Complex exceptions, temporary modifiers, and advanced feature interactions remain pending.</li>
             <li>MPMB imperative hooks are not ported.</li>
-            <li>Complex feature interactions require a future rules engine phase.</li>
+            <li>Spell slots/prepared tables are still table-pending in this phase.</li>
           </ul>
         </Panel>
 
@@ -225,6 +407,28 @@ export function CharacterSheetPage() {
             <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
               {appliedRules.pendingChoices.map((choice) => (
                 <p key={choice.id}>{choice.description}</p>
+              ))}
+            </div>
+          ) : null}
+        </Panel>
+
+        <Panel title="Derived Status">
+          <p className="text-sm text-slate-700">Data Status: {derivedStats.dataStatus}</p>
+          {derivedStats.pending.length ? (
+            <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+              {derivedStats.pending.map((entry) => (
+                <p key={entry.id}>{entry.description}</p>
+              ))}
+            </div>
+          ) : null}
+        </Panel>
+
+        <Panel title="Action/Resource Status">
+          <p className="text-sm text-slate-700">Data Status: {actionResources.dataStatus}</p>
+          {actionResources.pending.length ? (
+            <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+              {actionResources.pending.map((entry) => (
+                <p key={entry.id}>{entry.description}</p>
               ))}
             </div>
           ) : null}

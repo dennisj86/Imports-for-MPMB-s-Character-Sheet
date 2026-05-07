@@ -7,6 +7,14 @@ const localOutputPath = path.join(repoRoot, "src/services/data/generated/mpmb-lo
 const mergedOutputPath = path.join(repoRoot, "src/services/data/generated/mpmb-content.json");
 const open5eNormalizedPath = path.join(repoRoot, "data/imports/open5e/normalized/latest-open5e-content.json");
 const mpmbPdfNormalizedPath = path.join(repoRoot, "data/imports/mpmb-pdf/normalized/latest-mpmb-pdf-content.json");
+const mpmbUpstream2014NormalizedPath = path.join(
+  repoRoot,
+  "data/imports/mpmb-upstream-2014/normalized/latest-mpmb-upstream-2014-content.json",
+);
+const mpmbUpstream2024NormalizedPath = path.join(
+  repoRoot,
+  "data/imports/mpmb-upstream-2024/normalized/latest-mpmb-upstream-2024-content.json",
+);
 const localDiagnosticsDir = path.join(repoRoot, "data/imports/mpmb-local/manifests");
 const localDiagnosticsLatestPath = path.join(localDiagnosticsDir, "latest-runtime-diagnostics.json");
 const localDiagnosticsLatestSummaryPath = path.join(localDiagnosticsDir, "latest-runtime-summary.json");
@@ -70,8 +78,18 @@ function inferEdition(entry) {
 
 function entryScore(entry) {
   const sourceSystem = entry?.sourceMeta?.sourceSystem ?? "mpmb";
+  const importPreset = entry?.sourceMeta?.importPreset ?? "";
   const sourceDocumentKey = entry?.sourceMeta?.sourceDocumentKey ?? entry?.sourceRefs?.[0] ?? "";
   let score = sourceSystem === "mpmb" ? 90 : 70;
+  if (importPreset === "mpmb-upstream-2024" || importPreset === "mpmb-upstream-2014") {
+    score += 45;
+  } else if (importPreset === "mpmb-local") {
+    score += 25;
+  } else if (importPreset === "mpmb-pdf") {
+    score += 8;
+  } else if (sourceSystem === "mpmb") {
+    score += 15;
+  }
   if (sourceDocumentKey.startsWith("srd-")) {
     score += 10;
   }
@@ -95,14 +113,19 @@ function mergeByIdentity(baseEntries, importedEntries, identityFn) {
 
 function mergeSnapshots(base, imported) {
   const classIdentity = (entry) => {
+    const sourceSystem = entry?.sourceMeta?.sourceSystem ?? "mpmb";
     const canonical = entry.canonicalClassKey ?? toSlug(entry.key || entry.name);
-    return `${canonical}::${inferEdition(entry)}`;
+    return `${sourceSystem}::${canonical}::${inferEdition(entry)}`;
   };
   const subclassIdentity = (entry) => {
+    const sourceSystem = entry?.sourceMeta?.sourceSystem ?? "mpmb";
     const canonical = entry.canonicalClassKey ?? toSlug(entry.classKey || entry.name);
-    return `${toSlug(entry.key)}::${canonical}::${inferEdition(entry)}`;
+    return `${sourceSystem}::${toSlug(entry.key)}::${canonical}::${inferEdition(entry)}`;
   };
-  const genericIdentity = (entry) => `${toSlug(entry.key)}::${inferEdition(entry)}`;
+  const genericIdentity = (entry) => {
+    const sourceSystem = entry?.sourceMeta?.sourceSystem ?? "mpmb";
+    return `${sourceSystem}::${toSlug(entry.key)}::${inferEdition(entry)}`;
+  };
   return {
     meta: {
       generatedAt: new Date().toISOString(),
@@ -1885,6 +1908,8 @@ function main() {
 
   let mergedContent = localContent;
   const additiveSources = [
+    ["mpmb-upstream-2014", mpmbUpstream2014NormalizedPath],
+    ["mpmb-upstream-2024", mpmbUpstream2024NormalizedPath],
     ["open5e", open5eNormalizedPath],
     ["mpmb-pdf", mpmbPdfNormalizedPath],
   ];

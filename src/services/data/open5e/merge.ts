@@ -93,17 +93,20 @@ function mergeByKey<T extends WithSourceMeta>(
 }
 
 function classIdentity(entry: ClassDefinition): string {
+  const sourceSystem = entry.sourceMeta?.sourceSystem ?? "mpmb";
   const canonical = entry.canonicalClassKey ?? toSlug(entry.key || entry.name);
-  return `${canonical}::${inferEdition(entry)}`;
+  return `${sourceSystem}::${canonical}::${inferEdition(entry)}`;
 }
 
 function subclassIdentity(entry: SubclassDefinition): string {
+  const sourceSystem = entry.sourceMeta?.sourceSystem ?? "mpmb";
   const canonical = entry.canonicalClassKey ?? toSlug(entry.classKey || entry.name);
-  return `${toSlug(entry.key)}::${canonical}::${inferEdition(entry)}`;
+  return `${sourceSystem}::${toSlug(entry.key)}::${canonical}::${inferEdition(entry)}`;
 }
 
 function genericIdentity(entry: { key: string } & WithSourceMeta): string {
-  return `${toSlug(entry.key)}::${inferEdition(entry)}`;
+  const sourceSystem = entry.sourceMeta?.sourceSystem ?? "mpmb";
+  return `${sourceSystem}::${toSlug(entry.key)}::${inferEdition(entry)}`;
 }
 
 function sortByName<T extends { name: string }>(entries: T[]): T[] {

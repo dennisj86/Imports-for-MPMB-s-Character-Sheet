@@ -11,6 +11,7 @@ const repoRoot = path.resolve(process.cwd());
 const rawOutputDir = path.join(repoRoot, "data", "imports", "open5e", "raw");
 const normalizedOutputDir = path.join(repoRoot, "data", "imports", "open5e", "normalized");
 const manifestOutputDir = path.join(repoRoot, "data", "imports", "open5e", "manifests");
+const currentMergedSnapshotPath = path.join(repoRoot, "src", "services", "data", "generated", "mpmb-content.json");
 const localSnapshotPath = path.join(repoRoot, "src", "services", "data", "generated", "mpmb-local-content.json");
 const fallbackSnapshotPath = path.join(repoRoot, "src", "services", "data", "generated", "mpmb-content.json");
 const mergedSnapshotPath = path.join(repoRoot, "src", "services", "data", "generated", "mpmb-content.json");
@@ -100,6 +101,7 @@ async function main() {
 
   const normalized = normalizeOpen5e(rawSnapshot);
   const snapshotForMerge =
+    readSnapshotFromDisk(currentMergedSnapshotPath) ??
     readSnapshotFromDisk(localSnapshotPath) ??
     readSnapshotFromDisk(fallbackSnapshotPath) ?? {
       meta: {

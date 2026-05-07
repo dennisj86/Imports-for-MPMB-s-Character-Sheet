@@ -8,6 +8,12 @@ export interface SpeciesAbilityRule {
     allowedAbilities: AbilityKey[];
     reason: string;
   }>;
+  skillChoices?: {
+    count: number;
+    options: string[];
+    reason: string;
+  };
+  grantedSkills?: string[];
 }
 
 const ALL_ABILITIES: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -23,6 +29,29 @@ export const SPECIES_ABILITY_RULES: Record<string, SpeciesAbilityRule> = {
         reason: "Half-Elf flexible ability increases",
       },
     ],
+    skillChoices: {
+      count: 2,
+      options: [
+        "Acrobatics",
+        "Animal Handling",
+        "Arcana",
+        "Athletics",
+        "Deception",
+        "History",
+        "Insight",
+        "Intimidation",
+        "Investigation",
+        "Medicine",
+        "Nature",
+        "Perception",
+        "Performance",
+        "Persuasion",
+        "Religion",
+        "Sleight of Hand",
+        "Stealth",
+        "Survival",
+      ],
+      reason: "Half-Elf Skill Versatility",
+    },
   },
 };
-

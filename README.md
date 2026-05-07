@@ -108,11 +108,60 @@ Artifacts:
 The merged app snapshot remains:
 - `src/services/data/generated/mpmb-content.json`
 
+### MPMB Upstream Core Ingestion (Local Repos)
+`mpmb` now supports local upstream core imports from two local repositories:
+
+- 2014 upstream: `/home/dennis/IdeaProjects/MPMBs-Character-Record-Sheet`
+- 2024 upstream: `/home/dennis/IdeaProjects/2024_MPMBs-Character-Record-Sheet`
+
+Commands:
+```sh
+npm run import:mpmb:upstream:2014
+npm run import:mpmb:upstream:2024
+npm run import:mpmb:upstream:all
+```
+
+Artifacts:
+- `data/imports/mpmb-upstream-2014/raw/`
+- `data/imports/mpmb-upstream-2014/normalized/`
+- `data/imports/mpmb-upstream-2014/manifests/`
+- `data/imports/mpmb-upstream-2024/raw/`
+- `data/imports/mpmb-upstream-2024/normalized/`
+- `data/imports/mpmb-upstream-2024/manifests/`
+
+Each run writes:
+- raw file manifest (ordered core variable files)
+- normalized snapshot in project schema
+- import manifest with registry and entity counts
+- `comparison-report.json` against legacy `mpmb-local + mpmb-pdf` baseline
+
+Environment overrides (optional):
+```sh
+MPMB_UPSTREAM_2014_PATH=/path/to/2014/repo npm run import:mpmb:upstream:2014
+MPMB_UPSTREAM_2024_PATH=/path/to/2024/repo npm run import:mpmb:upstream:2024
+```
+
+### Internal MPMB Source Tiers
+Within provider `mpmb`, sources are merged additively with tiered precedence:
+
+- `rulesMode=2014`:
+  1. `mpmb-upstream-2014` (core)
+  2. `mpmb-local` (overlay/addons)
+  3. `mpmb-pdf` (fallback)
+
+- `rulesMode=2024`:
+  1. `mpmb-upstream-2024` (core)
+  2. `mpmb-local` (overlay/addons)
+  3. `mpmb-pdf` (fallback)
+
+Open5e remains a separate provider and is not merged into `mpmb` semantics.
+
 ### Source Selection in UI
 - Open `Content` in the app.
 - Use the **Data Sources** panel to pick presets (e.g. Official Handbooks) or individual books/sources.
 - You can now scope by provider via presets (`Provider: MPMB` / `Provider: Open5e`).
 - Presets include Open5e source sets (`Open5e 2014`, `Open5e 2024`, `Open5e 2014+2024`) once imported.
+- Presets include `MPMB Upstream 2014 Core` and `MPMB Upstream 2024 Core`.
 - Presets include `MPMB PDF Core` for the PDF-derived source keys.
 - Click **Regenerate** to reload the active in-app catalog from the selected sources.
 - The selection is persisted locally for the next app start.
@@ -154,6 +203,108 @@ Determinism rules:
 - explicit mapping tables are used first (`src/services/data/mappings/*`)
 - text-based fallback parsing is secondary and marked in notes/data status
 - `CharacterDraft` remains the persisted source of truth; applied output is recalculated at runtime
+
+### Derived Stats Output
+A second deterministic layer computes concrete character values from:
+- `CharacterDraft`
+- resolved/apply-converted rules output
+
+Implemented via:
+- `src/services/data/derivedStatsResolver.ts`
+- `src/domain/derivedStats.ts`
+
+Current derived coverage:
+- ability modifiers and proficiency bonus
+- saving throws and skill modifiers
+- passive perception/investigation/insight
+- initiative and speed baseline
+- AC baseline and HP max baseline
+- spell save DC / spell attack modifier
+- spellcasting basis status (with pending table cases clearly marked)
+
+The sheet and builder consume this output directly.  
+Complex temporary effects and full slot/preparation table engines remain intentionally out of scope for this phase.
+
+### Level Progression Output
+The builder/sheet now also consume a dedicated progression layer for level-up state:
+
+- `src/services/data/progressionResolver.ts`
+- `src/domain/progression.ts`
+
+What it currently covers:
+- level-based class/subclass feature unlocks
+- subclass requirement at unlock level (pending until selected)
+- ASI/Feat opportunities as structured level choices
+- first spellcasting progression state (slots/known/prepared/cantrips where safely derivable)
+- unified pending choice list for progression + applied-rules requirements
+
+Adapter entrypoint:
+- `getCharacterProgression(draft, context?)`
+
+Notes:
+- `CharacterDraft` remains the persisted source of truth.
+- Progression output is recalculated deterministically at runtime.
+- Complex feature/hook automation remains out of scope in this phase.
+
+### Action/Resource Output
+The app now has a central Action/Resource layer:
+
+- `src/services/data/actionResourceResolver.ts`
+- `src/domain/actionResources.ts`
+
+What it currently materializes:
+- actions / bonus actions / reactions / utility actions
+- limited-use resources from class/subclass features (`usages`/`recovery` + deterministic fallbacks)
+- spellcasting resources (slot pools) and spell actions (selected spells)
+- declarative item/weapon action entries where safely derivable
+
+Adapter entrypoint:
+- `getCharacterActionResources(draft, context?)`
+
+Scope note:
+- This is not a full combat/condition engine.
+- Persistent encounter-time resource consumption tracking is not yet part of this phase.
+
+### Builder Wizard Flow (creationX-based)
+The previous one-page builder has been restructured into a step wizard derived from `docs/ui images/creationX...`:
+
+1. Class
+2. Species
+3. Background
+4. Ability Scores
+5. Feats (dynamic)
+6. Skills
+7. Spells (dynamic)
+8. Equipment
+9. About & Review
+
+Primary mapping/decisions are documented in:
+- `docs/builder-wizard-plan.md`
+
+Central wizard/eligibility logic (no rule logic in JSX):
+- `src/features/character-builder/wizard/stepDefinitions.ts`
+- `src/services/data/builderWizardResolver.ts`
+- adapter entrypoints in `src/services/data/adapter.ts`:
+  - `resolveFeatEligibilityForBuilder`
+  - `resolveSpellEligibilityForBuilder`
+  - `getEligibleFeatsForChoice`
+  - `getEligibleSpellsForChoice`
+  - `getClassSkillChoiceStateForBuilder`
+  - `getRequiredBuilderChoices`
+  - `validateBuilderStep`
+  - `getBuilderStepValidations`
+  - `isCharacterCreationComplete`
+
+Implemented behavior:
+- Step visibility is pending-choice driven (feat/spell steps appear only when relevant).
+- Feat selections are context-bound and restricted to legal pools for the active choice context.
+- Spell selections are context-bound and restricted to legal pools by class/feat context and spell level bounds.
+- Class skill choices are now captured through `featureChoices` and affect applied/derived proficiencies.
+- Review step surfaces unresolved requirements by step.
+
+Known partial scope:
+- The full "About/Profile" persistence from reference images is not yet in the persisted draft schema.
+- Complex feat sub-choice trees and advanced spell-feature interactions are still partial where source data is not fully declarative.
 
 &nbsp;
 

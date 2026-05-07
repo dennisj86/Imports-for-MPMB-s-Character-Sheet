@@ -11,6 +11,8 @@ export type SourcePreset =
   | "ua"
   | "adventure"
   | "mpmb-pdf-core"
+  | "mpmb-upstream-2014-core"
+  | "mpmb-upstream-2024-core"
   | "open5e-2014"
   | "open5e-2024"
   | "open5e-both";
@@ -107,6 +109,16 @@ function presetKeys(preset: SourcePreset): string[] {
   }
   if (preset === "mpmb-pdf-core") {
     return availableSources.filter((source) => source.key.toLowerCase().startsWith("mpmbpdf-")).map((source) => source.key);
+  }
+  if (preset === "mpmb-upstream-2014-core") {
+    return availableSources
+      .filter((source) => source.key.toLowerCase().startsWith("mpmbup14-") || (source.group ?? "").toLowerCase().includes("mpmb upstream 2014"))
+      .map((source) => source.key);
+  }
+  if (preset === "mpmb-upstream-2024-core") {
+    return availableSources
+      .filter((source) => source.key.toLowerCase().startsWith("mpmbup24-") || (source.group ?? "").toLowerCase().includes("mpmb upstream 2024"))
+      .map((source) => source.key);
   }
   if (preset === "open5e-2014") {
     return availableSources

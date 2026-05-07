@@ -1,4 +1,4 @@
-# Projektstatusbericht – D&D Character Builder
+![img.png](ui%20images/img.png)# Projektstatusbericht – D&D Character Builder
 
 Stand: 2026-05-02
 
@@ -11,6 +11,9 @@ Die kritischen Runtime-Probleme in der MPMB-Generierung sind aktuell auf **0 Par
 ### A) Datenprovider und Ingestion
 - `open5e` ist über **Open5e API V2** eingebunden (kein HTML-Scraping).
 - `mpmb` ist über lokale Registry-Ingestion + PDF-Extraktion/Capture eingebunden.
+- `mpmb` hat zusätzlich lokale Upstream-Core-Ingestion:
+  - `mpmb-upstream-2014`
+  - `mpmb-upstream-2024`
 - Additive Merge-Strategie ist aktiv (keine destruktive Überschreibung lokaler Daten).
 - Generierte Snapshots:
   - `src/services/data/generated/mpmb-local-content.json`
@@ -38,6 +41,14 @@ Die kritischen Runtime-Probleme in der MPMB-Generierung sind aktuell auf **0 Par
 - Strukturierte Diagnoseartefakte:
   - `data/imports/mpmb-local/manifests/latest-runtime-diagnostics.json`
   - `data/imports/mpmb-local/manifests/latest-runtime-summary.json`
+
+### E) MPMB Core-Tiering (neu)
+- Innerhalb `provider=mpmb` wird Core nach `rulesMode` priorisiert:
+  - `2014`: upstream-2014 core > mpmb-local overlay > mpmb-pdf fallback
+  - `2024`: upstream-2024 core > mpmb-local overlay > mpmb-pdf fallback
+- Vergleichsreports für Upstream-Promotion werden erzeugt:
+  - `data/imports/mpmb-upstream-2014/manifests/comparison-report.json`
+  - `data/imports/mpmb-upstream-2024/manifests/comparison-report.json`
 
 ## 3. Aktuelle Absicherungen
 

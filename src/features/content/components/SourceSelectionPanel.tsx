@@ -13,6 +13,8 @@ const presets: Array<{ key: SourcePreset; label: string }> = [
   { key: "official-books", label: "Official Books" },
   { key: "adventure", label: "Adventure Books" },
   { key: "ua", label: "Unearthed Arcana" },
+  { key: "mpmb-upstream-2014-core", label: "MPMB Upstream 2014 Core" },
+  { key: "mpmb-upstream-2024-core", label: "MPMB Upstream 2024 Core" },
   { key: "mpmb-pdf-core", label: "MPMB PDF Core" },
   { key: "open5e-2014", label: "Open5e 2014" },
   { key: "open5e-2024", label: "Open5e 2024" },

@@ -3,6 +3,7 @@ import type { ConversionMode, RulesMode } from "./content";
 
 export type AbilityKey = keyof AbilityScores;
 export type AppliedDataStatus = "complete" | "partial" | "pending" | "manual";
+export type OriginAbilityMode = "species" | "background-2024";
 
 export interface AppliedEntityRef {
   id?: string;
@@ -21,6 +22,16 @@ export interface AbilityScoreChoiceRequirement {
   reason: string;
 }
 
+export interface AbilityScoreChoiceState {
+  id: string;
+  source: AbilityScoreChoiceRequirement["source"];
+  amount: number;
+  allowedAbilities: AbilityKey[];
+  reason: string;
+  selectedAbility?: AbilityKey;
+  satisfied: boolean;
+}
+
 export interface IgnoredAbilityScoreAdjustment {
   source: "species" | "background" | "feat" | "class";
   reason: string;
@@ -31,12 +42,23 @@ export interface AppliedAbilityScoreAdjustments {
   fixed: Partial<Record<AbilityKey, number>>;
   pendingChoices: AbilityScoreChoiceRequirement[];
   ignored: IgnoredAbilityScoreAdjustment[];
+  choiceStates: AbilityScoreChoiceState[];
+  originModeChoiceId?: string;
+  originMode?: OriginAbilityMode;
+  availableOriginModes?: OriginAbilityMode[];
+  notes: string[];
 }
 
 export interface AppliedSpeciesResult {
   entity?: AppliedEntityRef;
   traits: string[];
   abilityAdjustments: AppliedAbilityScoreAdjustments;
+  skillProficiencies: string[];
+  skillChoice?: {
+    count: number;
+    options: string[];
+    reason: string;
+  };
   dataStatus: AppliedDataStatus;
 }
 
@@ -85,9 +107,11 @@ export interface AppliedProficienciesResult {
   tools: string[];
   languages: string[];
   pendingSkillChoices: Array<{
-    source: "class";
+    source: "class" | "species" | "background";
     count: number;
     options: string[];
+    choiceKeyPrefix: string;
+    reason: string;
   }>;
 }
 

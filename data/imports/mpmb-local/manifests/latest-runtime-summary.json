@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-02T20:06:42.568Z",
+  "generatedAt": "2026-05-03T11:57:12.695Z",
   "local": {
     "classes": 15,
     "subclasses": 230,
@@ -12,13 +12,13 @@
     "partialFiles": 0
   },
   "merged": {
-    "classes": 51,
-    "subclasses": 283,
-    "species": 352,
-    "backgrounds": 140,
-    "feats": 244,
-    "spells": 1243,
-    "equipment": 1522,
+    "classes": 75,
+    "subclasses": 307,
+    "species": 404,
+    "backgrounds": 145,
+    "feats": 261,
+    "spells": 1925,
+    "equipment": 2349,
     "parseErrors": 0
   },
   "loadPlanBuckets": {

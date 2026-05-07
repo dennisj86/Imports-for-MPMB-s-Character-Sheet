@@ -13,6 +13,18 @@ import type {
   SubclassDefinition,
 } from "../../domain/content";
 import type { AppliedCharacterRules } from "../../domain/appliedRules";
+import type { CharacterActionResourceState } from "../../domain/actionResources";
+import type {
+  ClassSkillChoiceState,
+  FeatChoiceContext,
+  SkillChoiceState,
+  SpellChoiceContext,
+  StartingEquipmentChoiceContext,
+  WizardStepId,
+  WizardStepValidation,
+} from "../../domain/builderWizard";
+import type { DerivedCharacterStats } from "../../domain/derivedStats";
+import type { LevelProgressionResult } from "../../domain/progression";
 import { getFeaturesForLevel } from "../../domain/derived";
 import { resolveSourceProvider, type SourceProvider } from "./sourceProvider";
 import type { CharacterDraft } from "../../domain/character";
@@ -29,6 +41,22 @@ import {
   type RulesQueryContext,
 } from "./rulesModeResolver";
 import { resolveAppliedCharacterRules } from "./appliedRulesResolver";
+import { resolveCharacterActionResources } from "./actionResourceResolver";
+import {
+  applyStartingEquipmentChoiceToInventory,
+  getClassSkillChoiceState as resolveClassSkillChoiceState,
+  getSkillChoiceStates as resolveSkillChoiceStates,
+  getEligibleFeatsForChoice as selectEligibleFeatsForChoice,
+  getEligibleSpellsForChoice as selectEligibleSpellsForChoice,
+  getRequiredBuilderChoices as resolveRequiredBuilderChoices,
+  isCharacterCreationComplete as resolveCharacterCreationComplete,
+  resolveFeatEligibility,
+  resolveStartingEquipmentChoices,
+  resolveSpellEligibility,
+  validateBuilderStep as resolveBuilderStepValidation,
+} from "./builderWizardResolver";
+import { resolveDerivedStats } from "./derivedStatsResolver";
+import { resolveLevelProgression } from "./progressionResolver";
 
 function normalizeKey(value: string | undefined): string {
   return String(value ?? "")
@@ -137,11 +165,12 @@ export function getClassById(id: string, context: DataQueryContext = {}): ClassD
 
 export function getSubclassesForClass(classId: string, context: DataQueryContext = {}): SubclassDefinition[] {
   const classes = getClasses(context);
-  const parentClass = classes.find((entry) => entry.id === classId);
+  const parentClass = classes.find((entry) => entry.id === classId) ?? activeSnapshot.classes.find((entry) => entry.id === classId);
   if (!parentClass) {
     return [];
   }
-  const resolved = resolveSubclasses(activeSnapshot.subclasses, classes, {
+  const classesForResolution = classes.some((entry) => entry.id === parentClass.id) ? classes : [...classes, parentClass];
+  const resolved = resolveSubclasses(activeSnapshot.subclasses, classesForResolution, {
     ...context,
     selectedClassId: parentClass.id,
   });
@@ -296,6 +325,278 @@ export function getAppliedCharacterRules(draft: CharacterDraft, context: DataQue
     selectedSpells,
     levelFeatures,
   });
+}
+
+export function getDerivedCharacterStats(draft: CharacterDraft, context: DataQueryContext = {}): DerivedCharacterStats {
+  const effectiveContext: DataQueryContext = {
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  };
+  const appliedRules = getAppliedCharacterRules(draft, effectiveContext);
+  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
+  const subclassDef =
+    classDef && draft.subclassSelection.subclassId
+      ? getSubclassesForClass(classDef.id, {
+          ...effectiveContext,
+          classLevel: draft.classSelection.level,
+        }).find((entry) => entry.id === draft.subclassSelection.subclassId)
+      : undefined;
+  const speciesDef = draft.speciesSelection.speciesId
+    ? getSpecies(effectiveContext).find((entry) => entry.id === draft.speciesSelection.speciesId)
+    : undefined;
+  const equipmentCatalog = getEquipmentCatalog({}, effectiveContext);
+
+  return resolveDerivedStats(draft, appliedRules, {
+    classDef,
+    subclassDef,
+    speciesDef,
+    equipmentCatalog,
+  });
+}
+
+export function getCharacterProgression(draft: CharacterDraft, context: DataQueryContext = {}): LevelProgressionResult {
+  const effectiveContext: DataQueryContext = {
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  };
+  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
+  const availableSubclasses = classDef
+    ? getSubclassesForClass(classDef.id, {
+        ...effectiveContext,
+        classLevel: draft.classSelection.level,
+      })
+    : [];
+  const subclassDef =
+    classDef && draft.subclassSelection.subclassId
+      ? availableSubclasses.find((entry) => entry.id === draft.subclassSelection.subclassId)
+      : undefined;
+  const appliedRules = getAppliedCharacterRules(draft, effectiveContext);
+  const derivedStats = getDerivedCharacterStats(draft, effectiveContext);
+  const selectedSpells = draft.spellSelection.selectedSpellIds
+    .map((idValue) => getSpellById(idValue, effectiveContext))
+    .filter((entry): entry is SpellDefinition => Boolean(entry));
+
+  return resolveLevelProgression(draft, appliedRules, derivedStats, {
+    classDef,
+    subclassDef,
+    availableSubclasses,
+    selectedSpells,
+  });
+}
+
+export function getCharacterActionResources(draft: CharacterDraft, context: DataQueryContext = {}): CharacterActionResourceState {
+  const effectiveContext: DataQueryContext = {
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  };
+  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
+  const availableSubclasses = classDef
+    ? getSubclassesForClass(classDef.id, {
+        ...effectiveContext,
+        classLevel: draft.classSelection.level,
+      })
+    : [];
+  const subclassDef =
+    classDef && draft.subclassSelection.subclassId
+      ? availableSubclasses.find((entry) => entry.id === draft.subclassSelection.subclassId)
+      : undefined;
+  const speciesDef = draft.speciesSelection.speciesId
+    ? getSpecies(effectiveContext).find((entry) => entry.id === draft.speciesSelection.speciesId)
+    : undefined;
+  const backgroundDef = draft.backgroundSelection.backgroundId
+    ? getBackgrounds(effectiveContext).find((entry) => entry.id === draft.backgroundSelection.backgroundId)
+    : undefined;
+  const featCatalog = getFeats(effectiveContext);
+  const selectedFeats = draft.featIds
+    .map((idValue) => featCatalog.find((entry) => entry.id === idValue))
+    .filter((entry): entry is FeatDefinition => Boolean(entry));
+  const selectedSpells = draft.spellSelection.selectedSpellIds
+    .map((idValue) => getSpellById(idValue, effectiveContext))
+    .filter((entry): entry is SpellDefinition => Boolean(entry));
+  const equipmentCatalog = getEquipmentCatalog({}, effectiveContext);
+  const appliedRules = getAppliedCharacterRules(draft, effectiveContext);
+  const derivedStats = getDerivedCharacterStats(draft, effectiveContext);
+  const progression = resolveLevelProgression(draft, appliedRules, derivedStats, {
+    classDef,
+    subclassDef,
+    availableSubclasses,
+    selectedSpells,
+  });
+
+  return resolveCharacterActionResources(draft, appliedRules, derivedStats, progression, {
+    classDef,
+    subclassDef,
+    speciesDef,
+    backgroundDef,
+    selectedFeats,
+    selectedSpells,
+    equipmentCatalog,
+  });
+}
+
+function buildWizardResolverInput(draft: CharacterDraft, context: DataQueryContext = {}) {
+  const effectiveContext: DataQueryContext = {
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  };
+  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
+  const availableSubclasses = classDef
+    ? getSubclassesForClass(classDef.id, {
+      ...effectiveContext,
+      classLevel: draft.classSelection.level,
+    })
+    : [];
+  const subclassDef =
+    classDef && draft.subclassSelection.subclassId
+      ? availableSubclasses.find((entry) => entry.id === draft.subclassSelection.subclassId)
+      : undefined;
+  const backgroundDef = draft.backgroundSelection.backgroundId
+    ? getBackgrounds(effectiveContext).find((entry) => entry.id === draft.backgroundSelection.backgroundId)
+    : undefined;
+  const feats = getFeats(effectiveContext);
+  const spells = getSpells({}, effectiveContext);
+  const appliedRules = getAppliedCharacterRules(draft, effectiveContext);
+  const derivedStats = getDerivedCharacterStats(draft, effectiveContext);
+  const progression = resolveLevelProgression(draft, appliedRules, derivedStats, {
+    classDef,
+    subclassDef,
+    availableSubclasses,
+    selectedSpells: draft.spellSelection.selectedSpellIds
+      .map((idValue) => spells.find((entry) => entry.id === idValue))
+      .filter((entry): entry is SpellDefinition => Boolean(entry)),
+  });
+
+  return {
+    draft,
+    rulesMode: effectiveContext.rulesMode ?? draft.rulesMode,
+    classDef,
+    subclassDef,
+    backgroundDef,
+    feats,
+    spells,
+    appliedRules,
+    progression,
+    derivedStats,
+  };
+}
+
+export function resolveFeatEligibilityForBuilder(draft: CharacterDraft, context: DataQueryContext = {}): FeatChoiceContext[] {
+  return resolveFeatEligibility(buildWizardResolverInput(draft, context));
+}
+
+export function resolveSpellEligibilityForBuilder(draft: CharacterDraft, context: DataQueryContext = {}): SpellChoiceContext[] {
+  return resolveSpellEligibility(buildWizardResolverInput(draft, context));
+}
+
+export function getEligibleFeatsForChoice(
+  draft: CharacterDraft,
+  choiceContextId: string,
+  context: DataQueryContext = {},
+): FeatDefinition[] {
+  const contexts = resolveFeatEligibilityForBuilder(draft, context);
+  return selectEligibleFeatsForChoice(contexts, choiceContextId);
+}
+
+export function getEligibleSpellsForChoice(
+  draft: CharacterDraft,
+  choiceContextId: string,
+  context: DataQueryContext = {},
+): SpellDefinition[] {
+  const contexts = resolveSpellEligibilityForBuilder(draft, context);
+  return selectEligibleSpellsForChoice(contexts, choiceContextId);
+}
+
+export function getClassSkillChoiceStateForBuilder(
+  draft: CharacterDraft,
+  context: DataQueryContext = {},
+): ClassSkillChoiceState {
+  const resolved = buildWizardResolverInput(draft, context);
+  return resolveClassSkillChoiceState(draft, resolved.appliedRules);
+}
+
+export function getSkillChoiceStatesForBuilder(
+  draft: CharacterDraft,
+  context: DataQueryContext = {},
+): SkillChoiceState[] {
+  const resolved = buildWizardResolverInput(draft, context);
+  return resolveSkillChoiceStates(draft, resolved.appliedRules);
+}
+
+export function getStartingEquipmentChoicesForBuilder(
+  draft: CharacterDraft,
+  context: DataQueryContext = {},
+): StartingEquipmentChoiceContext[] {
+  const resolved = buildWizardResolverInput(draft, context);
+  return resolveStartingEquipmentChoices(resolved);
+}
+
+export function applyStartingEquipmentChoiceForBuilder(
+  draft: CharacterDraft,
+  equipmentContextId: string,
+  optionId: string,
+  context: DataQueryContext = {},
+): CharacterDraft {
+  const resolved = buildWizardResolverInput(draft, context);
+  const equipmentChoices = resolveStartingEquipmentChoices(resolved);
+  const choice = equipmentChoices.find((entry) => entry.id === equipmentContextId);
+  if (!choice) {
+    return draft;
+  }
+  const option = choice.options.find((entry) => entry.id === optionId);
+  if (!option) {
+    return draft;
+  }
+  const equipmentCatalog = getEquipmentCatalog({}, context);
+  return {
+    ...draft,
+    inventory: applyStartingEquipmentChoiceToInventory(draft.inventory, equipmentContextId, option, equipmentCatalog),
+  };
+}
+
+export function getRequiredBuilderChoices(
+  draft: CharacterDraft,
+  context: DataQueryContext = {},
+) {
+  const resolved = buildWizardResolverInput(draft, context);
+  return resolveRequiredBuilderChoices(resolved.appliedRules, resolved.progression);
+}
+
+export function validateBuilderStep(
+  draft: CharacterDraft,
+  stepId: WizardStepId,
+  context: DataQueryContext = {},
+): WizardStepValidation {
+  const resolved = buildWizardResolverInput(draft, context);
+  const featContexts = resolveFeatEligibility(resolved);
+  const spellContexts = resolveSpellEligibility(resolved);
+  const skillChoices = resolveSkillChoiceStates(draft, resolved.appliedRules);
+  const equipmentChoices = resolveStartingEquipmentChoices(resolved);
+  return resolveBuilderStepValidation(stepId, resolved, featContexts, spellContexts, skillChoices, equipmentChoices);
+}
+
+export function getBuilderStepValidations(
+  draft: CharacterDraft,
+  context: DataQueryContext = {},
+): Record<WizardStepId, WizardStepValidation> {
+  const resolved = buildWizardResolverInput(draft, context);
+  const featContexts = resolveFeatEligibility(resolved);
+  const spellContexts = resolveSpellEligibility(resolved);
+  const skillChoices = resolveSkillChoiceStates(draft, resolved.appliedRules);
+  const equipmentChoices = resolveStartingEquipmentChoices(resolved);
+  const stepIds: WizardStepId[] = ["class", "species", "background", "abilities", "feats", "skills", "spells", "equipment", "review"];
+  const output = {} as Record<WizardStepId, WizardStepValidation>;
+  for (const stepId of stepIds) {
+    output[stepId] = resolveBuilderStepValidation(stepId, resolved, featContexts, spellContexts, skillChoices, equipmentChoices);
+  }
+  return output;
+}
+
+export function isCharacterCreationComplete(
+  draft: CharacterDraft,
+  context: DataQueryContext = {},
+) {
+  const validations = Object.values(getBuilderStepValidations(draft, context));
+  return resolveCharacterCreationComplete(validations);
 }
 
 export { getConvertedBackgroundBenefits, getConvertedSpeciesTraits };

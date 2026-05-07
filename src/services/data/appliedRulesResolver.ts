@@ -1,6 +1,7 @@
 import { toSlug } from "../../lib/slug";
 import type {
   AbilityKey,
+  AbilityScoreChoiceState,
   AbilityScoreChoiceRequirement,
   AppliedAbilityScoreAdjustments,
   AppliedBackgroundResult,
@@ -13,6 +14,7 @@ import type {
   AppliedProficienciesResult,
   AppliedSpeciesResult,
   AppliedSpellcastingResult,
+  OriginAbilityMode,
 } from "../../domain/appliedRules";
 import type { CharacterDraft } from "../../domain/character";
 import type {
@@ -55,7 +57,17 @@ const ABILITY_ALIASES: Record<string, AbilityKey> = {
   cha: "cha",
 };
 
-const CORE_ORIGIN_FEAT_TOKENS = new Set(["alert", "magic-initiate-cleric", "magic-initiate-wizard", "savage-attacker"]);
+const CORE_ORIGIN_FEAT_TOKENS = new Set([
+  "alert",
+  "crafter",
+  "healer",
+  "lucky",
+  "musician",
+  "savage-attacker",
+  "skilled",
+  "tavern-brawler",
+  "tough",
+]);
 
 function normalizeToken(value: string | undefined): string {
   return toSlug(value ?? "")
@@ -111,6 +123,73 @@ function parseAbilityList(value: string | undefined): AbilityKey[] {
   return Array.from(abilities);
 }
 
+function getFeatureChoiceValue(draft: CharacterDraft, featureId: string): string | undefined {
+  return draft.featureChoices.find((entry) => entry.featureId === featureId)?.optionId;
+}
+
+const ALL_SKILLS = [
+  "Acrobatics",
+  "Animal Handling",
+  "Arcana",
+  "Athletics",
+  "Deception",
+  "History",
+  "Insight",
+  "Intimidation",
+  "Investigation",
+  "Medicine",
+  "Nature",
+  "Perception",
+  "Performance",
+  "Persuasion",
+  "Religion",
+  "Sleight of Hand",
+  "Stealth",
+  "Survival",
+] as const;
+
+function normalizeSkillToken(value: string): string {
+  return normalizeToken(value).replace(/-skill$/, "");
+}
+
+function resolveClassSkillOptions(options: string[]): string[] {
+  const hasAnySkill = options.some((entry) => normalizeSkillToken(entry) === "any-skill");
+  const resolved = hasAnySkill ? [...ALL_SKILLS] : [...options];
+  return Array.from(new Set(resolved));
+}
+
+function getClassSkillChoiceIds(count: number): string[] {
+  return Array.from({ length: Math.max(0, count) }, (_, index) => `skill-choice:class:${index}`);
+}
+
+function getSelectedClassSkills(
+  draft: CharacterDraft,
+  classResult: AppliedClassResult,
+): {
+  selectedSkills: string[];
+  missingCount: number;
+} {
+  const resolvedOptions = resolveClassSkillOptions(classResult.skillChoices.options);
+  const allowedTokens = new Set(resolvedOptions.map((entry) => normalizeSkillToken(entry)));
+  const selectedSkills: string[] = [];
+  for (const choiceId of getClassSkillChoiceIds(classResult.skillChoices.count)) {
+    const selected = draft.featureChoices.find((entry) => entry.featureId === choiceId)?.optionId;
+    if (!selected) {
+      continue;
+    }
+    if (!allowedTokens.has(normalizeSkillToken(selected))) {
+      continue;
+    }
+    selectedSkills.push(selected);
+  }
+  const uniqueSelected = Array.from(new Set(selectedSkills));
+  const missingCount = Math.max(0, classResult.skillChoices.count - uniqueSelected.length);
+  return {
+    selectedSkills: uniqueSelected,
+    missingCount,
+  };
+}
+
 function proficiencyBonusForLevel(level: number): number {
   return 2 + Math.floor((Math.max(1, level) - 1) / 4);
 }
@@ -134,6 +213,8 @@ function emptyAbilityAdjustments(): AppliedAbilityScoreAdjustments {
     fixed: {},
     pendingChoices: [],
     ignored: [],
+    choiceStates: [],
+    notes: [],
   };
 }
 
@@ -146,6 +227,33 @@ function mergeAbilityAdjustments(base: AppliedAbilityScoreAdjustments, patch: Ap
     fixed,
     pendingChoices: [...base.pendingChoices, ...patch.pendingChoices],
     ignored: [...base.ignored, ...patch.ignored],
+    choiceStates: [...base.choiceStates, ...patch.choiceStates],
+    originModeChoiceId: patch.originModeChoiceId ?? base.originModeChoiceId,
+    originMode: patch.originMode ?? base.originMode,
+    availableOriginModes: patch.availableOriginModes ?? base.availableOriginModes,
+    notes: [...base.notes, ...patch.notes],
+  };
+}
+
+function buildAbilityChoiceId(source: AbilityScoreChoiceRequirement["source"], requirementIndex: number, slotIndex: number): string {
+  return `ability-choice:${source}:${requirementIndex}:${slotIndex}`;
+}
+
+function parseSpeciesSkillChoiceFromTraits(traits: string | undefined): { count: number; options: string[]; reason: string } | undefined {
+  const text = String(traits ?? "").toLowerCase();
+  const choiceMatch = text.match(/proficien(?:cy|t)\s+in\s+(one|two|three|[0-9]+)\s+skills?\s+of\s+your\s+choice/);
+  if (!choiceMatch) {
+    return undefined;
+  }
+  const raw = choiceMatch[1];
+  const count = raw === "one" ? 1 : raw === "two" ? 2 : raw === "three" ? 3 : Number(raw);
+  if (!Number.isFinite(count) || count <= 0) {
+    return undefined;
+  }
+  return {
+    count,
+    options: [...ALL_SKILLS],
+    reason: "Species flexible skill choices (parsed fallback)",
   };
 }
 
@@ -219,12 +327,19 @@ function parseSpeciesAbilityRuleFromTraits(traits: string | undefined): {
   };
 }
 
-export function applySpeciesRules(species: SpeciesDefinition | undefined, rulesMode: CharacterDraft["rulesMode"]): AppliedSpeciesResult {
+export function applySpeciesRules(
+  species: SpeciesDefinition | undefined,
+  rulesMode: CharacterDraft["rulesMode"],
+  options: {
+    useLegacyAbilityIn2024?: boolean;
+  } = {},
+): AppliedSpeciesResult {
   if (!species) {
     return {
       entity: undefined,
       traits: [],
       abilityAdjustments: emptyAbilityAdjustments(),
+      skillProficiencies: [],
       dataStatus: "pending",
     };
   }
@@ -232,18 +347,22 @@ export function applySpeciesRules(species: SpeciesDefinition | undefined, rulesM
   const entity = toEntityRef(species);
   const conversionMode = entity?.conversionMode ?? "native";
   const isConvertedIn2024 = rulesMode === "2024" && conversionMode === "2024-converted";
+  const shouldIgnoreLegacyAbility = isConvertedIn2024 && !options.useLegacyAbilityIn2024;
   const canonicalKey = canonicalEntityKey(species);
 
   const explicitRule =
     SPECIES_ABILITY_RULES[canonicalKey] ??
     (canonicalKey.startsWith("half-elf") ? SPECIES_ABILITY_RULES["half-elf"] : undefined);
   const parsedRule = explicitRule ? undefined : parseSpeciesAbilityRuleFromTraits(species.traits);
+  const parsedSkillChoice = explicitRule ? undefined : parseSpeciesSkillChoiceFromTraits(species.traits);
   const adjustments = emptyAbilityAdjustments();
   const notes = [...(entity?.notes ?? [])];
 
   const applyRule = explicitRule ?? (parsedRule ? { fixed: parsedRule.fixed, choices: parsedRule.choices } : undefined);
+  const skillChoice = explicitRule?.skillChoices ?? parsedSkillChoice;
+  const skillProficiencies = explicitRule?.grantedSkills ?? [];
 
-  if (isConvertedIn2024) {
+  if (shouldIgnoreLegacyAbility) {
     if (applyRule) {
       adjustments.ignored.push({
         source: "species",
@@ -265,9 +384,16 @@ export function applySpeciesRules(species: SpeciesDefinition | undefined, rulesM
       });
     }
   }
+  if (isConvertedIn2024 && options.useLegacyAbilityIn2024 && applyRule) {
+    notes.push("Legacy species ASI is manually enabled in 2024 mode.");
+    adjustments.notes.push("Using species ability adjustments in 2024 mode (manual override).");
+  }
 
   if (!explicitRule && parsedRule) {
     notes.push("Species ability adjustments resolved via fallback parser.");
+  }
+  if (!explicitRule && parsedSkillChoice) {
+    notes.push("Species skill choices resolved via fallback parser.");
   }
 
   return {
@@ -277,6 +403,8 @@ export function applySpeciesRules(species: SpeciesDefinition | undefined, rulesM
     },
     traits: extractLines(species.traits),
     abilityAdjustments: adjustments,
+    skillProficiencies,
+    skillChoice,
     dataStatus: !explicitRule && !parsedRule && !isConvertedIn2024 ? "partial" : "complete",
   };
 }
@@ -286,6 +414,7 @@ export function applyBackgroundRules(
   rulesMode: CharacterDraft["rulesMode"],
   featCatalog: FeatDefinition[],
   selectedFeatIds: string[],
+  selectedOriginFeatId?: string,
 ): AppliedBackgroundResult {
   if (!background) {
     return {
@@ -333,20 +462,24 @@ export function applyBackgroundRules(
   }
 
   const requiresOriginFeat = rulesMode === "2024" && (mapping?.requiresOriginFeatIn2024 === true || (isConvertedIn2024 && uniqueFeatNames.length === 0));
+  const selectedOriginFeatFromContext =
+    selectedOriginFeatId &&
+    featCatalog.some((entry) => entry.id === selectedOriginFeatId) &&
+    selectedFeatIds.includes(selectedOriginFeatId);
   const selectedOriginFeat = selectedFeatIds.some((idValue) => {
     const feat = featCatalog.find((entry) => entry.id === idValue);
     if (!feat) {
       return false;
     }
     const token = normalizeToken(feat.compatibility?.canonicalKey ?? feat.key ?? feat.name);
-    return CORE_ORIGIN_FEAT_TOKENS.has(token);
+    return CORE_ORIGIN_FEAT_TOKENS.has(token) || token.startsWith("magic-initiate");
   });
   const originFeatRequirement =
     requiresOriginFeat
       ? {
           kind: "origin-feat" as const,
           required: true,
-          satisfied: selectedOriginFeat || grantedFeatIds.length > 0,
+          satisfied: Boolean(selectedOriginFeatFromContext) || selectedOriginFeat || grantedFeatIds.length > 0,
           reason: "Legacy background in 2024 mode without deterministic native feat grant.",
         }
       : undefined;
@@ -457,10 +590,28 @@ export function applyFeatRules(
 }
 
 export function applyBaseProficiencies(
+  draft: CharacterDraft,
   classResult: AppliedClassResult,
   backgroundResult: AppliedBackgroundResult,
   speciesResult: AppliedSpeciesResult,
 ): AppliedProficienciesResult {
+  const classSkillChoice = getSelectedClassSkills(draft, classResult);
+  const speciesSelectedSkills: string[] = [];
+  let speciesMissingCount = 0;
+  if (speciesResult.skillChoice && speciesResult.skillChoice.count > 0) {
+    const allowedTokens = new Set(speciesResult.skillChoice.options.map((entry) => normalizeSkillToken(entry)));
+    const selectedForSpecies: string[] = [];
+    for (let index = 0; index < speciesResult.skillChoice.count; index += 1) {
+      const selected = getFeatureChoiceValue(draft, `skill-choice:species:${index}`);
+      if (!selected || !allowedTokens.has(normalizeSkillToken(selected))) {
+        continue;
+      }
+      selectedForSpecies.push(selected);
+    }
+    speciesSelectedSkills.push(...Array.from(new Set(selectedForSpecies)));
+    speciesMissingCount = Math.max(0, speciesResult.skillChoice.count - speciesSelectedSkills.length);
+  }
+
   const languageSet = new Set<string>(backgroundResult.languagesGranted);
   for (const traitLine of speciesResult.traits) {
     for (const language of parseLanguages(traitLine)) {
@@ -470,19 +621,33 @@ export function applyBaseProficiencies(
 
   return {
     savingThrows: [...classResult.savingThrowProficiencies],
-    skills: [...new Set(backgroundResult.skillProficiencies)],
+    skills: [...new Set([...backgroundResult.skillProficiencies, ...speciesResult.skillProficiencies, ...classSkillChoice.selectedSkills, ...speciesSelectedSkills])],
     tools: [...new Set([...classResult.toolProficiencies, ...backgroundResult.toolProficiencies])],
     languages: Array.from(languageSet),
-    pendingSkillChoices:
-      classResult.skillChoices.count > 0
+    pendingSkillChoices: [
+      ...(classSkillChoice.missingCount > 0
         ? [
             {
-              source: "class",
-              count: classResult.skillChoices.count,
-              options: classResult.skillChoices.options,
+              source: "class" as const,
+              count: classSkillChoice.missingCount,
+              options: resolveClassSkillOptions(classResult.skillChoices.options),
+              choiceKeyPrefix: "skill-choice:class",
+              reason: "Class skill proficiency choices",
             },
           ]
-        : [],
+        : []),
+      ...(speciesMissingCount > 0 && speciesResult.skillChoice
+        ? [
+            {
+              source: "species" as const,
+              count: speciesMissingCount,
+              options: [...speciesResult.skillChoice.options],
+              choiceKeyPrefix: "skill-choice:species",
+              reason: speciesResult.skillChoice.reason,
+            },
+          ]
+        : []),
+    ],
   };
 }
 
@@ -513,6 +678,115 @@ export function applySpellPreparationBasis(
   };
 }
 
+function hasSpeciesAbilityRule(result: AppliedSpeciesResult): boolean {
+  return (
+    Object.keys(result.abilityAdjustments.fixed).length > 0 ||
+    result.abilityAdjustments.pendingChoices.length > 0 ||
+    result.abilityAdjustments.ignored.length > 0
+  );
+}
+
+function resolveOriginAbilityMode(
+  draft: CharacterDraft,
+  speciesRuleAvailable: boolean,
+  backgroundRuleAvailable: boolean,
+): {
+  selectedMode?: OriginAbilityMode;
+  availableModes: OriginAbilityMode[];
+  notes: string[];
+} {
+  const availableModes: OriginAbilityMode[] = [];
+  if (speciesRuleAvailable) {
+    availableModes.push("species");
+  }
+  if (backgroundRuleAvailable) {
+    availableModes.push("background-2024");
+  }
+  if (availableModes.length === 0) {
+    return {
+      selectedMode: undefined,
+      availableModes,
+      notes: [],
+    };
+  }
+
+  const explicitMode = getFeatureChoiceValue(draft, "ability-choice:origin-mode");
+  if ((explicitMode === "species" || explicitMode === "background-2024") && availableModes.includes(explicitMode)) {
+    return {
+      selectedMode: explicitMode,
+      availableModes,
+      notes: [],
+    };
+  }
+
+  const defaultMode: OriginAbilityMode = draft.rulesMode === "2024" && backgroundRuleAvailable ? "background-2024" : availableModes[0];
+  const notes: string[] = [];
+  if (draft.rulesMode === "2024" && defaultMode === "background-2024") {
+    notes.push("Using 2024 background ability allocation by default.");
+  }
+  return {
+    selectedMode: defaultMode,
+    availableModes,
+    notes,
+  };
+}
+
+function materializeAbilityScoreChoices(
+  draft: CharacterDraft,
+  baseAdjustments: AppliedAbilityScoreAdjustments,
+): AppliedAbilityScoreAdjustments {
+  const fixed: Partial<Record<AbilityKey, number>> = { ...baseAdjustments.fixed };
+  const pendingChoices: AbilityScoreChoiceRequirement[] = [];
+  const choiceStates: AbilityScoreChoiceState[] = [];
+  const usedBySource = new Map<AbilityScoreChoiceRequirement["source"], Set<AbilityKey>>();
+
+  for (const [requirementIndex, requirement] of baseAdjustments.pendingChoices.entries()) {
+    let unresolvedCount = 0;
+    for (let slotIndex = 0; slotIndex < requirement.count; slotIndex += 1) {
+      const id = buildAbilityChoiceId(requirement.source, requirementIndex, slotIndex);
+      const selectedRaw = getFeatureChoiceValue(draft, id);
+      const selectedAbility = selectedRaw && ABILITY_ALIASES[selectedRaw.toLowerCase()] ? ABILITY_ALIASES[selectedRaw.toLowerCase()] : undefined;
+      const used = usedBySource.get(requirement.source) ?? new Set<AbilityKey>();
+      const valid =
+        Boolean(selectedAbility) &&
+        requirement.allowedAbilities.includes(selectedAbility as AbilityKey) &&
+        !used.has(selectedAbility as AbilityKey);
+
+      if (valid && selectedAbility) {
+        fixed[selectedAbility] = (fixed[selectedAbility] ?? 0) + requirement.amount;
+        used.add(selectedAbility);
+        usedBySource.set(requirement.source, used);
+      } else {
+        unresolvedCount += 1;
+      }
+
+      choiceStates.push({
+        id,
+        source: requirement.source,
+        amount: requirement.amount,
+        allowedAbilities: [...requirement.allowedAbilities],
+        reason: requirement.reason,
+        selectedAbility,
+        satisfied: valid,
+      });
+    }
+
+    if (unresolvedCount > 0) {
+      pendingChoices.push({
+        ...requirement,
+        count: unresolvedCount,
+      });
+    }
+  }
+
+  return {
+    ...baseAdjustments,
+    fixed,
+    pendingChoices,
+    choiceStates,
+  };
+}
+
 function backgroundAbilityChoiceRequirement(rulesMode: CharacterDraft["rulesMode"]): AbilityScoreChoiceRequirement[] {
   if (rulesMode !== "2024") {
     return [];
@@ -537,25 +811,25 @@ function backgroundAbilityChoiceRequirement(rulesMode: CharacterDraft["rulesMode
 
 function buildPendingChoices(
   abilityAdjustments: AppliedAbilityScoreAdjustments,
-  classResult: AppliedClassResult,
   backgroundResult: AppliedBackgroundResult,
+  proficiencies: AppliedProficienciesResult,
 ): AppliedChoiceRequirement[] {
   const pending: AppliedChoiceRequirement[] = [];
   for (const [index, choice] of abilityAdjustments.pendingChoices.entries()) {
     pending.push({
-      id: `ability-species-${index}`,
+      id: `ability-${choice.source}-${index}`,
       kind: "ability-score-choice",
       description: `${choice.reason}: choose ${choice.count} ability score(s) to increase by +${choice.amount}.`,
-      source: "species",
+      source: choice.source,
       status: "pending",
     });
   }
-  if (classResult.skillChoices.count > 0) {
+  for (const pendingSkillChoice of proficiencies.pendingSkillChoices) {
     pending.push({
-      id: "skill-class",
+      id: `skill-${pendingSkillChoice.source}`,
       kind: "skill-choice",
-      description: `Choose ${classResult.skillChoices.count} class skill proficiency option(s).`,
-      source: "class",
+      description: `Choose ${pendingSkillChoice.count} ${pendingSkillChoice.source} skill proficiency option(s).`,
+      source: pendingSkillChoice.source,
       status: "pending",
     });
   }
@@ -574,22 +848,42 @@ function buildPendingChoices(
 export function resolveAppliedCharacterRules(input: AppliedResolverInput): AppliedCharacterRules {
   const { draft, classDef, subclassDef, speciesDef, backgroundDef, featCatalog } = input;
 
-  const speciesResult = applySpeciesRules(speciesDef, draft.rulesMode);
-  const backgroundResult = applyBackgroundRules(backgroundDef, draft.rulesMode, featCatalog, draft.featIds);
+  const speciesPreview = applySpeciesRules(speciesDef, draft.rulesMode, {
+    useLegacyAbilityIn2024: true,
+  });
+  const selectedOriginFeatId = getFeatureChoiceValue(draft, "feat-choice:origin");
+  const backgroundResult = applyBackgroundRules(backgroundDef, draft.rulesMode, featCatalog, draft.featIds, selectedOriginFeatId);
+  const originModeResolution = resolveOriginAbilityMode(
+    draft,
+    hasSpeciesAbilityRule(speciesPreview),
+    Boolean(backgroundResult.entity && draft.rulesMode === "2024"),
+  );
+  const speciesResult = applySpeciesRules(speciesDef, draft.rulesMode, {
+    useLegacyAbilityIn2024: originModeResolution.selectedMode === "species",
+  });
   const classResult = applyClassRules(classDef, subclassDef, draft.classSelection.level);
   const featResult = applyFeatRules(draft, featCatalog, backgroundResult);
   const spellcasting = applySpellPreparationBasis(classDef, subclassDef);
-  const backgroundAbilityChoices = backgroundResult.entity ? backgroundAbilityChoiceRequirement(draft.rulesMode) : [];
-  const abilityScoreAdjustments = mergeAbilityAdjustments(
+  const backgroundAbilityChoices =
+    backgroundResult.entity && originModeResolution.selectedMode === "background-2024"
+      ? backgroundAbilityChoiceRequirement(draft.rulesMode)
+      : [];
+  const baseAbilityAdjustments = mergeAbilityAdjustments(
     speciesResult.abilityAdjustments,
     {
       fixed: {},
       pendingChoices: backgroundAbilityChoices,
       ignored: [],
+      choiceStates: [],
+      originModeChoiceId: originModeResolution.availableModes.length > 1 ? "ability-choice:origin-mode" : undefined,
+      originMode: originModeResolution.selectedMode,
+      availableOriginModes: originModeResolution.availableModes,
+      notes: [...originModeResolution.notes],
     },
   );
-  const proficiencies = applyBaseProficiencies(classResult, backgroundResult, speciesResult);
-  const pendingChoices = buildPendingChoices(abilityScoreAdjustments, classResult, backgroundResult);
+  const abilityScoreAdjustments = materializeAbilityScoreChoices(draft, baseAbilityAdjustments);
+  const proficiencies = applyBaseProficiencies(draft, classResult, backgroundResult, speciesResult);
+  const pendingChoices = buildPendingChoices(abilityScoreAdjustments, backgroundResult, proficiencies);
 
   const speciesConverted = speciesResult.entity?.conversionMode === "2024-converted";
   const backgroundConverted = backgroundResult.entity?.conversionMode === "2024-converted";
@@ -599,6 +893,7 @@ export function resolveAppliedCharacterRules(input: AppliedResolverInput): Appli
     ...backgroundResult.notes,
     ...classResult.notes,
     ...spellcasting.notes,
+    ...abilityScoreAdjustments.notes,
   ];
 
   const statuses: AppliedDataStatus[] = [

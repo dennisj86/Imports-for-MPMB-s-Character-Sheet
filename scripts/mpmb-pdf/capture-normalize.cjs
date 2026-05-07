@@ -55,12 +55,12 @@ function sourceRefs(value) {
   return [];
 }
 
-function remapSourceRefsForPdf(rawSourceRefs, sourceKeyMap) {
+function remapSourceRefs(rawSourceRefs, sourceKeyMap, fallbackPrefix) {
   return rawSourceRefs
     .map((ref) => {
       const text = String(ref);
       const [sourceKey, ...rest] = text.split(":");
-      const mapped = sourceKeyMap.get(sourceKey) ?? `mpmbpdf-${toSlug(sourceKey)}`;
+      const mapped = sourceKeyMap.get(sourceKey) ?? `${fallbackPrefix}-${toSlug(sourceKey)}`;
       if (rest.length === 0) {
         return mapped;
       }
@@ -191,16 +191,20 @@ function inferEdition(sourceRefEntries) {
   if (joined.includes("2024")) {
     return "2024";
   }
+  if (joined.includes("2014")) {
+    return "2014";
+  }
   return "unknown";
 }
 
-function localSourceMeta(sourceRefEntries, rawSourceRef, status) {
+function localSourceMeta(sourceRefEntries, rawSourceRef, status, options = {}) {
+  const explicitEdition = options.forcedEdition;
   return {
-    sourceSystem: "mpmb",
+    sourceSystem: options.sourceSystem ?? "mpmb",
     sourceDocumentKey: sourceRefEntries[0] ? String(sourceRefEntries[0]).split(":")[0] : "mpmb-pdf",
-    sourceDocumentName: "DnD.pdf",
-    edition: inferEdition(sourceRefEntries),
-    importPreset: "mpmb-pdf",
+    sourceDocumentName: options.sourceDocumentName ?? "DnD.pdf",
+    edition: explicitEdition ?? inferEdition(sourceRefEntries),
+    importPreset: options.importPreset ?? "mpmb-pdf",
     rawSourceRef,
     dataStatus: status,
   };
@@ -462,7 +466,7 @@ function pickRegistry(registries, sandboxTarget, primaryName, baseName) {
   return {};
 }
 
-function normalizeCapturedRegistries(runtime, sourceFiles) {
+function normalizeCapturedRegistries(runtime, sourceFiles, options = {}) {
   const { registries, sandboxTarget, subclassClassKeyMap, raceVariantMap } = runtime;
   const classList = pickRegistry(registries, sandboxTarget, "ClassList", "Base_ClassList");
   const classSubList = pickRegistry(registries, sandboxTarget, "ClassSubList", "Base_ClassSubList");
@@ -480,19 +484,23 @@ function normalizeCapturedRegistries(runtime, sourceFiles) {
   const ammoList = pickRegistry(registries, sandboxTarget, "AmmoList", "Base_AmmoList");
   const sourceList = pickRegistry(registries, sandboxTarget, "SourceList", "Base_SourceList");
 
+  const sourceKeyPrefix = options.sourceKeyPrefix ?? "mpmbpdf";
+  const sourceGroupPrefix = options.sourceGroupPrefix ?? "MPMB PDF ";
+  const defaultSourceGroup = options.defaultSourceGroup ?? "MPMB PDF Core";
+
   const sourceKeyMap = new Map();
   const sources = Object.entries(sourceList)
     .map(([key, value]) => {
       if (!value || typeof value !== "object") {
         return undefined;
       }
-      const mappedKey = `mpmbpdf-${toSlug(key)}`;
+      const mappedKey = `${sourceKeyPrefix}-${toSlug(key)}`;
       sourceKeyMap.set(key, mappedKey);
       return {
         key: mappedKey,
         name: String(value.name ?? key),
         abbreviation: value.abbreviation ? String(value.abbreviation) : undefined,
-        group: value.group ? `MPMB PDF ${String(value.group)}` : "MPMB PDF Core",
+        group: value.group ? `${sourceGroupPrefix}${String(value.group)}` : defaultSourceGroup,
         date: value.date ? String(value.date) : undefined,
         url: value.url ? String(value.url) : undefined,
         defaultExcluded: Boolean(value.defaultExcluded),
@@ -503,14 +511,14 @@ function normalizeCapturedRegistries(runtime, sourceFiles) {
 
   const classes = Object.entries(classList).map(([key, value]) => {
     const classId = buildId("class", key);
-    const refs = remapSourceRefsForPdf(sourceRefs(value?.source), sourceKeyMap);
+    const refs = remapSourceRefs(sourceRefs(value?.source), sourceKeyMap, sourceKeyPrefix);
     return {
       id: classId,
       key: String(key).toLowerCase(),
       canonicalClassKey: String(key).toLowerCase(),
       name: value?.name ?? titleFromKey(key),
       sourceRefs: refs,
-      sourceMeta: localSourceMeta(refs, `ClassList:${key}`, "partial"),
+      sourceMeta: localSourceMeta(refs, `ClassList:${key}`, "partial", options),
       hitDie: numberFromUnknown(value?.die),
       spellcastingFactor: safeClone(value?.spellcastingFactor),
       spellcastingKnown: safeClone(value?.spellcastingKnown),
@@ -523,7 +531,7 @@ function normalizeCapturedRegistries(runtime, sourceFiles) {
     const inferredClassKey = classKeyFromMap ?? key.split("-")[0];
     const subclassId = buildId("subclass", key);
     const fallbackName = key.split("-").slice(1).join(" ");
-    const refs = remapSourceRefsForPdf(sourceRefs(value?.source), sourceKeyMap);
+    const refs = remapSourceRefs(sourceRefs(value?.source), sourceKeyMap, sourceKeyPrefix);
     return {
       id: subclassId,
       key: String(key).toLowerCase(),
@@ -532,7 +540,7 @@ function normalizeCapturedRegistries(runtime, sourceFiles) {
       canonicalClassKey: String(inferredClassKey).toLowerCase(),
       name: value?.subname ?? value?.fullname ?? value?.name ?? titleFromKey(fallbackName),
       sourceRefs: refs,
-      sourceMeta: localSourceMeta(refs, `ClassSubList:${key}`, "partial"),
+      sourceMeta: localSourceMeta(refs, `ClassSubList:${key}`, "partial", options),
       spellcastingFactor: safeClone(value?.spellcastingFactor),
       spellcastingKnown: safeClone(value?.spellcastingKnown),
       features: extractFeatures(value?.features, subclassId),
@@ -540,13 +548,13 @@ function normalizeCapturedRegistries(runtime, sourceFiles) {
   });
 
   const speciesFromRaceList = Object.entries(raceList).map(([key, value]) => {
-    const refs = remapSourceRefsForPdf(sourceRefs(value?.source), sourceKeyMap);
+    const refs = remapSourceRefs(sourceRefs(value?.source), sourceKeyMap, sourceKeyPrefix);
     return {
       id: buildId("species", key),
       key,
       name: value?.name ?? titleFromKey(key),
       sourceRefs: refs,
-      sourceMeta: localSourceMeta(refs, `RaceList:${key}`, "partial"),
+      sourceMeta: localSourceMeta(refs, `RaceList:${key}`, "partial", options),
       speed: extractSpeed(value?.speed),
       size: value?.size ? String(value.size) : undefined,
       traits: toText(value?.trait),
@@ -556,13 +564,13 @@ function normalizeCapturedRegistries(runtime, sourceFiles) {
 
   const speciesFromVariants = Object.entries(raceSubList).map(([key, value]) => {
     const variantBaseKey = raceVariantMap.get(key) ?? value?._variantOf;
-    const refs = remapSourceRefsForPdf(sourceRefs(value?.source), sourceKeyMap);
+    const refs = remapSourceRefs(sourceRefs(value?.source), sourceKeyMap, sourceKeyPrefix);
     return {
       id: buildId("species", key),
       key,
       name: value?.name ?? titleFromKey(key),
       sourceRefs: refs,
-      sourceMeta: localSourceMeta(refs, `RaceSubList:${key}`, "partial"),
+      sourceMeta: localSourceMeta(refs, `RaceSubList:${key}`, "partial", options),
       speed: extractSpeed(value?.speed),
       size: value?.size ? String(value.size) : undefined,
       traits: toText(value?.trait),
@@ -573,13 +581,13 @@ function normalizeCapturedRegistries(runtime, sourceFiles) {
   const backgrounds = Object.entries(backgroundList).map(([key, value]) => {
     const featureText =
       typeof value?.feature === "string" ? toText(backgroundFeatureList[value.feature]?.description) : undefined;
-    const refs = remapSourceRefsForPdf(sourceRefs(value?.source), sourceKeyMap);
+    const refs = remapSourceRefs(sourceRefs(value?.source), sourceKeyMap, sourceKeyPrefix);
     return {
       id: buildId("background", key),
       key,
       name: value?.name ?? titleFromKey(key),
       sourceRefs: refs,
-      sourceMeta: localSourceMeta(refs, `BackgroundList:${key}`, "partial"),
+      sourceMeta: localSourceMeta(refs, `BackgroundList:${key}`, "partial", options),
       skillText: toText(value?.skillstxt) ?? (Array.isArray(value?.skills) ? value.skills.join(", ") : undefined),
       toolText: toText(value?.toolProfs) ?? toText(value?.toolstxt),
       equipmentText: toText(value?.equipleft) ?? toText(value?.equipright),
@@ -589,26 +597,26 @@ function normalizeCapturedRegistries(runtime, sourceFiles) {
   });
 
   const feats = Object.entries(featsList).map(([key, value]) => {
-    const refs = remapSourceRefsForPdf(sourceRefs(value?.source), sourceKeyMap);
+    const refs = remapSourceRefs(sourceRefs(value?.source), sourceKeyMap, sourceKeyPrefix);
     return {
       id: buildId("feat", key),
       key,
       name: value?.name ?? titleFromKey(key),
       sourceRefs: refs,
-      sourceMeta: localSourceMeta(refs, `FeatsList:${key}`, "partial"),
+      sourceMeta: localSourceMeta(refs, `FeatsList:${key}`, "partial", options),
       description: toText(value?.description) ?? toText(value?.descriptionFull),
       prerequisite: toText(value?.prerequisite),
     };
   });
 
   const spells = Object.entries(spellsList).map(([key, value]) => {
-    const refs = remapSourceRefsForPdf(sourceRefs(value?.source), sourceKeyMap);
+    const refs = remapSourceRefs(sourceRefs(value?.source), sourceKeyMap, sourceKeyPrefix);
     return {
       id: buildId("spell", key),
       key,
       name: value?.name ?? titleFromKey(key),
       sourceRefs: refs,
-      sourceMeta: localSourceMeta(refs, `SpellsList:${key}`, "partial"),
+      sourceMeta: localSourceMeta(refs, `SpellsList:${key}`, "partial", options),
       level: numberFromUnknown(value?.level) ?? 0,
       school: toText(value?.school),
       castingTime: toText(value?.time),
@@ -631,14 +639,14 @@ function normalizeCapturedRegistries(runtime, sourceFiles) {
   ];
   for (const [category, list] of listSets) {
     for (const [key, value] of Object.entries(list)) {
-      const refs = remapSourceRefsForPdf(sourceRefs(value?.source), sourceKeyMap);
+      const refs = remapSourceRefs(sourceRefs(value?.source), sourceKeyMap, sourceKeyPrefix);
       equipment.push({
         id: buildId("equipment", `${category}-${key}`),
         key,
         category,
         name: value?.name ?? titleFromKey(key),
         sourceRefs: refs,
-        sourceMeta: localSourceMeta(refs, `${category}:${key}`, "partial"),
+        sourceMeta: localSourceMeta(refs, `${category}:${key}`, "partial", options),
         type: toText(value?.type),
         rarity: toText(value?.rarity),
         weight: value?.weight,

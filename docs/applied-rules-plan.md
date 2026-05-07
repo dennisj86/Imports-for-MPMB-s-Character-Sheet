@@ -71,3 +71,6 @@ Umgesetzt:
 - Adapter-Integration über `getAppliedCharacterRules(...)`
 - UI konsumiert Applied Output in Builder + Sheet
 - Testabdeckung in `src/tests/applied-rules-resolver.test.ts`
+
+Folgeschicht:
+- `src/services/data/derivedStatsResolver.ts` konsumiert Applied Output und materialisiert konkrete Characterwerte.

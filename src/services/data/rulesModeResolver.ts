@@ -13,6 +13,7 @@ import type {
   SubclassDefinition,
 } from "../../domain/content";
 import type { SourceProvider } from "./sourceProvider";
+import { getClassProgressionRule, getDefaultSubclassUnlockLevel } from "./mappings/classProgressionRules";
 
 export type RulesQueryContext = {
   provider?: SourceProvider | "all";
@@ -49,6 +50,7 @@ type EntityWithSource = {
   sourceMeta?: {
     sourceSystem?: "mpmb" | "open5e";
     edition?: "2014" | "2024" | "unknown";
+    importPreset?: string;
   };
   sourceRefs: string[];
   key: string;
@@ -62,22 +64,6 @@ type EntityWithCompatibility = EntityWithSource & {
 const DEFAULT_CONTEXT: Required<Pick<RulesQueryContext, "provider" | "rulesMode">> = {
   provider: "all",
   rulesMode: "2024",
-};
-
-const subclassUnlockLevel2024ByClass: Record<string, number> = {
-  artificer: 3,
-  barbarian: 3,
-  bard: 3,
-  cleric: 3,
-  druid: 3,
-  fighter: 3,
-  monk: 3,
-  paladin: 3,
-  ranger: 3,
-  rogue: 3,
-  sorcerer: 3,
-  warlock: 3,
-  wizard: 3,
 };
 
 function normalizeCanonicalToken(value: string): string {
@@ -116,8 +102,16 @@ function inferContentVersion(entity: EntityWithSource): ContentVersion {
 function inferSourceScore(entity: EntityWithSource): number {
   const sourceSystem = entity.sourceMeta?.sourceSystem ?? "mpmb";
   const edition = inferContentVersion(entity);
+  const importPreset = entity.sourceMeta?.importPreset ?? "";
   const sourceRef = entity.sourceRefs[0] ?? "";
   let score = sourceSystem === "mpmb" ? 100 : 80;
+  if (importPreset === "mpmb-upstream-2024" || importPreset === "mpmb-upstream-2014") {
+    score += 35;
+  } else if (importPreset === "mpmb-local") {
+    score += 15;
+  } else if (importPreset === "mpmb-pdf") {
+    score += 4;
+  }
   if (sourceRef.startsWith("srd-")) {
     score += 8;
   }
@@ -241,10 +235,11 @@ function groupAndResolve<T extends EntityWithSource & { key: string; name: strin
 }
 
 function getSubclassUnlockLevel(classCanonicalKey: string, rulesMode: RulesMode): number {
-  if (rulesMode !== "2024") {
-    return 1;
+  const progressionRule = getClassProgressionRule(classCanonicalKey);
+  if (progressionRule) {
+    return progressionRule.subclassUnlockByRulesMode[rulesMode];
   }
-  return subclassUnlockLevel2024ByClass[classCanonicalKey] ?? 3;
+  return getDefaultSubclassUnlockLevel(rulesMode);
 }
 
 export function resolveClasses(entries: ClassDefinition[], context: RulesQueryContext = {}): ClassDefinition[] {

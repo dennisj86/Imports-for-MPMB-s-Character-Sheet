@@ -1,26 +1,45 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Panel } from "../components/ui/Panel";
 import { FormField, inputClassName } from "../components/ui/FormField";
+import { Panel } from "../components/ui/Panel";
+import type { CharacterDraft } from "../domain/character";
 import { AbilityScoreEditor } from "../features/character/components/AbilityScoreEditor";
-import { FeatSelectionPanel } from "../features/character/components/FeatSelectionPanel";
 import { InventoryEditor } from "../features/character/components/InventoryEditor";
-import { SpellSelectionPanel } from "../features/character/components/SpellSelectionPanel";
-import { deriveSummary } from "../domain/derived";
+import { FeatChoiceSection } from "../features/character-builder/wizard/components/FeatChoiceSection";
+import { SpellChoiceSection } from "../features/character-builder/wizard/components/SpellChoiceSection";
+import { WizardStepRail } from "../features/character-builder/wizard/components/WizardStepRail";
+import { getVisibleWizardSteps } from "../features/character-builder/wizard/stepDefinitions";
+import type { WizardStepId, WizardStepState } from "../domain/builderWizard";
 import {
-  getBackgrounds,
+  applyStartingEquipmentChoiceForBuilder,
   getAppliedCharacterRules,
+  getBackgrounds,
+  getBuilderStepValidations,
+  getCharacterProgression,
   getClassById,
   getClasses,
+  getDerivedCharacterStats,
   getEquipmentCatalog,
   getFeats,
-  getFeaturesForClassLevel,
+  getRequiredBuilderChoices,
+  getSkillChoiceStatesForBuilder,
   getSpecies,
-  getSpells,
+  getStartingEquipmentChoicesForBuilder,
+  getSpellById,
   getSubclassesForClass,
+  isCharacterCreationComplete,
+  resolveFeatEligibilityForBuilder,
+  resolveSpellEligibilityForBuilder,
 } from "../services/data/adapter";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
+
+const WIZARD_STEP_STORAGE_PREFIX = "mpmb-builder:step:";
+const ABILITY_METHODS = ["standard", "point-buy", "roll", "manual"] as const;
+
+type AbilityMethod = (typeof ABILITY_METHODS)[number];
+
+const STEP_IDS: WizardStepId[] = ["class", "species", "background", "abilities", "feats", "skills", "spells", "equipment", "review"];
 
 export function CharacterBuilderPage() {
   const generation = useSourceStore((state) => state.generation);
@@ -29,6 +48,8 @@ export function CharacterBuilderPage() {
   const characters = useCharacterStore((state) => state.characters);
   const updateCharacter = useCharacterStore((state) => state.updateCharacter);
   const draft = useMemo(() => characters.find((entry) => entry.id === id), [characters, id]);
+  const [abilityMethod, setAbilityMethod] = useState<AbilityMethod>("manual");
+
   const dataContext = useMemo(
     () => ({
       provider: draft?.provider ?? "mpmb",
@@ -36,11 +57,11 @@ export function CharacterBuilderPage() {
     }),
     [draft?.provider, draft?.rulesMode],
   );
+
   const classes = useMemo(() => getClasses(dataContext), [dataContext, generation]);
   const speciesOptions = useMemo(() => getSpecies(dataContext), [dataContext, generation]);
   const backgrounds = useMemo(() => getBackgrounds(dataContext), [dataContext, generation]);
   const feats = useMemo(() => getFeats(dataContext), [dataContext, generation]);
-  const spells = useMemo(() => getSpells({}, dataContext), [dataContext, generation]);
   const equipmentCatalog = useMemo(() => getEquipmentCatalog({}, dataContext), [dataContext, generation]);
 
   if (!id || !draft) {
@@ -54,26 +75,87 @@ export function CharacterBuilderPage() {
     );
   }
 
-  const selectedClass = getClassById(draft.classSelection.classId ?? "", dataContext);
+  const selectedClass = draft.classSelection.classId ? getClassById(draft.classSelection.classId, dataContext) : undefined;
   const subclassOptions = selectedClass
     ? getSubclassesForClass(selectedClass.id, {
-        ...dataContext,
-        classLevel: draft.classSelection.level,
-      })
-    : [];
-  const selectedSubclass = subclassOptions.find((entry) => entry.id === draft.subclassSelection.subclassId);
-  const appliedRules = getAppliedCharacterRules(draft, dataContext);
-
-  const derived = deriveSummary(draft, selectedClass, selectedSubclass);
-  const levelFeatures = getFeaturesForClassLevel(
-    draft.classSelection.classId,
-    draft.subclassSelection.subclassId,
-    draft.classSelection.level,
-    {
       ...dataContext,
       classLevel: draft.classSelection.level,
-    },
+    })
+    : [];
+  const selectedSubclass = subclassOptions.find((entry) => entry.id === draft.subclassSelection.subclassId);
+  const selectedSpecies = draft.speciesSelection.speciesId ? speciesOptions.find((entry) => entry.id === draft.speciesSelection.speciesId) : undefined;
+  const selectedBackground = draft.backgroundSelection.backgroundId ? backgrounds.find((entry) => entry.id === draft.backgroundSelection.backgroundId) : undefined;
+  const selectedFeatEntries = draft.featIds.map((featId) => feats.find((entry) => entry.id === featId)).filter(isDefined);
+  const selectedSpellEntries = draft.spellSelection.selectedSpellIds.map((spellId) => getSpellById(spellId, dataContext)).filter(isDefined);
+
+  const appliedRules = getAppliedCharacterRules(draft, dataContext);
+  const derivedStats = getDerivedCharacterStats(draft, dataContext);
+  const progression = getCharacterProgression(draft, dataContext);
+  const featChoiceContexts = resolveFeatEligibilityForBuilder(draft, dataContext);
+  const spellChoiceContexts = resolveSpellEligibilityForBuilder(draft, dataContext);
+  const skillChoiceStates = getSkillChoiceStatesForBuilder(draft, dataContext);
+  const startingEquipmentChoices = getStartingEquipmentChoicesForBuilder(draft, dataContext);
+  const requiredChoices = getRequiredBuilderChoices(draft, dataContext);
+  const validations = getBuilderStepValidations(draft, dataContext);
+  const completion = isCharacterCreationComplete(draft, dataContext);
+
+  const definitionContext = useMemo(
+    () => ({
+      validations,
+      hasFeatChoices: featChoiceContexts.length > 0,
+      hasSpellChoices: spellChoiceContexts.length > 0,
+    }),
+    [featChoiceContexts.length, spellChoiceContexts.length, validations],
   );
+  const visibleSteps = useMemo(() => getVisibleWizardSteps(definitionContext), [definitionContext]);
+
+  const [currentStepId, setCurrentStepId] = useState<WizardStepId>(() => {
+    const key = `${WIZARD_STEP_STORAGE_PREFIX}${draft.id}`;
+    if (typeof window === "undefined") {
+      return "class";
+    }
+    const stored = window.sessionStorage.getItem(key) as WizardStepId | null;
+    if (stored && STEP_IDS.includes(stored)) {
+      return stored;
+    }
+    return "class";
+  });
+
+  useEffect(() => {
+    const visibleStepIds = new Set(visibleSteps.map((step) => step.id));
+    if (!visibleStepIds.has(currentStepId)) {
+      const fallback = findFirstActionableStep(visibleSteps, validations);
+      setCurrentStepId(fallback);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(`${WIZARD_STEP_STORAGE_PREFIX}${draft.id}`, currentStepId);
+    }
+  }, [currentStepId, draft.id, visibleSteps, validations]);
+
+  const currentStepIndex = Math.max(0, visibleSteps.findIndex((step) => step.id === currentStepId));
+  const currentStepDefinition = visibleSteps[currentStepIndex];
+  const currentValidation = validations[currentStepId];
+  const stepStates: WizardStepState[] = visibleSteps.map((step) => {
+    const validation = validations[step.id];
+    return {
+      id: step.id,
+      title: step.title,
+      order: step.order,
+      visible: true,
+      substeps: [...step.substeps],
+      imageRefs: [...step.imageRefs],
+      validation,
+      status:
+        step.id === currentStepId
+          ? "current"
+          : validation.blocked
+            ? "blocked"
+            : validation.pending
+              ? "pending"
+              : "completed",
+    };
+  });
 
   return (
     <div className="space-y-4">
@@ -89,346 +171,1060 @@ export function CharacterBuilderPage() {
         </div>
       </header>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="space-y-4">
-          <Panel title="Identity">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <FormField label="Name">
-                <input
-                  className={inputClassName()}
-                  value={draft.name}
-                  onChange={(event) =>
-                    updateCharacter(draft.id, (current) => ({
-                      ...current,
-                      name: event.target.value,
-                    }))
-                  }
-                />
-              </FormField>
-              <FormField label="Level">
-                <input
-                  className={inputClassName()}
-                  min={1}
-                  max={20}
-                  type="number"
-                  value={draft.classSelection.level}
-                  onChange={(event) =>
-                    updateCharacter(draft.id, (current) => ({
-                      ...current,
-                      classSelection: {
-                        ...current.classSelection,
-                        level: clampLevel(Number(event.target.value)),
-                      },
-                    }))
-                  }
-                />
-              </FormField>
-              <FormField label="Provider">
-                <select
-                  className={inputClassName()}
-                  value={draft.provider}
-                  onChange={(event) =>
-                    updateCharacter(draft.id, (current) => ({
-                      ...current,
-                      provider: event.target.value === "open5e" ? "open5e" : "mpmb",
-                    }))
-                  }
-                >
-                  <option value="mpmb">MPMB</option>
-                  <option value="open5e">Open5e</option>
-                </select>
-              </FormField>
-              <FormField label="Rules Mode">
-                <select
-                  className={inputClassName()}
-                  value={draft.rulesMode}
-                  onChange={(event) =>
-                    updateCharacter(draft.id, (current) => ({
-                      ...current,
-                      rulesMode: event.target.value === "2014" ? "2014" : "2024",
-                    }))
-                  }
-                >
-                  <option value="2014">2014</option>
-                  <option value="2024">2024</option>
-                </select>
-              </FormField>
-              <FormField label="Class">
-                <select
-                  className={inputClassName()}
-                  value={draft.classSelection.classId ?? ""}
-                  onChange={(event) =>
-                    updateCharacter(draft.id, (current) => {
-                      const classId = event.target.value || undefined;
-                      const subclasses = classId
-                        ? getSubclassesForClass(classId, {
-                            provider: current.provider,
-                            rulesMode: current.rulesMode,
-                            classLevel: current.classSelection.level,
-                          })
-                        : [];
-                      const keepsCurrentSubclass = subclasses.some((entry) => entry.id === current.subclassSelection.subclassId);
-                      return {
-                        ...current,
-                        classSelection: { ...current.classSelection, classId },
-                        subclassSelection: {
-                          subclassId: keepsCurrentSubclass ? current.subclassSelection.subclassId : undefined,
-                        },
-                      };
-                    })
-                  }
-                >
-                  <option value="">Select class</option>
-                  {classes.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                      {entry.compatibility?.conversionMode === "legacy-only" ? " · legacy" : ""}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField label="Subclass">
-                <select
-                  className={inputClassName()}
-                  disabled={!selectedClass}
-                  value={draft.subclassSelection.subclassId ?? ""}
-                  onChange={(event) =>
-                    updateCharacter(draft.id, (current) => ({
-                      ...current,
-                      subclassSelection: { subclassId: event.target.value || undefined },
-                    }))
-                  }
-                >
-                  <option value="">Select subclass</option>
-                  {subclassOptions.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                      {entry.compatibility?.conversionMode === "2024-converted" ? " · legacy→2024" : ""}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField label="Species">
-                <select
-                  className={inputClassName()}
-                  value={draft.speciesSelection.speciesId ?? ""}
-                  onChange={(event) =>
-                    updateCharacter(draft.id, (current) => ({
-                      ...current,
-                      speciesSelection: { speciesId: event.target.value || undefined },
-                    }))
-                  }
-                >
-                  <option value="">Select species</option>
-                  {speciesOptions.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                      {entry.compatibility?.conversionMode === "2024-converted" ? " · legacy→2024" : ""}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField label="Background">
-                <select
-                  className={inputClassName()}
-                  value={draft.backgroundSelection.backgroundId ?? ""}
-                  onChange={(event) =>
-                    updateCharacter(draft.id, (current) => {
-                      const backgroundId = event.target.value || undefined;
-                      return {
-                        ...current,
-                        backgroundSelection: { backgroundId },
-                      };
-                    })
-                  }
-                >
-                  <option value="">Select background</option>
-                  {backgrounds.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                      {entry.compatibility?.conversionMode === "2024-converted" ? " · legacy→2024" : ""}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            </div>
-            {selectedSubclass?.compatibility?.notes?.length ? (
-              <div className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-                {selectedSubclass.compatibility.notes.map((entry) => (
-                  <p key={entry}>{entry}</p>
-                ))}
-              </div>
-            ) : null}
-            {appliedRules.speciesResult.entity?.notes.length ? (
-              <div className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-                {appliedRules.speciesResult.entity.notes.map((entry) => (
-                  <p key={entry}>{entry}</p>
-                ))}
-              </div>
-            ) : null}
-            {appliedRules.backgroundResult.entity ? (
-              <div className="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-                <p className="font-medium">{appliedRules.backgroundResult.entity.name}</p>
-                {appliedRules.backgroundResult.grantedFeatNames.length ? (
-                  <p>Granted feat(s): {appliedRules.backgroundResult.grantedFeatNames.join(", ")}</p>
-                ) : null}
-                {appliedRules.backgroundResult.originFeatRequirement?.required && !appliedRules.backgroundResult.originFeatRequirement.satisfied ? (
-                  <p>Origin feat selection required.</p>
-                ) : null}
-                {appliedRules.backgroundResult.skillProficiencies.length ? (
-                  <p>Skill proficiencies: {appliedRules.backgroundResult.skillProficiencies.join(", ")}</p>
-                ) : null}
-                {appliedRules.backgroundResult.toolProficiencies.length ? (
-                  <p>Tool proficiencies: {appliedRules.backgroundResult.toolProficiencies.join(", ")}</p>
-                ) : null}
-                {appliedRules.backgroundResult.notes.map((entry) => (
-                  <p key={entry}>{entry}</p>
-                ))}
-              </div>
-            ) : null}
-          </Panel>
+      <WizardStepRail steps={stepStates} onSelectStep={setCurrentStepId} />
 
-          <Panel title="Ability Scores">
-            <AbilityScoreEditor
-              value={draft.abilityScores}
-              onChange={(next) =>
-                updateCharacter(draft.id, (current) => ({
-                  ...current,
-                  abilityScores: next,
-                }))
-              }
-            />
-          </Panel>
+      <Panel
+        title={currentStepDefinition?.title ?? "Character Builder"}
+        rightSlot={
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <span>
+              Step {currentStepIndex + 1} / {visibleSteps.length}
+            </span>
+            <span>•</span>
+            <span>{currentStepDefinition?.imageRefs.join(", ")}</span>
+          </div>
+        }
+      >
+        {currentValidation.errors.length > 0 ? (
+          <div className="mb-3 space-y-1 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700">
+            {currentValidation.errors.map((entry) => (
+              <p key={entry}>{entry}</p>
+            ))}
+          </div>
+        ) : null}
+        {currentValidation.errors.length === 0 && currentValidation.warnings.length > 0 ? (
+          <div className="mb-3 space-y-1 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+            {currentValidation.warnings.map((entry) => (
+              <p key={entry}>{entry}</p>
+            ))}
+          </div>
+        ) : null}
 
-          <Panel title="Feats">
-            <FeatSelectionPanel
-              feats={feats}
-              selectedFeatIds={draft.featIds}
-              onChange={(next) =>
-                updateCharacter(draft.id, (current) => ({
-                  ...current,
-                  featIds: next,
-                }))
-              }
-            />
-          </Panel>
+        {currentStepId === "class" ? (
+          <ClassStep
+            classes={classes}
+            draft={draft}
+            subclassOptions={subclassOptions}
+            updateCharacter={updateCharacter}
+          />
+        ) : null}
 
-          <Panel title="Spells">
-            <SpellSelectionPanel
-              classKey={selectedClass?.key}
-              selectedSpellIds={draft.spellSelection.selectedSpellIds}
-              spells={spells}
-              onChange={(next) =>
-                updateCharacter(draft.id, (current) => ({
-                  ...current,
-                  spellSelection: { selectedSpellIds: next },
-                }))
-              }
-            />
-          </Panel>
+        {currentStepId === "species" ? (
+          <SpeciesStep
+            appliedRules={appliedRules}
+            draft={draft}
+            speciesOptions={speciesOptions}
+            updateCharacter={updateCharacter}
+          />
+        ) : null}
 
-          <Panel title="Inventory">
-            <InventoryEditor
-              catalog={equipmentCatalog}
-              inventory={draft.inventory}
-              onChange={(next) =>
-                updateCharacter(draft.id, (current) => ({
+        {currentStepId === "background" ? (
+          <BackgroundStep
+            appliedRules={appliedRules}
+            backgrounds={backgrounds}
+            draft={draft}
+            updateCharacter={updateCharacter}
+          />
+        ) : null}
+
+        {currentStepId === "abilities" ? (
+          <AbilitiesStep
+            abilityMethod={abilityMethod}
+            appliedRules={appliedRules}
+            derivedStats={derivedStats}
+            draft={draft}
+            setAbilityMethod={setAbilityMethod}
+            updateCharacter={updateCharacter}
+          />
+        ) : null}
+
+        {currentStepId === "feats" ? (
+          <FeatChoiceSection
+            contexts={featChoiceContexts}
+            onSelectFeat={(contextId, featId) =>
+              updateCharacter(draft.id, (current) => {
+                const previousContextual = contextualFeatIds(current.featureChoices);
+                const nextFeatureChoices = setFeatureChoice(current.featureChoices, contextId, featId);
+                const nextContextual = contextualFeatIds(nextFeatureChoices);
+                const nonContextual = current.featIds.filter((entry) => !previousContextual.has(entry));
+                return {
                   ...current,
-                  inventory: next,
-                }))
+                  featureChoices: nextFeatureChoices,
+                  featIds: Array.from(new Set([...nonContextual, ...nextContextual])),
+                };
+              })
+            }
+            onSelectSubchoice={(subchoiceId, optionId) =>
+              updateCharacter(draft.id, (current) => ({
+                ...current,
+                featureChoices: setFeatureChoice(current.featureChoices, subchoiceId, optionId),
+              }))
+            }
+          />
+        ) : null}
+
+        {currentStepId === "skills" ? (
+          <SkillsStep
+            appliedRules={appliedRules}
+            derivedStats={derivedStats}
+            draft={draft}
+            skillChoiceStates={skillChoiceStates}
+            updateCharacter={updateCharacter}
+          />
+        ) : null}
+
+        {currentStepId === "spells" ? (
+          <SpellChoiceSection
+            contexts={spellChoiceContexts}
+            onToggleSpell={(contextId, spellId, selected) => {
+              const choiceContext = spellChoiceContexts.find((entry) => entry.id === contextId);
+              if (!choiceContext) {
+                return;
               }
-            />
-          </Panel>
+              updateCharacter(draft.id, (current) => {
+                const scopedSelectedForContext = getScopedSpellSelectionsForContext(current.featureChoices, contextId);
+                if (selected) {
+                  const contextSelectedCount = scopedSelectedForContext.length;
+                  const maxSelections = choiceContext.maxSelections ?? choiceContext.requiredCount;
+                  if (maxSelections > 0 && contextSelectedCount >= maxSelections && !scopedSelectedForContext.includes(spellId)) {
+                    return current;
+                  }
+                }
+                const nextFeatureChoices = setScopedSpellSelection(current.featureChoices, contextId, spellId, selected);
+                const contextEligibleSpellIds = new Set(spellChoiceContexts.flatMap((entry) => entry.eligibleSpells.map((spell) => spell.id)));
+                const retainedLegacy = current.spellSelection.selectedSpellIds.filter((idValue) => !contextEligibleSpellIds.has(idValue));
+                const scopedSelected = collectScopedSelectedSpellIds(nextFeatureChoices, spellChoiceContexts.map((entry) => entry.id));
+                return {
+                  ...current,
+                  featureChoices: nextFeatureChoices,
+                  spellSelection: {
+                    selectedSpellIds: Array.from(new Set([...retainedLegacy, ...scopedSelected])),
+                  },
+                };
+              });
+            }}
+          />
+        ) : null}
+
+        {currentStepId === "equipment" ? (
+          <EquipmentStep
+            catalog={equipmentCatalog}
+            draft={draft}
+            startingEquipmentChoices={startingEquipmentChoices}
+            updateCharacter={updateCharacter}
+          />
+        ) : null}
+
+        {currentStepId === "review" ? (
+          <ReviewStep
+            appliedRules={appliedRules}
+            completion={completion}
+            draft={draft}
+            progression={progression}
+            requiredChoices={requiredChoices}
+            selectedBackground={selectedBackground?.name}
+            selectedClass={selectedClass?.name}
+            selectedFeats={selectedFeatEntries.map((entry) => entry.name)}
+            selectedSpecies={selectedSpecies?.name}
+            selectedSpells={selectedSpellEntries.map((entry) => entry.name)}
+            selectedSubclass={selectedSubclass?.name}
+            setCurrentStepId={setCurrentStepId}
+            validations={validations}
+          />
+        ) : null}
+      </Panel>
+
+      <footer className="flex items-center justify-between gap-2">
+        <button
+          className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:opacity-40"
+          disabled={currentStepIndex === 0}
+          onClick={() => {
+            const previousStep = visibleSteps[currentStepIndex - 1];
+            if (previousStep) {
+              setCurrentStepId(previousStep.id);
+            }
+          }}
+          type="button"
+        >
+          Back
+        </button>
+        <div className="text-xs text-slate-600">
+          {completion.complete ? "Creation complete." : `Blocking: ${completion.blockingSteps.length}, Pending: ${completion.pendingSteps.length}`}
         </div>
+        {currentStepIndex === visibleSteps.length - 1 ? (
+          <button
+            className="rounded bg-slate-800 px-3 py-2 text-sm text-white disabled:bg-slate-300"
+            disabled={!completion.complete}
+            onClick={() => navigate(`/sheet/${draft.id}`)}
+            type="button"
+          >
+            Open Sheet
+          </button>
+        ) : (
+          <button
+            className="rounded bg-slate-800 px-3 py-2 text-sm text-white disabled:bg-slate-300"
+            disabled={currentValidation.blocked}
+            onClick={() => {
+              const nextStep = visibleSteps[currentStepIndex + 1];
+              if (nextStep) {
+                setCurrentStepId(nextStep.id);
+              }
+            }}
+            type="button"
+          >
+            Next
+          </button>
+        )}
+      </footer>
+    </div>
+  );
+}
 
-        <div className="space-y-4">
-          <Panel title="Derived Summary">
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              <dt className="text-slate-600">Total Level</dt>
-              <dd>{derived.levelTotal}</dd>
-              <dt className="text-slate-600">Proficiency Bonus</dt>
-              <dd>+{appliedRules.classResult.proficiencyBonus}</dd>
-              <dt className="text-slate-600">Passive Perception</dt>
-              <dd>{derived.passivePerception}</dd>
-              <dt className="text-slate-600">Passive Insight</dt>
-              <dd>{derived.passiveInsight}</dd>
-              <dt className="text-slate-600">Passive Investigation</dt>
-              <dd>{derived.passiveInvestigation}</dd>
-              <dt className="text-slate-600">Spellcasting</dt>
-              <dd>{appliedRules.spellcasting.available ? "Available (declarative)" : "Not detected"}</dd>
-            </dl>
-            <p className="mt-3 text-xs text-slate-500">{appliedRules.spellcasting.notes[0] ?? derived.spellcasting.notes}</p>
-            {appliedRules.pendingChoices.length ? (
-              <div className="mt-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
-                {appliedRules.pendingChoices.map((choice) => (
-                  <p key={choice.id}>{choice.description}</p>
-                ))}
-              </div>
-            ) : null}
-          </Panel>
+function ClassStep({
+  draft,
+  classes,
+  subclassOptions,
+  updateCharacter,
+}: {
+  draft: CharacterDraft;
+  classes: ReturnType<typeof getClasses>;
+  subclassOptions: ReturnType<typeof getSubclassesForClass>;
+  updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
+}) {
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <FormField label="Character Name">
+        <input
+          className={inputClassName()}
+          value={draft.name}
+          onChange={(event) =>
+            updateCharacter(draft.id, (current) => ({
+              ...current,
+              name: event.target.value,
+            }))
+          }
+        />
+      </FormField>
+      <FormField label="Level">
+        <div className="flex items-center gap-2">
+          <button
+            className="rounded border border-slate-300 px-2 py-1 text-sm text-slate-700"
+            type="button"
+            onClick={() =>
+              updateCharacter(draft.id, (current) => ({
+                ...current,
+                classSelection: {
+                  ...current.classSelection,
+                  level: clampLevel(current.classSelection.level - 1),
+                },
+              }))
+            }
+          >
+            -
+          </button>
+          <input
+            className={`${inputClassName()} text-center`}
+            min={1}
+            max={20}
+            type="number"
+            value={draft.classSelection.level}
+            onChange={(event) =>
+              updateCharacter(draft.id, (current) => ({
+                ...current,
+                classSelection: {
+                  ...current.classSelection,
+                  level: clampLevel(Number(event.target.value)),
+                },
+              }))
+            }
+          />
+          <button
+            className="rounded border border-slate-300 px-2 py-1 text-sm text-slate-700"
+            type="button"
+            onClick={() =>
+              updateCharacter(draft.id, (current) => ({
+                ...current,
+                classSelection: {
+                  ...current.classSelection,
+                  level: clampLevel(current.classSelection.level + 1),
+                },
+              }))
+            }
+          >
+            +
+          </button>
+        </div>
+      </FormField>
+      <FormField label="Provider">
+        <select
+          className={inputClassName()}
+          value={draft.provider}
+          onChange={(event) =>
+            updateCharacter(draft.id, (current) => ({
+              ...current,
+              provider: event.target.value === "open5e" ? "open5e" : "mpmb",
+            }))
+          }
+        >
+          <option value="mpmb">MPMB</option>
+          <option value="open5e">Open5e</option>
+        </select>
+      </FormField>
+      <FormField label="Rules Mode">
+        <select
+          className={inputClassName()}
+          value={draft.rulesMode}
+          onChange={(event) =>
+            updateCharacter(draft.id, (current) => ({
+              ...current,
+              rulesMode: event.target.value === "2014" ? "2014" : "2024",
+            }))
+          }
+        >
+          <option value="2014">2014</option>
+          <option value="2024">2024</option>
+        </select>
+      </FormField>
+      <FormField label="Class">
+        <select
+          className={inputClassName()}
+          value={draft.classSelection.classId ?? ""}
+          onChange={(event) =>
+            updateCharacter(draft.id, (current) => {
+              const classId = event.target.value || undefined;
+              const subclasses = classId
+                ? getSubclassesForClass(classId, {
+                  provider: current.provider,
+                  rulesMode: current.rulesMode,
+                  classLevel: current.classSelection.level,
+                })
+                : [];
+              const keepsCurrentSubclass = subclasses.some((entry) => entry.id === current.subclassSelection.subclassId);
+              return {
+                ...current,
+                classSelection: { ...current.classSelection, classId },
+                subclassSelection: {
+                  subclassId: keepsCurrentSubclass ? current.subclassSelection.subclassId : undefined,
+                },
+              };
+            })
+          }
+        >
+          <option value="">Select class</option>
+          {classes.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.name}
+              {entry.compatibility?.conversionMode === "legacy-only" ? " · legacy" : ""}
+            </option>
+          ))}
+        </select>
+      </FormField>
+      <FormField label="Subclass">
+        <select
+          className={inputClassName()}
+          disabled={!draft.classSelection.classId}
+          value={draft.subclassSelection.subclassId ?? ""}
+          onChange={(event) =>
+            updateCharacter(draft.id, (current) => ({
+              ...current,
+              subclassSelection: { subclassId: event.target.value || undefined },
+            }))
+          }
+        >
+          <option value="">Select subclass</option>
+          {subclassOptions.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.name}
+              {entry.compatibility?.conversionMode === "2024-converted" ? " · legacy→2024" : ""}
+            </option>
+          ))}
+        </select>
+      </FormField>
+    </div>
+  );
+}
 
-          <Panel title="Applied Rules Output">
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              <dt className="text-slate-600">Species Conversion</dt>
-              <dd>{appliedRules.speciesResult.entity?.conversionMode ?? "native"}</dd>
-              <dt className="text-slate-600">Background Rule</dt>
-              <dd>{appliedRules.backgroundResult.abilityScoreRule}</dd>
-              <dt className="text-slate-600">Save Proficiencies</dt>
-              <dd>{appliedRules.proficiencies.savingThrows.join(", ") || "—"}</dd>
-              <dt className="text-slate-600">Skill Proficiencies</dt>
-              <dd>{appliedRules.proficiencies.skills.join(", ") || "—"}</dd>
-              <dt className="text-slate-600">Tool Proficiencies</dt>
-              <dd>{appliedRules.proficiencies.tools.join(", ") || "—"}</dd>
-            </dl>
-            {Object.keys(appliedRules.abilityScoreAdjustments.fixed).length ? (
-              <div className="mt-3 text-xs text-slate-700">
-                <p className="font-medium">Applied Ability Adjustments</p>
-                {Object.entries(appliedRules.abilityScoreAdjustments.fixed).map(([ability, value]) => (
-                  <p key={ability}>
-                    {ability.toUpperCase()}: {value >= 0 ? `+${value}` : value}
+function SpeciesStep({
+  draft,
+  speciesOptions,
+  appliedRules,
+  updateCharacter,
+}: {
+  draft: CharacterDraft;
+  speciesOptions: ReturnType<typeof getSpecies>;
+  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
+  updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <FormField label="Species">
+        <select
+          className={inputClassName()}
+          value={draft.speciesSelection.speciesId ?? ""}
+          onChange={(event) =>
+            updateCharacter(draft.id, (current) => ({
+              ...current,
+              speciesSelection: { speciesId: event.target.value || undefined },
+            }))
+          }
+        >
+          <option value="">Select species</option>
+          {speciesOptions.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.name}
+              {entry.compatibility?.conversionMode === "2024-converted" ? " · legacy→2024" : ""}
+            </option>
+          ))}
+        </select>
+      </FormField>
+      {appliedRules.speciesResult.traits.length > 0 ? (
+        <div className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+          <p className="font-medium">Resolved Traits</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {appliedRules.speciesResult.traits.slice(0, 8).map((entry) => (
+              <li key={entry}>{entry}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {appliedRules.speciesResult.entity?.notes.length ? (
+        <div className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+          {appliedRules.speciesResult.entity.notes.map((entry) => (
+            <p key={entry}>{entry}</p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BackgroundStep({
+  draft,
+  backgrounds,
+  appliedRules,
+  updateCharacter,
+}: {
+  draft: CharacterDraft;
+  backgrounds: ReturnType<typeof getBackgrounds>;
+  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
+  updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
+}) {
+  const selectedBackground = draft.backgroundSelection.backgroundId
+    ? backgrounds.find((entry) => entry.id === draft.backgroundSelection.backgroundId)
+    : undefined;
+  return (
+    <div className="space-y-3">
+      <FormField label="Background">
+        <select
+          className={inputClassName()}
+          value={draft.backgroundSelection.backgroundId ?? ""}
+          onChange={(event) =>
+            updateCharacter(draft.id, (current) => ({
+              ...current,
+              backgroundSelection: { backgroundId: event.target.value || undefined },
+            }))
+          }
+        >
+          <option value="">Select background</option>
+          {backgrounds.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.name}
+              {entry.compatibility?.conversionMode === "2024-converted" ? " · legacy→2024" : ""}
+            </option>
+          ))}
+        </select>
+      </FormField>
+      {appliedRules.backgroundResult.entity ? (
+        <div className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+          <p className="font-medium">{appliedRules.backgroundResult.entity.name}</p>
+          <p className="text-xs text-slate-600">
+            Ability rule: {appliedRules.backgroundResult.abilityScoreRule === "background-2024" ? "2024 background ASI" : "native"}
+            {appliedRules.backgroundResult.entity.conversionMode === "2024-converted" ? " · legacy->2024 converted" : ""}
+          </p>
+          {appliedRules.backgroundResult.grantedFeatNames.length ? (
+            <p>Granted feat(s): {appliedRules.backgroundResult.grantedFeatNames.join(", ")}</p>
+          ) : null}
+          {appliedRules.backgroundResult.unresolvedGrantedFeatNames.length ? (
+            <p>Unresolved feat references: {appliedRules.backgroundResult.unresolvedGrantedFeatNames.join(", ")}</p>
+          ) : null}
+          {appliedRules.backgroundResult.skillProficiencies.length ? (
+            <p>Skill proficiencies: {appliedRules.backgroundResult.skillProficiencies.join(", ")}</p>
+          ) : null}
+          {appliedRules.backgroundResult.toolProficiencies.length ? (
+            <p>Tool proficiencies: {appliedRules.backgroundResult.toolProficiencies.join(", ")}</p>
+          ) : null}
+          {appliedRules.backgroundResult.languagesGranted.length ? (
+            <p>Languages: {appliedRules.backgroundResult.languagesGranted.join(", ")}</p>
+          ) : null}
+          {selectedBackground?.equipmentText ? (
+            <p>Equipment package: {selectedBackground.equipmentText.replace(/\s*\n+\s*/g, ", ")}</p>
+          ) : null}
+          {selectedBackground?.traitText ? (
+            <p>Feature: {selectedBackground.traitText.replace(/\s*\n+\s*/g, " ").trim()}</p>
+          ) : null}
+          {appliedRules.backgroundResult.originFeatRequirement?.required && !appliedRules.backgroundResult.originFeatRequirement.satisfied ? (
+            <p className="mt-1 text-amber-700">Origin feat selection is required for this background in {draft.rulesMode} mode.</p>
+          ) : null}
+          {appliedRules.backgroundResult.notes.length ? (
+            <div className="mt-2 space-y-1 text-xs text-slate-600">
+              {appliedRules.backgroundResult.notes.map((entry) => (
+                <p key={entry}>{entry}</p>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AbilitiesStep({
+  draft,
+  abilityMethod,
+  setAbilityMethod,
+  appliedRules,
+  derivedStats,
+  updateCharacter,
+}: {
+  draft: CharacterDraft;
+  abilityMethod: AbilityMethod;
+  setAbilityMethod: (method: AbilityMethod) => void;
+  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
+  derivedStats: ReturnType<typeof getDerivedCharacterStats>;
+  updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
+}) {
+  const originModes = appliedRules.abilityScoreAdjustments.availableOriginModes ?? [];
+  const originModeChoiceId = appliedRules.abilityScoreAdjustments.originModeChoiceId;
+  const selectedOriginMode = appliedRules.abilityScoreAdjustments.originMode;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {ABILITY_METHODS.map((method) => (
+          <button
+            key={method}
+            className={`rounded px-3 py-1.5 text-sm ${abilityMethod === method ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-800"}`}
+            onClick={() => setAbilityMethod(method)}
+            type="button"
+          >
+            {method === "point-buy" ? "Point Buy" : method.charAt(0).toUpperCase() + method.slice(1)}
+          </button>
+        ))}
+      </div>
+      {abilityMethod !== "manual" ? (
+        <p className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+          {abilityMethod === "standard"
+            ? "Standard-array interaction is not fully automated yet; manual values remain the deterministic source of truth."
+            : abilityMethod === "point-buy"
+              ? "Point-buy budget automation is pending. Use manual values for deterministic build state."
+              : "Roll-based automation is pending. Use manual values for deterministic build state."}
+        </p>
+      ) : null}
+      <AbilityScoreEditor
+        value={draft.abilityScores}
+        onChange={(next) =>
+          updateCharacter(draft.id, (current) => ({
+            ...current,
+            abilityScores: next,
+          }))
+        }
+      />
+
+      {originModeChoiceId && originModes.length > 1 ? (
+        <div className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+          <p className="font-medium">Origin Ability Mode</p>
+          <p className="text-xs text-slate-600">Choose whether ability increases are taken from species or 2024 background conversion.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {originModes.map((mode) => (
+              <button
+                key={mode}
+                className={`rounded px-3 py-1.5 text-sm ${selectedOriginMode === mode ? "bg-slate-800 text-white" : "bg-slate-200 text-slate-800"}`}
+                onClick={() =>
+                  updateCharacter(draft.id, (current) => ({
+                    ...current,
+                    featureChoices: setFeatureChoice(current.featureChoices, originModeChoiceId, mode),
+                  }))
+                }
+                type="button"
+              >
+                {mode === "species" ? "Use Species ASI" : "Use 2024 Background ASI"}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {appliedRules.abilityScoreAdjustments.choiceStates.length ? (
+        <div className="rounded border border-slate-200 p-3 text-sm">
+          <p className="font-medium">Ability Bonus Choices</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {appliedRules.abilityScoreAdjustments.choiceStates.map((choice) => {
+              const usedByOther = appliedRules.abilityScoreAdjustments.choiceStates
+                .filter((entry) => entry.id !== choice.id && entry.source === choice.source)
+                .map((entry) => entry.selectedAbility)
+                .filter(isDefined);
+              return (
+                <div key={choice.id} className="rounded border border-slate-200 p-2">
+                  <p className="text-xs font-medium text-slate-700">
+                    {choice.reason} (+{choice.amount})
                   </p>
+                  <select
+                    className={`${inputClassName()} mt-1`}
+                    value={choice.selectedAbility ?? ""}
+                    onChange={(event) =>
+                      updateCharacter(draft.id, (current) => ({
+                        ...current,
+                        featureChoices: setFeatureChoice(current.featureChoices, choice.id, event.target.value || undefined),
+                      }))
+                    }
+                  >
+                    <option value="">Select ability</option>
+                    {choice.allowedAbilities.map((ability) => {
+                      const blocked = usedByOther.includes(ability);
+                      return (
+                        <option key={ability} value={ability} disabled={blocked}>
+                          {ability.toUpperCase()}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="rounded border border-slate-200 p-3 text-sm">
+        <p className="font-medium">Final Ability Scores</p>
+        <div className="mt-2 grid gap-1 sm:grid-cols-2">
+          {Object.values(derivedStats.abilityScores).map((score) => (
+            <div key={score.ability} className="rounded border border-slate-200 px-2 py-1 text-xs">
+              <p className="font-medium">{score.ability.toUpperCase()}</p>
+              <p>
+                Base {score.baseScore} + Bonus {score.appliedBonus >= 0 ? `+${score.appliedBonus}` : score.appliedBonus} ={" "}
+                <span className="font-semibold">{score.finalScore}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {appliedRules.abilityScoreAdjustments.pendingChoices.length ? (
+        <div className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+          {appliedRules.abilityScoreAdjustments.pendingChoices.map((choice, index) => (
+            <p key={`${choice.reason}-${index}`}>
+              Pending ASI choice: {choice.reason} (choose {choice.count} ability value(s), +{choice.amount} each)
+            </p>
+          ))}
+        </div>
+      ) : null}
+      {appliedRules.abilityScoreAdjustments.ignored.length ? (
+        <div className="rounded border border-slate-300 bg-slate-100 p-2 text-xs text-slate-700">
+          {appliedRules.abilityScoreAdjustments.ignored.map((entry, index) => (
+            <p key={`${entry.reason}-${index}`}>{entry.reason}</p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SkillsStep({
+  draft,
+  skillChoiceStates,
+  appliedRules,
+  derivedStats,
+  updateCharacter,
+}: {
+  draft: CharacterDraft;
+  skillChoiceStates: ReturnType<typeof getSkillChoiceStatesForBuilder>;
+  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
+  derivedStats: ReturnType<typeof getDerivedCharacterStats>;
+  updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {skillChoiceStates.length > 0 ? (
+        skillChoiceStates.map((choiceState) => {
+          const selected = Array.from(
+            { length: choiceState.requiredCount },
+            (_, index) => getFeatureChoiceValue(draft.featureChoices, `${choiceState.choiceKeyPrefix}:${index}`) ?? "",
+          );
+          return (
+            <div key={choiceState.id} className="rounded border border-slate-200 p-3">
+              <h3 className="text-sm font-semibold text-slate-900">{choiceState.title}</h3>
+              <p className="mt-1 text-xs text-slate-600">
+                Required: {choiceState.requiredCount} · Missing: {choiceState.missingCount}
+                {choiceState.reason ? ` · ${choiceState.reason}` : ""}
+              </p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {Array.from({ length: choiceState.requiredCount }, (_, index) => (
+                  <select
+                    key={`${choiceState.id}-${index}`}
+                    className={inputClassName()}
+                    value={selected[index]}
+                    onChange={(event) =>
+                      updateCharacter(draft.id, (current) => ({
+                        ...current,
+                        featureChoices: setFeatureChoice(current.featureChoices, `${choiceState.choiceKeyPrefix}:${index}`, event.target.value || undefined),
+                      }))
+                    }
+                  >
+                    <option value="">Select a skill</option>
+                    {choiceState.options.map((option) => {
+                      const usedByAnother = selected.some((entry, otherIndex) => otherIndex !== index && entry === option);
+                      return (
+                        <option key={option} value={option} disabled={usedByAnother}>
+                          {option}
+                        </option>
+                      );
+                    })}
+                  </select>
                 ))}
               </div>
-            ) : null}
-            {appliedRules.abilityScoreAdjustments.ignored.length ? (
-              <div className="mt-3 text-xs text-slate-700">
-                <p className="font-medium">Ignored Adjustments</p>
-                {appliedRules.abilityScoreAdjustments.ignored.map((entry) => (
-                  <p key={`${entry.source}-${entry.reason}`}>{entry.reason}</p>
-                ))}
-              </div>
-            ) : null}
-          </Panel>
-
-          <Panel title="Features by Level">
-            {levelFeatures.length === 0 ? (
-              <p className="text-sm text-slate-500">No declarative features found for current selection.</p>
-            ) : (
-              <ul className="space-y-2">
-                {levelFeatures.map((feature) => (
-                  <li key={feature.id} className="rounded border border-slate-200 p-2">
-                    <p className="text-sm font-medium">
-                      L{feature.minLevel} · {feature.name}
-                    </p>
-                    {feature.description ? <p className="mt-1 whitespace-pre-wrap text-xs text-slate-600">{feature.description}</p> : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-
-          <Panel title="Not Automated Yet">
-            <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
-              <li>AC calculation is manual in Phase 1.</li>
-              <li>HP calculation is manual in Phase 1.</li>
-              <li>Saves and skills are manual in Phase 1.</li>
-              <li>MPMB runtime hooks (`eval`, `calcChanges`, etc.) are intentionally not executed.</li>
-            </ul>
-          </Panel>
+            </div>
+          );
+        })
+      ) : (
+        <p className="text-sm text-slate-500">No class skill choices are required at the current state.</p>
+      )}
+      <div className="rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+        <p className="font-medium">Applied Proficiencies</p>
+        <p>Skills: {appliedRules.proficiencies.skills.length ? appliedRules.proficiencies.skills.join(", ") : "none"}</p>
+        <p>Tools: {appliedRules.proficiencies.tools.length ? appliedRules.proficiencies.tools.join(", ") : "none"}</p>
+        <p>Languages: {appliedRules.proficiencies.languages.length ? appliedRules.proficiencies.languages.join(", ") : "none"}</p>
+      </div>
+      <div className="rounded border border-slate-200 p-3">
+        <h3 className="text-sm font-semibold text-slate-900">Skill Totals</h3>
+        <div className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+          {Object.values(derivedStats.skills).map((skill) => (
+            <div key={skill.key} className="flex items-center justify-between rounded border border-slate-200 px-2 py-1">
+              <span>
+                {skill.label} ({skill.ability.toUpperCase()})
+                {skill.proficient ? " *" : ""}
+              </span>
+              <span className="font-medium">{skill.total >= 0 ? `+${skill.total}` : skill.total}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
+}
+
+function EquipmentStep({
+  draft,
+  catalog,
+  startingEquipmentChoices,
+  updateCharacter,
+}: {
+  draft: CharacterDraft;
+  catalog: ReturnType<typeof getEquipmentCatalog>;
+  startingEquipmentChoices: ReturnType<typeof getStartingEquipmentChoicesForBuilder>;
+  updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {startingEquipmentChoices.length > 0 ? (
+        <div className="space-y-2 rounded border border-slate-200 p-3">
+          <h3 className="text-sm font-semibold text-slate-900">Starting Equipment Choices</h3>
+          {startingEquipmentChoices.map((context) => {
+            const selectedOptionId = getFeatureChoiceValue(draft.featureChoices, `equipment-choice:${context.id}`) ?? context.selectedOptionId ?? "";
+            return (
+              <div key={context.id} className="rounded border border-slate-200 p-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{context.title}</p>
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs ${
+                      context.satisfied ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {context.satisfied ? "complete" : "pending"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-600">{context.description}</p>
+                <select
+                  className={`${inputClassName()} mt-2`}
+                  value={selectedOptionId}
+                  onChange={(event) =>
+                    updateCharacter(draft.id, (current) => ({
+                      ...current,
+                      featureChoices: setFeatureChoice(current.featureChoices, `equipment-choice:${context.id}`, event.target.value || undefined),
+                    }))
+                  }
+                >
+                  <option value="">Select option</option>
+                  {context.options.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="mt-2 rounded bg-slate-800 px-2 py-1 text-xs text-white disabled:bg-slate-300"
+                  disabled={!selectedOptionId}
+                  onClick={() => {
+                    const selected = context.options.find((entry) => entry.id === selectedOptionId);
+                    if (!selected) {
+                      return;
+                    }
+                    updateCharacter(draft.id, (current) => applyStartingEquipmentChoiceForBuilder(current, context.id, selected.id));
+                  }}
+                  type="button"
+                >
+                  Apply to Inventory
+                </button>
+                {context.notes.length > 0 ? (
+                  <div className="mt-2 text-xs text-slate-600">
+                    {context.notes.map((note) => (
+                      <p key={note}>{note}</p>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-slate-500">No deterministic starting equipment choices found for the current class/background.</p>
+      )}
+
+      <InventoryEditor
+        catalog={catalog}
+        inventory={draft.inventory}
+        onChange={(next) =>
+          updateCharacter(draft.id, (current) => ({
+            ...current,
+            inventory: next,
+          }))
+        }
+      />
+    </div>
+  );
+}
+
+function ReviewStep({
+  draft,
+  selectedClass,
+  selectedSubclass,
+  selectedSpecies,
+  selectedBackground,
+  selectedFeats,
+  selectedSpells,
+  appliedRules,
+  progression,
+  requiredChoices,
+  validations,
+  completion,
+  setCurrentStepId,
+}: {
+  draft: CharacterDraft;
+  selectedClass?: string;
+  selectedSubclass?: string;
+  selectedSpecies?: string;
+  selectedBackground?: string;
+  selectedFeats: string[];
+  selectedSpells: string[];
+  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
+  progression: ReturnType<typeof getCharacterProgression>;
+  requiredChoices: ReturnType<typeof getRequiredBuilderChoices>;
+  validations: ReturnType<typeof getBuilderStepValidations>;
+  completion: ReturnType<typeof isCharacterCreationComplete>;
+  setCurrentStepId: (stepId: WizardStepId) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className={`rounded border p-3 ${completion.complete ? "border-emerald-300 bg-emerald-50" : "border-amber-300 bg-amber-50"}`}>
+        <p className="text-sm font-semibold">{completion.complete ? "Character creation is complete." : "Character creation is not complete yet."}</p>
+        {completion.notes.map((note) => (
+          <p key={note} className="text-xs">
+            {note}
+          </p>
+        ))}
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded border border-slate-200 p-3 text-sm">
+          <h3 className="font-semibold">Summary</h3>
+          <dl className="mt-2 grid grid-cols-2 gap-1">
+            <dt className="text-slate-600">Name</dt>
+            <dd>{draft.name || "—"}</dd>
+            <dt className="text-slate-600">Provider</dt>
+            <dd>{draft.provider}</dd>
+            <dt className="text-slate-600">Rules Mode</dt>
+            <dd>{draft.rulesMode}</dd>
+            <dt className="text-slate-600">Level</dt>
+            <dd>{draft.classSelection.level}</dd>
+            <dt className="text-slate-600">Class</dt>
+            <dd>{selectedClass ?? "—"}</dd>
+            <dt className="text-slate-600">Subclass</dt>
+            <dd>{selectedSubclass ?? "—"}</dd>
+            <dt className="text-slate-600">Species</dt>
+            <dd>{selectedSpecies ?? "—"}</dd>
+            <dt className="text-slate-600">Background</dt>
+            <dd>{selectedBackground ?? "—"}</dd>
+          </dl>
+        </div>
+        <div className="rounded border border-slate-200 p-3 text-sm">
+          <h3 className="font-semibold">Selections</h3>
+          <p className="mt-2 text-xs text-slate-600">Feats</p>
+          <p>{selectedFeats.length ? selectedFeats.join(", ") : "—"}</p>
+          <p className="mt-2 text-xs text-slate-600">Spells</p>
+          <p>{selectedSpells.length ? selectedSpells.join(", ") : "—"}</p>
+          {appliedRules.conversionSummary.notes.length ? (
+            <>
+              <p className="mt-2 text-xs text-slate-600">Conversion Notes</p>
+              {appliedRules.conversionSummary.notes.filter(Boolean).map((entry) => (
+                <p key={entry}>{entry}</p>
+              ))}
+            </>
+          ) : null}
+          {progression.pendingChoices.length ? (
+            <>
+              <p className="mt-2 text-xs text-slate-600">Progression Pending Choices</p>
+              {progression.pendingChoices.map((choice) => (
+                <p key={choice.id}>{choice.description}</p>
+              ))}
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {requiredChoices.length > 0 ? (
+        <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-semibold">Open Required Choices</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {requiredChoices.map((choice) => (
+              <li key={choice.id}>{choice.description}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="rounded border border-slate-200 p-3 text-sm">
+        <h3 className="font-semibold">Step Validation</h3>
+        <div className="mt-2 space-y-2">
+          {STEP_IDS.map((stepId) => {
+            const validation = validations[stepId];
+            if (!validation) {
+              return null;
+            }
+            const hasIssues = validation.errors.length > 0 || validation.warnings.length > 0;
+            return (
+              <div key={stepId} className="rounded border border-slate-200 p-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium">{stepId}</p>
+                  <button className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800" onClick={() => setCurrentStepId(stepId)} type="button">
+                    Go to Step
+                  </button>
+                </div>
+                {!hasIssues ? <p className="text-xs text-emerald-700">No issues.</p> : null}
+                {validation.errors.map((entry) => (
+                  <p key={entry} className="text-xs text-red-700">
+                    {entry}
+                  </p>
+                ))}
+                {validation.warnings.map((entry) => (
+                  <p key={entry} className="text-xs text-amber-700">
+                    {entry}
+                  </p>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+        <p className="font-medium">About Step Scope</p>
+        <p>
+          The reference images include deep profile/about subforms. The current draft schema does not persist those fields yet, so this phase keeps the
+          review/completion logic deterministic and documents profile persistence as the next schema extension.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function findFirstActionableStep(
+  steps: ReturnType<typeof getVisibleWizardSteps>,
+  validations: ReturnType<typeof getBuilderStepValidations>,
+): WizardStepId {
+  for (const step of steps) {
+    const validation = validations[step.id];
+    if (!validation.completed) {
+      return step.id;
+    }
+  }
+  return steps[0]?.id ?? "class";
+}
+
+function contextualFeatIds(featureChoices: Array<{ featureId: string; optionId: string }>): Set<string> {
+  const output = new Set<string>();
+  for (const choice of featureChoices) {
+    if (choice.featureId !== "feat-choice:origin" && !choice.featureId.startsWith("feat-choice:asi:")) {
+      continue;
+    }
+    if (choice.optionId) {
+      output.add(choice.optionId);
+    }
+  }
+  return output;
+}
+
+function setFeatureChoice(
+  existing: Array<{ featureId: string; optionId: string }>,
+  featureId: string,
+  optionId: string | undefined,
+) {
+  const without = existing.filter((entry) => entry.featureId !== featureId);
+  if (!optionId) {
+    return without;
+  }
+  return [...without, { featureId, optionId }];
+}
+
+function getFeatureChoiceValue(existing: Array<{ featureId: string; optionId: string }>, featureId: string): string | undefined {
+  return existing.find((entry) => entry.featureId === featureId)?.optionId;
+}
+
+function spellChoiceFeatureId(contextId: string, spellId: string): string {
+  return `spell-choice:${contextId}:${spellId}`;
+}
+
+function getScopedSpellSelectionsForContext(
+  existing: Array<{ featureId: string; optionId: string }>,
+  contextId: string,
+): string[] {
+  const prefix = `spell-choice:${contextId}:`;
+  const selected = existing
+    .filter((entry) => entry.featureId.startsWith(prefix))
+    .map((entry) => entry.featureId.slice(prefix.length))
+    .filter(Boolean);
+  return Array.from(new Set(selected));
+}
+
+function setScopedSpellSelection(
+  existing: Array<{ featureId: string; optionId: string }>,
+  contextId: string,
+  spellId: string,
+  selected: boolean,
+): Array<{ featureId: string; optionId: string }> {
+  return setFeatureChoice(existing, spellChoiceFeatureId(contextId, spellId), selected ? "selected" : undefined);
+}
+
+function collectScopedSelectedSpellIds(
+  existing: Array<{ featureId: string; optionId: string }>,
+  contextIds: string[],
+): string[] {
+  const selected = new Set<string>();
+  for (const contextId of contextIds) {
+    for (const spellId of getScopedSpellSelectionsForContext(existing, contextId)) {
+      selected.add(spellId);
+    }
+  }
+  return Array.from(selected);
 }
 
 function clampLevel(value: number): number {
@@ -436,4 +1232,8 @@ function clampLevel(value: number): number {
     return 1;
   }
   return Math.min(20, Math.max(1, Math.round(value)));
+}
+
+function isDefined<T>(value: T | undefined): value is T {
+  return value !== undefined;
 }
