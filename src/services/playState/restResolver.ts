@@ -1,8 +1,17 @@
 import type { CharacterActionResourceState, ResourceRechargeType } from "../../domain/actionResources";
 
+export interface RestSkippedEntry {
+  key: string;
+  name: string;
+  rechargeType: ResourceRechargeType;
+  rechargeLabel: string;
+  kind: "resource" | "spell-slot";
+}
+
 export interface RestResetPlan {
   resourceKeys: string[];
   spellSlotKeys: string[];
+  skipped: RestSkippedEntry[];
   notes: string[];
 }
 
@@ -17,11 +26,15 @@ function slotKeyFromResourceId(resourceId: string): string | undefined {
 }
 
 function canRecoverOnShortRest(type: ResourceRechargeType): boolean {
-  return type === "short-rest" || type === "at-will";
+  return type === "short-rest";
 }
 
 function canRecoverOnLongRest(type: ResourceRechargeType): boolean {
-  return type === "long-rest" || type === "short-rest" || type === "at-will";
+  return type === "long-rest" || type === "short-rest";
+}
+
+function shouldReportSkipped(type: ResourceRechargeType): boolean {
+  return type === "manual" || type === "special";
 }
 
 export function resolveRestRecoveryPlan(
@@ -31,7 +44,10 @@ export function resolveRestRecoveryPlan(
   const longResources: string[] = [];
   const shortSpellSlots: string[] = [];
   const longSpellSlots: string[] = [];
-  const notes: string[] = [];
+  const shortSkipped: RestSkippedEntry[] = [];
+  const longSkipped: RestSkippedEntry[] = [];
+  const shortNotes: string[] = [];
+  const longNotes: string[] = [];
 
   for (const resource of actionResources.resourceSet.resources) {
     if (resource.usesMax === undefined || resource.usesMax <= 0) {
@@ -47,8 +63,18 @@ export function resolveRestRecoveryPlan(
       if (canRecoverOnLongRest(rechargeType)) {
         longSpellSlots.push(slotKey);
       }
-      if (rechargeType === "manual" || rechargeType === "special") {
-        notes.push(`Spell slot ${slotKey} uses ${resource.recharge.label}; automatic rest restore is skipped in V1.`);
+      if (shouldReportSkipped(rechargeType)) {
+        const skipped: RestSkippedEntry = {
+          key: slotKey,
+          name: `Spell Slot L${slotKey}`,
+          rechargeType,
+          rechargeLabel: resource.recharge.label,
+          kind: "spell-slot",
+        };
+        shortSkipped.push(skipped);
+        longSkipped.push(skipped);
+        shortNotes.push(`Spell Slot L${slotKey} uses ${resource.recharge.label}; automatic rest restore is skipped.`);
+        longNotes.push(`Spell Slot L${slotKey} uses ${resource.recharge.label}; automatic rest restore is skipped.`);
       }
       continue;
     }
@@ -59,8 +85,18 @@ export function resolveRestRecoveryPlan(
     if (canRecoverOnLongRest(rechargeType)) {
       longResources.push(resource.id);
     }
-    if (rechargeType === "manual" || rechargeType === "special") {
-      notes.push(`Resource '${resource.name}' uses ${resource.recharge.label}; automatic rest restore is skipped in V1.`);
+    if (shouldReportSkipped(rechargeType)) {
+      const skipped: RestSkippedEntry = {
+        key: resource.id,
+        name: resource.name,
+        rechargeType,
+        rechargeLabel: resource.recharge.label,
+        kind: "resource",
+      };
+      shortSkipped.push(skipped);
+      longSkipped.push(skipped);
+      shortNotes.push(`${resource.name} uses ${resource.recharge.label}; automatic rest restore is skipped.`);
+      longNotes.push(`${resource.name} uses ${resource.recharge.label}; automatic rest restore is skipped.`);
     }
   }
 
@@ -68,12 +104,14 @@ export function resolveRestRecoveryPlan(
     shortRest: {
       resourceKeys: Array.from(new Set(shortResources)),
       spellSlotKeys: Array.from(new Set(shortSpellSlots)),
-      notes,
+      skipped: shortSkipped,
+      notes: shortNotes,
     },
     longRest: {
       resourceKeys: Array.from(new Set(longResources)),
       spellSlotKeys: Array.from(new Set(longSpellSlots)),
-      notes,
+      skipped: longSkipped,
+      notes: longNotes,
     },
   };
 }

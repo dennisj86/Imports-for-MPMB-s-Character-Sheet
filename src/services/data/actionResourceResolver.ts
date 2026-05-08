@@ -9,6 +9,7 @@ import type {
   CharacterResourceSet,
   LimitedUseFeature,
   RechargeRule,
+  ResourceRechargeType,
   SpellcastingResourceState,
 } from "../../domain/actionResources";
 import type { AppliedCharacterRules } from "../../domain/appliedRules";
@@ -306,7 +307,7 @@ function applyResourceFallback(
 function resolveRechargeRules(
   rawRecovery: unknown,
   level: number,
-  fallbackType?: "at-will" | "short-rest" | "long-rest" | "special" | "manual",
+  fallbackType?: ResourceRechargeType,
 ): RechargeRule {
   let candidate = rawRecovery;
   if (Array.isArray(rawRecovery)) {
@@ -337,6 +338,7 @@ function resolveRechargeRules(
     if (fallbackType === "long-rest") return { type: "long-rest", label: "Long Rest", notes: ["Fallback recharge rule used."] };
     if (fallbackType === "at-will") return { type: "at-will", label: "At Will", notes: ["Fallback recharge rule used."] };
     if (fallbackType === "special") return { type: "special", label: "Special", notes: ["Fallback recharge rule used."] };
+    if (fallbackType === "none") return { type: "none", label: "None", notes: ["Fallback recharge rule used."] };
     return { type: "manual", label: "Manual", notes: ["Fallback recharge rule used."] };
   }
   return {

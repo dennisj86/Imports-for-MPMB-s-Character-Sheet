@@ -8,6 +8,8 @@ import { ConditionTray } from "../features/character/components/sheet/ConditionT
 import { ConcentrationPanel } from "../features/character/components/sheet/ConcentrationPanel";
 import { RestControls } from "../features/character/components/sheet/RestControls";
 import { PlayLogPanel } from "../features/character/components/sheet/PlayLogPanel";
+import { ActionRollPanel } from "../features/character/components/sheet/ActionRollPanel";
+import { buildCharacterRollView, getLatestRollResult } from "../services/rolls";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
 
@@ -64,6 +66,8 @@ export function CharacterSheetPage() {
   const playState = playStateView.playState;
   const resourceCounters = playStateView.resourceCounters;
   const spellSlotCounters = playStateView.spellSlotCounters;
+  const rollView = buildCharacterRollView(engineView.engine);
+  const lastRoll = getLatestRollResult(playState.playEvents);
 
   return (
     <div className="space-y-4">
@@ -168,14 +172,24 @@ export function CharacterSheetPage() {
 
         <Panel title="Rest Controls">
           <RestControls
-            notes={playStateView.runtime.restPlan.shortRest.notes}
             onLongRest={playStateView.applyLongRest}
             onShortRest={playStateView.applyShortRest}
+            plan={playStateView.runtime.restPlan}
           />
         </Panel>
 
         <Panel title="Play Log">
           <PlayLogPanel events={playState.playEvents} />
+        </Panel>
+
+        <Panel title="Rolls / Actions">
+          <ActionRollPanel
+            lastRoll={lastRoll}
+            onRoll={playStateView.roll}
+            onSpendResource={playStateView.spendResource}
+            resources={resourceCounters}
+            rollView={rollView}
+          />
         </Panel>
 
         <Panel title="Ability Scores">

@@ -1,9 +1,11 @@
-import { toSlug } from "../../lib/slug";
-import type { CharacterActionResourceState } from "../../domain/actionResources";
-import type { CharacterPlayState, ConcentrationState } from "../../domain/playState";
+import type { CharacterActionResourceState, ResourceRechargeType } from "../../domain/actionResources";
+import type { ActiveConditionState, CharacterPlayState, ConcentrationState } from "../../domain/playState";
 import { createDefaultCharacterPlayState, PLAY_STATE_SCHEMA_VERSION } from "../../domain/playState";
 import type { SpellDefinition } from "../../domain/content";
+import type { RollRequest, RollResult } from "../../domain/rolls";
 import type { CharacterEngineState } from "../characterEngine";
+import { createRollPlayEvent, executeRollRequest } from "../rolls";
+import { findConditionDefinition, normalizeActiveConditionState } from "./conditionDefinitions";
 import { createPlayEvent } from "./playEventLog";
 import { reduceCharacterPlayState } from "./playStateReducer";
 import { resolveRestRecoveryPlan, type RestRecoveryPlan } from "./restResolver";
@@ -11,7 +13,10 @@ import { resolveRestRecoveryPlan, type RestRecoveryPlan } from "./restResolver";
 export interface PlayStateRuntimeContext {
   maxHp: number;
   resourceMaxByKey: Record<string, number>;
+  resourceRechargeByKey: Record<string, ResourceRechargeType>;
+  resourceNameByKey: Record<string, string>;
   spellSlotMaxByKey: Record<string, number>;
+  spellSlotRechargeByKey: Record<string, ResourceRechargeType>;
   restPlan: RestRecoveryPlan;
 }
 
@@ -21,7 +26,11 @@ export interface PlayResourceCounter {
   max: number;
   spent: number;
   remaining: number;
+  rechargeType: ResourceRechargeType;
   rechargeLabel: string;
+  sourceType?: string;
+  sourceId?: string;
+  sourceName?: string;
   dataStatus: CharacterActionResourceState["resourceSet"]["resources"][number]["dataStatus"];
 }
 
@@ -31,6 +40,7 @@ export interface PlaySpellSlotCounter {
   max: number;
   used: number;
   remaining: number;
+  rechargeType: ResourceRechargeType;
   rechargeLabel: string;
 }
 
@@ -68,6 +78,7 @@ function normalizeCounterMap(input: Record<string, number>): Record<string, numb
 function normalizePlayStateCounters(
   playState: CharacterPlayState,
 ): CharacterPlayState {
+  const activeConditions = normalizeActiveConditions(playState.activeConditions, playState.updatedAt);
   return {
     ...playState,
     currentHp: clampNonNegativeInteger(playState.currentHp),
@@ -80,7 +91,44 @@ function normalizePlayStateCounters(
     },
     spentResources: normalizeCounterMap(playState.spentResources),
     spellSlots: normalizeCounterMap(playState.spellSlots),
+    activeConditions,
   };
+}
+
+function normalizeActiveConditions(
+  conditions: ActiveConditionState[],
+  now?: string,
+): ActiveConditionState[] {
+  const normalized: ActiveConditionState[] = [];
+  const seen = new Set<string>();
+  for (const condition of conditions) {
+    const entry = normalizeActiveConditionState(condition, now);
+    if (!entry || seen.has(entry.id)) {
+      continue;
+    }
+    seen.add(entry.id);
+    normalized.push(entry);
+  }
+  return normalized;
+}
+
+function activeConditionsEqual(left: ActiveConditionState[], right: ActiveConditionState[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((entry, index) => {
+    const other = right[index];
+    return Boolean(
+      other &&
+        entry.id === other.id &&
+        entry.name === other.name &&
+        entry.source === other.source &&
+        entry.category === other.category &&
+        entry.clearableOnRest === other.clearableOnRest &&
+        entry.notes === other.notes &&
+        entry.addedAt === other.addedAt,
+    );
+  });
 }
 
 export function ensureCharacterPlayState(
@@ -102,6 +150,7 @@ export function ensureCharacterPlayState(
     normalized.deathSaves.failures === playState.deathSaves.failures &&
     normalized.deathSaves.stable === playState.deathSaves.stable &&
     normalized.deathSaves.dead === playState.deathSaves.dead &&
+    activeConditionsEqual(normalized.activeConditions, playState.activeConditions) &&
     Object.keys(normalized.spentResources).every((key) => normalized.spentResources[key] === playState.spentResources[key]) &&
     Object.keys(normalized.spellSlots).every((key) => normalized.spellSlots[key] === playState.spellSlots[key]) &&
     Object.keys(playState.spentResources).every((key) => normalized.spentResources[key] === playState.spentResources[key]) &&
@@ -159,7 +208,10 @@ export function buildPlayStateRuntimeContext(
 ): PlayStateRuntimeContext {
   const maxHp = Math.max(1, clampNonNegativeInteger(engine.derivedStats.hitPoints.max));
   const resourceMaxByKey: Record<string, number> = {};
+  const resourceRechargeByKey: Record<string, ResourceRechargeType> = {};
+  const resourceNameByKey: Record<string, string> = {};
   const spellSlotMaxByKey: Record<string, number> = {};
+  const spellSlotRechargeByKey: Record<string, ResourceRechargeType> = {};
   for (const resource of engine.actionResources.resourceSet.resources) {
     if (resource.usesMax === undefined || resource.usesMax <= 0) {
       continue;
@@ -167,14 +219,20 @@ export function buildPlayStateRuntimeContext(
     const slotKey = slotKeyFromResourceId(resource.id);
     if (slotKey) {
       spellSlotMaxByKey[slotKey] = clampNonNegativeInteger(resource.usesMax);
+      spellSlotRechargeByKey[slotKey] = resource.recharge.type;
       continue;
     }
     resourceMaxByKey[resource.id] = clampNonNegativeInteger(resource.usesMax);
+    resourceRechargeByKey[resource.id] = resource.recharge.type;
+    resourceNameByKey[resource.id] = resource.name;
   }
   return {
     maxHp,
     resourceMaxByKey,
+    resourceRechargeByKey,
+    resourceNameByKey,
     spellSlotMaxByKey,
+    spellSlotRechargeByKey,
     restPlan: resolveRestRecoveryPlan(engine.actionResources),
   };
 }
@@ -209,7 +267,11 @@ export function resolveResourceCounters(
         max,
         spent,
         remaining: clampWithin(max - spent, 0, max),
+        rechargeType: resource.recharge.type,
         rechargeLabel: resource.recharge.label,
+        sourceType: resource.sourceType,
+        sourceId: resource.sourceId,
+        sourceName: resource.sourceName,
         dataStatus: resource.dataStatus,
       };
     })
@@ -231,6 +293,7 @@ export function resolveSpellSlotCounters(
         max,
         used,
         remaining: clampWithin(max - used, 0, max),
+        rechargeType: resource.recharge.type,
         rechargeLabel: resource.recharge.label,
       };
     })
@@ -489,6 +552,31 @@ export interface CastSpellOptions {
   concentrationNotes?: string;
 }
 
+function firstAvailableSlotLevel(
+  playState: CharacterPlayState,
+  runtime: PlayStateRuntimeContext,
+  minimumLevel: number,
+): number | undefined {
+  return Object.entries(runtime.spellSlotMaxByKey)
+    .map(([slotKey, max]) => ({
+      level: Number(slotKey),
+      slotKey,
+      max: clampNonNegativeInteger(max),
+      used: clampWithin(playState.spellSlots[slotKey] ?? 0, 0, clampNonNegativeInteger(max)),
+    }))
+    .filter((slot) => Number.isFinite(slot.level) && slot.level >= minimumLevel && slot.max - slot.used > 0)
+    .sort((left, right) => left.level - right.level)[0]?.level;
+}
+
+function clearableConditionIdsForRest(
+  playState: CharacterPlayState,
+  restType: "short-rest" | "long-rest",
+): string[] {
+  return playState.activeConditions
+    .filter((condition) => condition.clearableOnRest === restType)
+    .map((condition) => condition.id);
+}
+
 export function castSpell(
   playState: CharacterPlayState,
   runtime: PlayStateRuntimeContext,
@@ -497,12 +585,48 @@ export function castSpell(
   now?: string,
 ): CharacterPlayState {
   const timestamp = nowTimestamp(now);
-  const ritualCast = Boolean(options.ritualCast);
-  const slotKey =
-    spell.level > 0 && !ritualCast
-      ? String(options.slotLevel ?? spell.level)
+  const ritualCast = Boolean(options.ritualCast && spell.ritual && spell.level > 0);
+  const castMode = spell.level <= 0 ? "cantrip" : ritualCast ? "ritual" : "slot";
+  const selectedSlotLevel =
+    castMode === "slot"
+      ? options.slotLevel ?? firstAvailableSlotLevel(playState, runtime, spell.level) ?? spell.level
       : undefined;
+  const slotKey = selectedSlotLevel !== undefined ? String(selectedSlotLevel) : undefined;
   const slotMax = slotKey ? getSlotMax(runtime, slotKey) : undefined;
+
+  if (castMode === "slot") {
+    const invalidSlotLevel = selectedSlotLevel === undefined || selectedSlotLevel < spell.level;
+    const used = slotKey && slotMax !== undefined ? clampWithin(playState.spellSlots[slotKey] ?? 0, 0, slotMax) : 0;
+    const blockedReason = invalidSlotLevel
+      ? "slot-level-too-low"
+      : !slotKey || !slotMax
+        ? "slot-unavailable"
+        : used >= slotMax
+          ? "slot-depleted"
+          : undefined;
+    if (blockedReason) {
+      return reduceCharacterPlayState(playState, {
+        type: "cast-spell",
+        spellId: spell.id,
+        spellName: spell.name,
+        ritualCast: false,
+        timestamp,
+        event: createPlayEvent({
+          timestamp,
+          type: "spell-cast-blocked",
+          shortLabel: `Cast blocked: ${spell.name}`,
+          payload: {
+            spellId: spell.id,
+            spellName: spell.name,
+            castMode,
+            slotLevel: selectedSlotLevel,
+            reason: blockedReason,
+          },
+        }),
+      });
+    }
+  }
+
   const shouldTrackConcentration = options.trackConcentration ?? spell.concentration;
   const concentration: ConcentrationState | undefined =
     shouldTrackConcentration && spell.concentration
@@ -513,6 +637,26 @@ export function castSpell(
           notes: options.concentrationNotes,
         }
       : undefined;
+  const concentrationChange = concentration
+    ? playState.concentration
+      ? "replace"
+      : "start"
+    : "none";
+  const concentrationEvent = concentration
+    ? createPlayEvent({
+        timestamp,
+        type: concentrationChange === "replace" ? "concentration-replace" : "concentration-start",
+        shortLabel:
+          concentrationChange === "replace"
+            ? `Replace concentration: ${playState.concentration?.name} -> ${spell.name}`
+            : `Concentration: ${spell.name}`,
+        payload: {
+          previousName: playState.concentration?.name,
+          sourceId: spell.id,
+          name: spell.name,
+        },
+      })
+    : undefined;
   return reduceCharacterPlayState(playState, {
     type: "cast-spell",
     spellId: spell.id,
@@ -525,15 +669,24 @@ export function castSpell(
     event: createPlayEvent({
       timestamp,
       type: "spell-cast",
-      shortLabel: ritualCast ? `Cast ${spell.name} (Ritual)` : `Cast ${spell.name}`,
+      shortLabel:
+        castMode === "cantrip"
+          ? `Cast ${spell.name} (Cantrip)`
+          : castMode === "ritual"
+            ? `Cast ${spell.name} (Ritual)`
+            : `Cast ${spell.name} (Slot L${selectedSlotLevel})`,
       payload: {
         spellId: spell.id,
         spellName: spell.name,
+        castMode,
         ritualCast,
+        slotLevel: selectedSlotLevel,
         slotKey,
-        concentrationStarted: Boolean(concentration),
+        concentrationChange,
+        previousConcentrationName: playState.concentration?.name,
       },
     }),
+    extraEvents: concentrationEvent ? [concentrationEvent] : [],
   });
 }
 
@@ -548,29 +701,40 @@ export function toggleCondition(
   now?: string,
 ): CharacterPlayState {
   const timestamp = nowTimestamp(now);
-  const normalizedName = condition.name.trim();
+  const existingByInput = playState.activeConditions.find((entry) => entry.id === condition.id || entry.id === condition.name);
+  const normalizedName = existingByInput?.name ?? condition.name.trim();
   if (!normalizedName) {
     return playState;
   }
-  const conditionId = condition.id ?? `condition:${toSlug(normalizedName)}`;
+  const definition = findConditionDefinition(condition.id) ?? findConditionDefinition(normalizedName);
+  const normalizedCondition = normalizeActiveConditionState(
+    {
+      id: condition.id ?? definition?.id,
+      name: definition?.label ?? normalizedName,
+      source: condition.source ?? definition?.source,
+      notes: condition.notes,
+      category: definition?.category,
+      clearableOnRest: definition?.clearableOnRest,
+      addedAt: timestamp,
+    },
+    timestamp,
+  );
+  if (!normalizedCondition) {
+    return playState;
+  }
+  const conditionId = normalizedCondition.id;
   const existing = playState.activeConditions.find((entry) => entry.id === conditionId);
   return reduceCharacterPlayState(playState, {
     type: "toggle-condition",
-    condition: {
-      id: conditionId,
-      name: normalizedName,
-      source: condition.source,
-      notes: condition.notes,
-      addedAt: timestamp,
-    },
+    condition: normalizedCondition,
     timestamp,
     event: createPlayEvent({
       timestamp,
       type: "condition-toggle",
-      shortLabel: existing ? `Condition - ${normalizedName}` : `Condition + ${normalizedName}`,
+      shortLabel: existing ? `Condition - ${normalizedCondition.name}` : `Condition + ${normalizedCondition.name}`,
       payload: {
         conditionId,
-        name: normalizedName,
+        name: normalizedCondition.name,
         enabled: !existing,
       },
     }),
@@ -631,6 +795,80 @@ export function endConcentration(
   });
 }
 
+export function recordRollResult(
+  playState: CharacterPlayState,
+  result: RollResult,
+): CharacterPlayState {
+  return reduceCharacterPlayState(playState, {
+    type: "record-event",
+    timestamp: result.timestamp,
+    event: createRollPlayEvent(result),
+  });
+}
+
+export function recordResourceSpendBlocked(
+  playState: CharacterPlayState,
+  resourceKey: string,
+  label: string | undefined,
+  reason: "depleted" | "unknown",
+  now?: string,
+): CharacterPlayState {
+  const timestamp = nowTimestamp(now);
+  return reduceCharacterPlayState(playState, {
+    type: "record-event",
+    timestamp,
+    event: createPlayEvent({
+      timestamp,
+      type: "resource-spend-blocked",
+      shortLabel: `${label ?? resourceKey} spend blocked`,
+      payload: {
+        resourceKey,
+        label,
+        reason,
+      },
+    }),
+  });
+}
+
+export interface RollAndRecordOptions {
+  rng?: () => number;
+  now?: string;
+  spendResourceKey?: string;
+  resourceLabel?: string;
+}
+
+export function rollAndRecord(
+  playState: CharacterPlayState,
+  runtime: PlayStateRuntimeContext,
+  request: RollRequest,
+  options: RollAndRecordOptions = {},
+): {
+  playState: CharacterPlayState;
+  result: RollResult;
+} {
+  const timestamp = nowTimestamp(options.now);
+  const result = executeRollRequest(request, {
+    rng: options.rng,
+    now: timestamp,
+  });
+  let next = recordRollResult(playState, result);
+  if (options.spendResourceKey) {
+    const max = getResourceMax(runtime, options.spendResourceKey);
+    const spent = clampWithin(next.spentResources[options.spendResourceKey] ?? 0, 0, max);
+    if (max <= 0) {
+      next = recordResourceSpendBlocked(next, options.spendResourceKey, options.resourceLabel, "unknown", timestamp);
+    } else if (spent >= max) {
+      next = recordResourceSpendBlocked(next, options.spendResourceKey, options.resourceLabel, "depleted", timestamp);
+    } else {
+      next = spendResource(next, runtime, options.spendResourceKey, 1, options.resourceLabel, timestamp);
+    }
+  }
+  return {
+    playState: next,
+    result,
+  };
+}
+
 export function applyShortRest(
   playState: CharacterPlayState,
   runtime: PlayStateRuntimeContext,
@@ -641,14 +879,20 @@ export function applyShortRest(
     type: "short-rest",
     resetResourceKeys: runtime.restPlan.shortRest.resourceKeys,
     resetSpellSlotKeys: runtime.restPlan.shortRest.spellSlotKeys,
+    clearConditionIds: clearableConditionIdsForRest(playState, "short-rest"),
     timestamp,
     event: createPlayEvent({
       timestamp,
       type: "rest-short",
       shortLabel: "Short Rest",
       payload: {
+        resetResourceKeys: runtime.restPlan.shortRest.resourceKeys,
+        resetSpellSlotKeys: runtime.restPlan.shortRest.spellSlotKeys,
         resetResourceCount: runtime.restPlan.shortRest.resourceKeys.length,
         resetSpellSlotCount: runtime.restPlan.shortRest.spellSlotKeys.length,
+        skipped: runtime.restPlan.shortRest.skipped,
+        notes: runtime.restPlan.shortRest.notes,
+        hpRecovery: "hit-dice-not-modeled",
       },
     }),
   });
@@ -664,6 +908,7 @@ export function applyLongRest(
     type: "long-rest",
     resetResourceKeys: runtime.restPlan.longRest.resourceKeys,
     resetSpellSlotKeys: runtime.restPlan.longRest.spellSlotKeys,
+    clearConditionIds: clearableConditionIdsForRest(playState, "long-rest"),
     maxHp: runtime.maxHp,
     timestamp,
     event: createPlayEvent({
@@ -671,8 +916,15 @@ export function applyLongRest(
       type: "rest-long",
       shortLabel: "Long Rest",
       payload: {
+        resetResourceKeys: runtime.restPlan.longRest.resourceKeys,
+        resetSpellSlotKeys: runtime.restPlan.longRest.spellSlotKeys,
         resetResourceCount: runtime.restPlan.longRest.resourceKeys.length,
         resetSpellSlotCount: runtime.restPlan.longRest.spellSlotKeys.length,
+        skipped: runtime.restPlan.longRest.skipped,
+        notes: runtime.restPlan.longRest.notes,
+        hpRecovery: "set-to-max",
+        deathSavesReset: true,
+        concentrationEnded: Boolean(playState.concentration),
       },
     }),
   });

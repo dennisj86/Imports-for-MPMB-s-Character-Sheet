@@ -27,10 +27,20 @@ function withEvent(
   event: CharacterPlayEvent | undefined,
   timestamp?: string,
 ): CharacterPlayState {
+  return withEvents(state, event ? [event] : [], timestamp);
+}
+
+function withEvents(
+  state: CharacterPlayState,
+  events: CharacterPlayEvent[] | undefined,
+  timestamp?: string,
+): CharacterPlayState {
   return {
     ...state,
     updatedAt: nextUpdatedAt(state, timestamp),
-    playEvents: event ? appendPlayEvent(state.playEvents, event) : state.playEvents,
+    playEvents: events?.length
+      ? events.reduce((current, event) => appendPlayEvent(current, event), state.playEvents)
+      : state.playEvents,
   };
 }
 
@@ -154,6 +164,7 @@ export type PlayStateAction =
       slotMax?: number;
       startConcentration?: ConcentrationState;
       event?: CharacterPlayEvent;
+      extraEvents?: CharacterPlayEvent[];
       timestamp?: string;
     }
   | {
@@ -174,9 +185,15 @@ export type PlayStateAction =
       timestamp?: string;
     }
   | {
+      type: "record-event";
+      event?: CharacterPlayEvent;
+      timestamp?: string;
+    }
+  | {
       type: "short-rest";
       resetResourceKeys: string[];
       resetSpellSlotKeys: string[];
+      clearConditionIds?: string[];
       event?: CharacterPlayEvent;
       timestamp?: string;
     }
@@ -184,6 +201,7 @@ export type PlayStateAction =
       type: "long-rest";
       resetResourceKeys: string[];
       resetSpellSlotKeys: string[];
+      clearConditionIds?: string[];
       maxHp: number;
       event?: CharacterPlayEvent;
       timestamp?: string;
@@ -339,7 +357,7 @@ export function reduceCharacterPlayState(
         concentration: action.startConcentration,
       };
     }
-    return withEvent(nextState, action.event, action.timestamp);
+    return withEvents(nextState, [action.event, ...(action.extraEvents ?? [])].filter((event): event is CharacterPlayEvent => Boolean(event)), action.timestamp);
   }
 
   if (action.type === "toggle-condition") {
@@ -379,6 +397,10 @@ export function reduceCharacterPlayState(
     );
   }
 
+  if (action.type === "record-event") {
+    return withEvent(state, action.event, action.timestamp);
+  }
+
   if (action.type === "short-rest") {
     const nextSpentResources = { ...state.spentResources };
     for (const key of action.resetResourceKeys) {
@@ -388,11 +410,15 @@ export function reduceCharacterPlayState(
     for (const key of action.resetSpellSlotKeys) {
       nextSlots[key] = 0;
     }
+    const clearConditionIds = new Set(action.clearConditionIds ?? []);
     return withEvent(
       {
         ...state,
         spentResources: nextSpentResources,
         spellSlots: nextSlots,
+        activeConditions: clearConditionIds.size
+          ? state.activeConditions.filter((entry) => !clearConditionIds.has(entry.id))
+          : state.activeConditions,
         lastRestAt: action.timestamp ?? new Date().toISOString(),
       },
       action.event,
@@ -410,6 +436,7 @@ export function reduceCharacterPlayState(
     for (const key of action.resetSpellSlotKeys) {
       nextSlots[key] = 0;
     }
+    const clearConditionIds = new Set(action.clearConditionIds ?? []);
     return withEvent(
       {
         ...state,
@@ -419,6 +446,9 @@ export function reduceCharacterPlayState(
         concentration: null,
         spentResources: nextSpentResources,
         spellSlots: nextSlots,
+        activeConditions: clearConditionIds.size
+          ? state.activeConditions.filter((entry) => !clearConditionIds.has(entry.id))
+          : state.activeConditions,
         lastRestAt: action.timestamp ?? new Date().toISOString(),
       },
       action.event,

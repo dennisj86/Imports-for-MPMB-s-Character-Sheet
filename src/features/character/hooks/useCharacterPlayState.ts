@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import type { CharacterDraft } from "../../../domain/character";
 import type { CharacterPlayState } from "../../../domain/playState";
+import type { RollRequest } from "../../../domain/rolls";
 import type { CharacterEngineState } from "../../../services/characterEngine";
 import {
   applyDamage,
@@ -18,6 +19,7 @@ import {
   resolveSpellSlotCounters,
   restoreResource,
   restoreSpellSlot,
+  rollAndRecord,
   setCurrentHp,
   setTempHp,
   shouldBootstrapPlayStateFromEngine,
@@ -48,8 +50,9 @@ export interface CharacterPlayStateViewState {
   restoreResource: (resourceKey: string, amount?: number, label?: string) => void;
   spendSpellSlot: (slotKey: string, amount?: number) => void;
   restoreSpellSlot: (slotKey: string, amount?: number) => void;
+  roll: (request: RollRequest, options?: { spendResourceKey?: string; resourceLabel?: string }) => void;
   castSpell: (spellId: string, options?: CastSpellOptions) => void;
-  toggleCondition: (conditionName: string, source?: string, notes?: string) => void;
+  toggleCondition: (conditionIdOrName: string, source?: string, notes?: string) => void;
   startConcentration: (name: string, sourceId?: string, notes?: string) => void;
   endConcentration: (reason?: string) => void;
   applyShortRest: () => void;
@@ -178,6 +181,13 @@ export function useCharacterPlayState(
     commit((current) => restoreSpellSlot(current, runtime, slotKey, amount));
   }, [commit, runtime]);
 
+  const rollAction = useCallback((request: RollRequest, options: { spendResourceKey?: string; resourceLabel?: string } = {}) => {
+    if (!runtime) {
+      return;
+    }
+    commit((current) => rollAndRecord(current, runtime, request, options).playState);
+  }, [commit, runtime]);
+
   const castSpellAction = useCallback((spellId: string, options: CastSpellOptions = {}) => {
     if (!runtime || !engine) {
       return;
@@ -191,8 +201,8 @@ export function useCharacterPlayState(
     commit((current) => castSpell(current, runtime, spell, options));
   }, [commit, engine, runtime]);
 
-  const toggleConditionAction = useCallback((conditionName: string, source?: string, notes?: string) => {
-    commit((current) => toggleCondition(current, { name: conditionName, source, notes }));
+  const toggleConditionAction = useCallback((conditionIdOrName: string, source?: string, notes?: string) => {
+    commit((current) => toggleCondition(current, { id: conditionIdOrName, name: conditionIdOrName, source, notes }));
   }, [commit]);
 
   const startConcentrationAction = useCallback((name: string, sourceId?: string, notes?: string) => {
@@ -236,6 +246,7 @@ export function useCharacterPlayState(
     restoreResource: restoreResourceAction,
     spendSpellSlot: spendSpellSlotAction,
     restoreSpellSlot: restoreSpellSlotAction,
+    roll: rollAction,
     castSpell: castSpellAction,
     toggleCondition: toggleConditionAction,
     startConcentration: startConcentrationAction,

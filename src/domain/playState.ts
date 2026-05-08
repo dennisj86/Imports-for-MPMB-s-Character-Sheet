@@ -11,6 +11,8 @@ export interface ActiveConditionState {
   id: string;
   name: string;
   source?: string;
+  category?: string;
+  clearableOnRest?: "short-rest" | "long-rest";
   notes?: string;
   addedAt: string;
 }
@@ -34,9 +36,13 @@ export type CharacterPlayEventType =
   | "spell-slot-spend"
   | "spell-slot-restore"
   | "spell-cast"
+  | "spell-cast-blocked"
+  | "roll"
   | "condition-toggle"
   | "concentration-start"
+  | "concentration-replace"
   | "concentration-end"
+  | "resource-spend-blocked"
   | "rest-short"
   | "rest-long";
 

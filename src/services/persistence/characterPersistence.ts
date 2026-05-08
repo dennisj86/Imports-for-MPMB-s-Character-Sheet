@@ -12,6 +12,39 @@ const abilityScoresSchema = z.object({
   cha: z.number(),
 });
 
+const activeConditionSchema = z.union([
+  z.string().transform((name) => ({
+    id: `condition:custom:${name}`,
+    name,
+    source: "manual",
+    addedAt: new Date(0).toISOString(),
+  })),
+  z
+    .object({
+      id: z.string().optional(),
+      name: z.string().optional(),
+      label: z.string().optional(),
+      source: z.string().optional(),
+      category: z.string().optional(),
+      clearableOnRest: z.enum(["short-rest", "long-rest"]).optional(),
+      notes: z.string().optional(),
+      addedAt: z.string().optional(),
+    })
+    .passthrough()
+    .transform((condition) => {
+      const name = condition.name ?? condition.label ?? condition.id ?? "Condition";
+      return {
+        id: condition.id ?? name,
+        name,
+        source: condition.source,
+        category: condition.category,
+        clearableOnRest: condition.clearableOnRest,
+        notes: condition.notes,
+        addedAt: condition.addedAt ?? new Date(0).toISOString(),
+      };
+    }),
+]);
+
 const playStateSchema = z.object({
   schemaVersion: z.literal(1),
   characterId: z.string(),
@@ -25,15 +58,7 @@ const playStateSchema = z.object({
   }),
   spentResources: z.record(z.number().int().nonnegative()),
   spellSlots: z.record(z.number().int().nonnegative()),
-  activeConditions: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      source: z.string().optional(),
-      notes: z.string().optional(),
-      addedAt: z.string(),
-    }),
-  ),
+  activeConditions: z.array(activeConditionSchema),
   concentration: z
     .object({
       sourceId: z.string().optional(),
@@ -58,9 +83,13 @@ const playStateSchema = z.object({
         "spell-slot-spend",
         "spell-slot-restore",
         "spell-cast",
+        "spell-cast-blocked",
+        "roll",
         "condition-toggle",
         "concentration-start",
+        "concentration-replace",
         "concentration-end",
+        "resource-spend-blocked",
         "rest-short",
         "rest-long",
       ]),
@@ -189,7 +218,7 @@ function migrateV1ToV2(value: CharacterDraftV1): CharacterDraft {
   };
 }
 
-function ensurePersistedPlayState(entry: CharacterDraftV2Persisted): CharacterDraft {
+function ensurePersistedPlayState(entry: CharacterDraftV2Persisted | CharacterDraft): CharacterDraft {
   return {
     ...entry,
     playState: ensureCharacterPlayState(entry.playState, entry.id, {

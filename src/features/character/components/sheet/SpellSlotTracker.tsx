@@ -14,7 +14,7 @@ function defaultSlotLevel(spell: SpellDefinition, slots: PlaySpellSlotCounter[])
   if (spell.level <= 0) {
     return undefined;
   }
-  const eligible = slots.filter((slot) => slot.level >= spell.level);
+  const eligible = slots.filter((slot) => slot.level >= spell.level && slot.remaining > 0);
   return eligible[0]?.level;
 }
 
@@ -70,12 +70,15 @@ export function SpellSlotTracker({
           <ul className="space-y-2">
             {selectedSpells.map((spell) => {
               const eligibleSlots = slots.filter((slot) => slot.level >= spell.level);
-              const selectedLevel =
-                slotSelectionBySpellId[spell.id] ??
-                defaultSlotLevel(spell, eligibleSlots);
+              const availableSlots = eligibleSlots.filter((slot) => slot.remaining > 0);
+              const storedLevel = slotSelectionBySpellId[spell.id];
+              const storedLevelAvailable = storedLevel !== undefined && availableSlots.some((slot) => slot.level === storedLevel);
+              const selectedLevel = storedLevelAvailable ? storedLevel : defaultSlotLevel(spell, availableSlots);
               const selectedSlot = selectedLevel ? slotsByLevel.get(selectedLevel) : undefined;
               const ritual = ritualCastBySpellId[spell.id] ?? false;
-              const canCastWithSlot = spell.level <= 0 || ritual || (selectedSlot ? selectedSlot.remaining > 0 : false);
+              const castMode = spell.level <= 0 ? "cantrip" : ritual ? "ritual" : "slot";
+              const noSlotAvailable = castMode === "slot" && availableSlots.length === 0;
+              const canCastWithSlot = castMode === "cantrip" || castMode === "ritual" || (selectedSlot ? selectedSlot.remaining > 0 : false);
               return (
                 <li key={spell.id} className="rounded border border-slate-200 p-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -87,6 +90,9 @@ export function SpellSlotTracker({
                         {spell.castingTime ?? "Unknown cast time"}
                         {spell.concentration ? " · Concentration" : ""}
                         {spell.ritual ? " · Ritual" : ""}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {castMode === "cantrip" ? "Cantrip cast" : castMode === "ritual" ? "Ritual cast: no slot" : "Slot cast"}
                       </p>
                     </div>
                     <button
@@ -108,6 +114,7 @@ export function SpellSlotTracker({
                     <div className="mt-2 grid gap-2 sm:grid-cols-[1fr,auto]">
                       <select
                         className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
+                        disabled={ritual || availableSlots.length === 0}
                         onChange={(event) =>
                           setSlotSelectionBySpellId((current) => ({
                             ...current,
@@ -116,7 +123,8 @@ export function SpellSlotTracker({
                         }
                         value={selectedLevel ?? ""}
                       >
-                        {eligibleSlots.map((slot) => (
+                        {availableSlots.length === 0 ? <option value="">No slots available</option> : null}
+                        {availableSlots.map((slot) => (
                           <option key={slot.slotKey} value={slot.level}>
                             Slot L{slot.level} ({slot.remaining}/{slot.max})
                           </option>
@@ -134,11 +142,13 @@ export function SpellSlotTracker({
                             }
                             type="checkbox"
                           />
-                          Cast as ritual
+                          Ritual
                         </label>
                       ) : null}
                     </div>
                   ) : null}
+                  {noSlotAvailable ? <p className="mt-2 text-xs text-amber-700">No available slot for this spell.</p> : null}
+                  {spell.concentration ? <p className="mt-1 text-xs text-slate-500">Casting this can start or replace concentration.</p> : null}
                 </li>
               );
             })}

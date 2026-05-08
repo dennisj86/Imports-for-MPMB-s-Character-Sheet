@@ -1,30 +1,44 @@
 import { useState } from "react";
 import type { ActiveConditionState } from "../../../../domain/playState";
 import { inputClassName } from "../../../../components/ui/FormField";
+import { findConditionDefinition, STANDARD_CONDITION_DEFINITIONS } from "../../../../services/playState";
 
 interface ConditionTrayProps {
   activeConditions: ActiveConditionState[];
   onToggleCondition: (conditionName: string, source?: string, notes?: string) => void;
 }
 
-const QUICK_CONDITIONS = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible", "Paralyzed", "Poisoned", "Prone", "Restrained", "Stunned"];
-
 export function ConditionTray({ activeConditions, onToggleCondition }: ConditionTrayProps) {
   const [customCondition, setCustomCondition] = useState("");
+  const [filter, setFilter] = useState("");
+  const normalizedFilter = filter.trim().toLowerCase();
+  const conditionOptions = STANDARD_CONDITION_DEFINITIONS.filter((condition) => {
+    if (!normalizedFilter) {
+      return true;
+    }
+    return condition.label.toLowerCase().includes(normalizedFilter) || condition.id.toLowerCase().includes(normalizedFilter);
+  });
 
   return (
     <div className="space-y-3">
+      <input
+        className={inputClassName()}
+        onChange={(event) => setFilter(event.target.value)}
+        placeholder="Filter conditions"
+        value={filter}
+      />
       <div className="flex flex-wrap gap-1">
-        {QUICK_CONDITIONS.map((conditionName) => {
-          const active = activeConditions.some((entry) => entry.name.toLowerCase() === conditionName.toLowerCase());
+        {conditionOptions.map((condition) => {
+          const active = activeConditions.some((entry) => entry.id === condition.id);
           return (
             <button
-              key={conditionName}
+              key={condition.id}
+              title={condition.shortRulesHint}
               className={`rounded px-2 py-1 text-xs ${active ? "bg-indigo-700 text-white" : "bg-slate-200 text-slate-800"}`}
-              onClick={() => onToggleCondition(conditionName)}
+              onClick={() => onToggleCondition(condition.id)}
               type="button"
             >
-              {conditionName}
+              {condition.label}
             </button>
           );
         })}
@@ -62,8 +76,11 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
               <span>
                 {condition.name}
                 {condition.source ? <span className="ml-2 text-xs text-slate-500">({condition.source})</span> : null}
+                {findConditionDefinition(condition.id)?.shortRulesHint ? (
+                  <span className="block text-xs text-slate-500">{findConditionDefinition(condition.id)?.shortRulesHint}</span>
+                ) : null}
               </span>
-              <button className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800" onClick={() => onToggleCondition(condition.name)} type="button">
+              <button className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800" onClick={() => onToggleCondition(condition.id)} type="button">
                 Remove
               </button>
             </li>

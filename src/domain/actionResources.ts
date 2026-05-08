@@ -5,7 +5,7 @@ import type { DerivedDataStatus } from "./derivedStats";
 export type CharacterActionActivationType = "action" | "bonus-action" | "reaction" | "free" | "utility" | "special";
 export type CharacterActionSourceType = "class" | "subclass" | "species" | "background" | "feat" | "spell" | "item" | "core";
 export type CharacterResourceSourceType = "class" | "subclass" | "species" | "background" | "feat" | "spell" | "item" | "system";
-export type ResourceRechargeType = "at-will" | "short-rest" | "long-rest" | "special" | "manual";
+export type ResourceRechargeType = "at-will" | "short-rest" | "long-rest" | "special" | "manual" | "none";
 
 export interface ActionSourceRef {
   sourceType: CharacterActionSourceType;
