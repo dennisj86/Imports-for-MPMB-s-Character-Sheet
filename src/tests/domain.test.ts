@@ -14,5 +14,8 @@ describe("character draft model", () => {
     expect(draft.spellSelection.selectedSpellIds).toEqual([]);
     expect(draft.inventory.items).toEqual([]);
     expect(draft.abilityScores.str).toBe(10);
+    expect(draft.playState.schemaVersion).toBe(1);
+    expect(draft.playState.characterId).toBe("character-1");
+    expect(draft.playState.currentHp).toBeGreaterThan(0);
   });
 });

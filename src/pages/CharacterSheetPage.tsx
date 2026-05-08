@@ -1,6 +1,13 @@
 import { Link, useParams } from "react-router-dom";
 import { Panel } from "../components/ui/Panel";
-import { useCharacterEngine } from "../features/character/hooks";
+import { useCharacterEngine, useCharacterPlayState } from "../features/character/hooks";
+import { HitPointControls } from "../features/character/components/sheet/HitPointControls";
+import { ResourceTracker } from "../features/character/components/sheet/ResourceTracker";
+import { SpellSlotTracker } from "../features/character/components/sheet/SpellSlotTracker";
+import { ConditionTray } from "../features/character/components/sheet/ConditionTray";
+import { ConcentrationPanel } from "../features/character/components/sheet/ConcentrationPanel";
+import { RestControls } from "../features/character/components/sheet/RestControls";
+import { PlayLogPanel } from "../features/character/components/sheet/PlayLogPanel";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
 
@@ -11,8 +18,10 @@ export function CharacterSheetPage() {
   const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
   const { id } = useParams<{ id: string }>();
   const characters = useCharacterStore((state) => state.characters);
+  const updateCharacter = useCharacterStore((state) => state.updateCharacter);
   const draft = characters.find((entry) => entry.id === id);
   const engineView = useCharacterEngine(draft, activeSourceKeys, generation);
+  const playStateView = useCharacterPlayState(draft, engineView?.engine, updateCharacter);
 
   if (!draft) {
     return (
@@ -33,6 +42,14 @@ export function CharacterSheetPage() {
     );
   }
 
+  if (!playStateView) {
+    return (
+      <Panel title="Play state unavailable">
+        <p className="text-sm text-slate-600">The local play-state view is currently unavailable for this character.</p>
+      </Panel>
+    );
+  }
+
   const classDef = engineView.engine.classDef;
   const subclassDef = engineView.engine.subclassDef;
   const speciesDef = engineView.engine.speciesDef;
@@ -44,6 +61,9 @@ export function CharacterSheetPage() {
   const derivedStats = engineView.engine.derivedStats;
   const progression = engineView.engine.progression;
   const actionResources = engineView.engine.actionResources;
+  const playState = playStateView.playState;
+  const resourceCounters = playStateView.resourceCounters;
+  const spellSlotCounters = playStateView.spellSlotCounters;
 
   return (
     <div className="space-y-4">
@@ -82,6 +102,12 @@ export function CharacterSheetPage() {
             <dd>{derivedStats.speed.walking ? `${derivedStats.speed.walking} ft` : "—"}</dd>
             <dt className="text-slate-600">Armor Class</dt>
             <dd>{derivedStats.armorClass.value}</dd>
+            <dt className="text-slate-600">Current HP</dt>
+            <dd>
+              {playState.currentHp}/{playStateView.runtime.maxHp}
+            </dd>
+            <dt className="text-slate-600">Temp HP</dt>
+            <dd>{playState.tempHp}</dd>
             <dt className="text-slate-600">HP Max (Base)</dt>
             <dd>{derivedStats.hitPoints.max}</dd>
           </dl>
@@ -111,6 +137,45 @@ export function CharacterSheetPage() {
               ))}
             </div>
           ) : null}
+        </Panel>
+
+        <Panel title="Session HP / Death Saves">
+          <HitPointControls
+            currentHp={playState.currentHp}
+            deathSaves={playState.deathSaves}
+            maxHp={playStateView.runtime.maxHp}
+            onApplyDamage={playStateView.applyDamage}
+            onApplyHealing={playStateView.applyHealing}
+            onRecordDeathSave={playStateView.recordDeathSave}
+            onReplaceTempHp={playStateView.replaceTempHp}
+            onSetCurrentHp={playStateView.setCurrentHp}
+            onSetTempHp={playStateView.setTempHp}
+            tempHp={playState.tempHp}
+          />
+        </Panel>
+
+        <Panel title="Concentration">
+          <ConcentrationPanel
+            concentration={playState.concentration}
+            onEnd={playStateView.endConcentration}
+            onStart={playStateView.startConcentration}
+          />
+        </Panel>
+
+        <Panel title="Conditions">
+          <ConditionTray activeConditions={playState.activeConditions} onToggleCondition={playStateView.toggleCondition} />
+        </Panel>
+
+        <Panel title="Rest Controls">
+          <RestControls
+            notes={playStateView.runtime.restPlan.shortRest.notes}
+            onLongRest={playStateView.applyLongRest}
+            onShortRest={playStateView.applyShortRest}
+          />
+        </Panel>
+
+        <Panel title="Play Log">
+          <PlayLogPanel events={playState.playEvents} />
         </Panel>
 
         <Panel title="Ability Scores">
@@ -221,6 +286,15 @@ export function CharacterSheetPage() {
               ))}
             </ul>
           )}
+          <div className="mt-3">
+            <SpellSlotTracker
+              onCastSpell={playStateView.castSpell}
+              onRestoreSlot={playStateView.restoreSpellSlot}
+              onSpendSlot={playStateView.spendSpellSlot}
+              selectedSpells={selectedSpells}
+              slots={spellSlotCounters}
+            />
+          </div>
         </Panel>
 
         <Panel title="Feats">
@@ -341,21 +415,11 @@ export function CharacterSheetPage() {
         </Panel>
 
         <Panel title="Resources">
-          {actionResources.resourceSet.resources.length === 0 ? (
-            <p className="text-sm text-slate-500">No limited-use resources resolved.</p>
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {actionResources.resourceSet.resources.map((resource) => (
-                <li key={resource.id} className="rounded border border-slate-200 p-2">
-                  <p className="font-medium">{resource.name}</p>
-                  <p className="text-xs text-slate-600">
-                    Max: {resource.usesMax ?? "—"} · Recharge: {resource.recharge.label}
-                  </p>
-                  {resource.dataStatus !== "complete" ? <p className="text-xs text-amber-700">Status: {resource.dataStatus}</p> : null}
-                </li>
-              ))}
-            </ul>
-          )}
+          <ResourceTracker
+            onRestore={playStateView.restoreResource}
+            onSpend={playStateView.spendResource}
+            resources={resourceCounters}
+          />
         </Panel>
 
         <Panel title="Not Automated Yet">

@@ -1,5 +1,7 @@
 import { z } from "zod";
 import type { CharacterDraft } from "../../domain/character";
+import { createDefaultCharacterPlayState } from "../../domain/playState";
+import { ensureCharacterPlayState } from "../playState";
 
 const abilityScoresSchema = z.object({
   str: z.number(),
@@ -8,6 +10,66 @@ const abilityScoresSchema = z.object({
   int: z.number(),
   wis: z.number(),
   cha: z.number(),
+});
+
+const playStateSchema = z.object({
+  schemaVersion: z.literal(1),
+  characterId: z.string(),
+  currentHp: z.number().int().nonnegative(),
+  tempHp: z.number().int().nonnegative(),
+  deathSaves: z.object({
+    successes: z.number().int().min(0).max(3),
+    failures: z.number().int().min(0).max(3),
+    stable: z.boolean(),
+    dead: z.boolean(),
+  }),
+  spentResources: z.record(z.number().int().nonnegative()),
+  spellSlots: z.record(z.number().int().nonnegative()),
+  activeConditions: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      source: z.string().optional(),
+      notes: z.string().optional(),
+      addedAt: z.string(),
+    }),
+  ),
+  concentration: z
+    .object({
+      sourceId: z.string().optional(),
+      name: z.string(),
+      startedAt: z.string(),
+      notes: z.string().optional(),
+    })
+    .nullable(),
+  playEvents: z.array(
+    z.object({
+      id: z.string(),
+      timestamp: z.string(),
+      type: z.enum([
+        "hp-damage",
+        "hp-healing",
+        "hp-set",
+        "temp-hp-set",
+        "temp-hp-replace",
+        "death-save",
+        "resource-spend",
+        "resource-restore",
+        "spell-slot-spend",
+        "spell-slot-restore",
+        "spell-cast",
+        "condition-toggle",
+        "concentration-start",
+        "concentration-end",
+        "rest-short",
+        "rest-long",
+      ]),
+      shortLabel: z.string(),
+      payload: z.record(z.unknown()),
+    }),
+  ),
+  lastRestAt: z.string().optional(),
+  updatedAt: z.string(),
 });
 
 const characterDraftV2Schema = z.object({
@@ -52,6 +114,7 @@ const characterDraftV2Schema = z.object({
       }),
     ),
   }),
+  playState: playStateSchema.optional(),
 });
 
 const characterDraftV1Schema = z.object({
@@ -107,16 +170,32 @@ const persistedV1Schema = z.object({
 });
 
 type CharacterDraftV1 = z.infer<typeof characterDraftV1Schema>;
+type CharacterDraftV2Persisted = z.infer<typeof characterDraftV2Schema>;
 
 export const CHARACTER_STORAGE_KEY = "mpmb-character-builder:v2";
 const LEGACY_STORAGE_KEYS = ["mpmb-character-builder:v1"];
 
 function migrateV1ToV2(value: CharacterDraftV1): CharacterDraft {
+  const fallbackPlayState = createDefaultCharacterPlayState(value.id, {
+    maxHp: 1,
+    now: value.updatedAt,
+  });
   return {
     ...value,
     version: 2,
     provider: "mpmb",
     rulesMode: "2024",
+    playState: fallbackPlayState,
+  };
+}
+
+function ensurePersistedPlayState(entry: CharacterDraftV2Persisted): CharacterDraft {
+  return {
+    ...entry,
+    playState: ensureCharacterPlayState(entry.playState, entry.id, {
+      maxHp: 1,
+      now: entry.updatedAt,
+    }),
   };
 }
 
@@ -135,10 +214,10 @@ export function deserializeCharacters(payload: string): CharacterDraft[] {
   const parsed = JSON.parse(payload);
   const asV2 = persistedV2Schema.safeParse(parsed);
   if (asV2.success) {
-    return asV2.data.characters;
+    return asV2.data.characters.map((entry) => ensurePersistedPlayState(entry));
   }
   const asV1 = persistedV1Schema.parse(parsed);
-  return asV1.characters.map((entry) => migrateV1ToV2(entry));
+  return asV1.characters.map((entry) => ensurePersistedPlayState(migrateV1ToV2(entry)));
 }
 
 export function loadCharactersFromLocalStorage(storageKey = CHARACTER_STORAGE_KEY): CharacterDraft[] {

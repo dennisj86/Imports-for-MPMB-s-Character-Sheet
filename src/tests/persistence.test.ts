@@ -16,6 +16,8 @@ describe("character persistence", () => {
     expect(loaded[0].version).toBe(2);
     expect(loaded[0].provider).toBe("mpmb");
     expect(loaded[0].rulesMode).toBe("2024");
+    expect(loaded[0].playState.schemaVersion).toBe(1);
+    expect(loaded[0].playState.characterId).toBe("character-1");
   });
 
   it("migrates legacy v1 payloads to v2 model", () => {
@@ -45,5 +47,7 @@ describe("character persistence", () => {
     expect(loaded[0].version).toBe(2);
     expect(loaded[0].provider).toBe("mpmb");
     expect(loaded[0].rulesMode).toBe("2024");
+    expect(loaded[0].playState.schemaVersion).toBe(1);
+    expect(loaded[0].playState.characterId).toBe("legacy-1");
   });
 });

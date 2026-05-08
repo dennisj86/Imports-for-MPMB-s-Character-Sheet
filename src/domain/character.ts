@@ -1,4 +1,5 @@
 import type { RulesMode } from "./content";
+import type { CharacterPlayState } from "./playState";
 
 export interface AbilityScores {
   str: number;
@@ -81,4 +82,5 @@ export interface CharacterDraft {
   spellSelection: SpellSelection;
   featureChoices: FeatureChoice[];
   inventory: InventoryState;
+  playState: CharacterPlayState;
 }

@@ -1,4 +1,5 @@
 import type { AbilityScores, CharacterDraft } from "./character";
+import { createDefaultCharacterPlayState } from "./playState";
 
 const DEFAULT_ABILITY_SCORES: AbilityScores = {
   str: 10,
@@ -41,5 +42,9 @@ export function createCharacterDraft(id: string, name: string): CharacterDraft {
     inventory: {
       items: [],
     },
+    playState: createDefaultCharacterPlayState(id, {
+      maxHp: 1,
+      now: timestamp,
+    }),
   };
 }
