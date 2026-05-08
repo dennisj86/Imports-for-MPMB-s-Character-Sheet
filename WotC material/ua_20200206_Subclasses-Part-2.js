@@ -44,7 +44,7 @@ AddSubClass("bard", "college of creation-ua", {
 			]),
 			action : [["action", ""], ["bonus action", "Command Dancing Item"]],
 			usages : 1,
-			recovery : "long rest",
+			recovery : typePF ? "LR" : "long rest",
 			altResource : "SS 3+",
 			creaturesAdd : [["Dancing Item"]],
 			creatureOptions : [{
@@ -116,7 +116,7 @@ AddSubClass("bard", "college of creation-ua", {
 			}),
 			action : [["action", ""]],
 			usages : 1,
-			recovery : "long rest",
+			recovery : typePF ? "LR" : "long rest",
 			altResource : "SS 5+"
 		}
 	}
@@ -211,7 +211,7 @@ AddSubClass("sorcerer", "clockwork soul-ua", {
 			name : "Clockwork Magic",
 			source : [["UA:SP2", 4]],
 			minlevel : 1,
-			description : "\n   I learn additional spells, which do not count towards the number of spell I can know"
+			description: desc("I learn additional spells, which do not count towards the number of spell I can know")
 		},
 		"subclassfeature1.1" : {
 			name : "Restore Balance",
