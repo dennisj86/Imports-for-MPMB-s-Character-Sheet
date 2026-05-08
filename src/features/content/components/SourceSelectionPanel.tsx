@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Panel } from "../../../components/ui/Panel";
 import { inputClassName } from "../../../components/ui/FormField";
-import { getAvailableSources } from "../../../services/data/adapter";
 import { resolveSourceProvider } from "../../../services/data/sourceProvider";
-import { useSourceStore, type SourcePreset } from "../../../store/sourceStore";
+import type { SourcePreset } from "../sourceSelectionService";
+import { useSourceStore } from "../../../store/sourceStore";
 
 const presets: Array<{ key: SourcePreset; label: string }> = [
   { key: "all", label: "All Sources" },
@@ -21,10 +21,9 @@ const presets: Array<{ key: SourcePreset; label: string }> = [
   { key: "open5e-both", label: "Open5e 2014+2024" },
 ];
 
-const allSources = getAvailableSources();
-
 export function SourceSelectionPanel() {
   const [query, setQuery] = useState("");
+  const availableSources = useSourceStore((state) => state.availableSources);
   const generation = useSourceStore((state) => state.generation);
   const draftSelectedSourceKeys = useSourceStore((state) => state.draftSelectedSourceKeys);
   const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
@@ -49,9 +48,9 @@ export function SourceSelectionPanel() {
   const visibleSources = useMemo(() => {
     const lower = query.toLowerCase().trim();
     if (!lower) {
-      return allSources;
+      return availableSources;
     }
-    return allSources.filter((source) => {
+    return availableSources.filter((source) => {
       const group = source.group ?? "";
       return (
         source.name.toLowerCase().includes(lower) ||
@@ -60,14 +59,14 @@ export function SourceSelectionPanel() {
         (source.abbreviation ?? "").toLowerCase().includes(lower)
       );
     });
-  }, [query]);
+  }, [availableSources, query]);
   const open5eSourceCount = useMemo(
-    () => allSources.filter((source) => resolveSourceProvider(source) === "open5e").length,
-    [],
+    () => availableSources.filter((source) => resolveSourceProvider(source) === "open5e").length,
+    [availableSources],
   );
   const mpmbSourceCount = useMemo(
-    () => allSources.filter((source) => resolveSourceProvider(source) === "mpmb").length,
-    [],
+    () => availableSources.filter((source) => resolveSourceProvider(source) === "mpmb").length,
+    [availableSources],
   );
 
   return (
@@ -145,7 +144,7 @@ export function SourceSelectionPanel() {
 
         <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
           <p>
-            Active sources: <strong>{activeSourceKeys.length}</strong> / {allSources.length}
+            Active sources: <strong>{activeSourceKeys.length}</strong> / {availableSources.length}
           </p>
           <p>
             Providers: <strong>{mpmbSourceCount}</strong> MPMB · <strong>{open5eSourceCount}</strong> Open5e

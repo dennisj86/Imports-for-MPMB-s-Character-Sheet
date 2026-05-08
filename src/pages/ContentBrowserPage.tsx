@@ -1,19 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../components/ui/Panel";
 import { inputClassName } from "../components/ui/FormField";
-import {
-  getBackgrounds,
-  getClasses,
-  getEquipmentCatalog,
-  getFeats,
-  getSpecies,
-  getSpells,
-  getSubclassesForClass,
-  type EquipmentFilters,
-  type SpellFilters,
-} from "../services/data/adapter";
+import type { EquipmentDefinition, RulesMode } from "../domain/content";
+import { useContentBrowserV2State } from "../features/content/useContentBrowserV2State";
 import { SourceSelectionPanel } from "../features/content/components/SourceSelectionPanel";
 import { useSourceStore } from "../store/sourceStore";
+import type { CoreProviderSelection } from "../services/mpmbCore";
 
 type TabKey = "classes" | "subclasses" | "species" | "backgrounds" | "feats" | "spells" | "equipment";
 
@@ -29,41 +21,57 @@ const tabs: Array<{ key: TabKey; label: string }> = [
 
 export function ContentBrowserPage() {
   const generation = useSourceStore((state) => state.generation);
+  const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
   const [activeTab, setActiveTab] = useState<TabKey>("classes");
   const [query, setQuery] = useState("");
   const [classFilter, setClassFilter] = useState("");
+  const [provider, setProvider] = useState<CoreProviderSelection>("all");
+  const [rulesMode, setRulesMode] = useState<RulesMode>("2024");
   const [spellLevelFilter, setSpellLevelFilter] = useState<number | "all">("all");
-  const [equipmentCategory, setEquipmentCategory] = useState<EquipmentFilters["category"] | "all">("all");
+  const [equipmentCategory, setEquipmentCategory] = useState<EquipmentDefinition["category"] | "all">("all");
 
-  const classes = useMemo(() => getClasses(), [generation]);
-  const species = useMemo(() => getSpecies(), [generation]);
-  const backgrounds = useMemo(() => getBackgrounds(), [generation]);
-  const feats = useMemo(() => getFeats(), [generation]);
+  const content = useContentBrowserV2State(
+    activeSourceKeys,
+    {
+      provider,
+      rulesMode,
+    },
+    generation,
+  );
+
+  const classes = content.classes;
+  const species = content.species;
+  const backgrounds = content.backgrounds;
+  const feats = content.feats;
+
+  useEffect(() => {
+    if (classFilter && !classes.some((entry) => entry.id === classFilter)) {
+      setClassFilter("");
+    }
+  }, [classFilter, classes]);
 
   const subclassRows = useMemo(() => {
     const selectedClass = classFilter ? classes.find((entry) => entry.id === classFilter) : undefined;
     if (selectedClass) {
-      return getSubclassesForClass(selectedClass.id);
+      return content.resolveSubclassesForClass(selectedClass.id);
     }
-    return classes.flatMap((entry) => getSubclassesForClass(entry.id));
-  }, [classFilter, classes, generation]);
+    return classes.flatMap((entry) => content.resolveSubclassesForClass(entry.id));
+  }, [classFilter, classes, content]);
 
   const spellRows = useMemo(() => {
-    const filters: SpellFilters = {
+    return content.filterSpells({
       query,
       classKey: classFilter ? classes.find((entry) => entry.id === classFilter)?.key : undefined,
       level: spellLevelFilter === "all" ? undefined : spellLevelFilter,
-    };
-    return getSpells(filters);
-  }, [classFilter, query, spellLevelFilter, classes, generation]);
+    });
+  }, [classFilter, classes, content, query, spellLevelFilter]);
 
   const equipmentRows = useMemo(() => {
-    const filters: EquipmentFilters = {
+    return content.filterEquipment({
       query,
       category: equipmentCategory === "all" ? undefined : equipmentCategory,
-    };
-    return getEquipmentCatalog(filters);
-  }, [equipmentCategory, query, generation]);
+    });
+  }, [content, equipmentCategory, query]);
 
   return (
     <div className="space-y-4">
@@ -83,8 +91,17 @@ export function ContentBrowserPage() {
       </header>
 
       <Panel title={`${tabs.find((tab) => tab.key === activeTab)?.label ?? ""} Browser`}>
-        <div className="mb-3 grid gap-2 lg:grid-cols-4">
+        <div className="mb-3 grid gap-2 lg:grid-cols-6">
           <input className={inputClassName()} placeholder="Search..." value={query} onChange={(event) => setQuery(event.target.value)} />
+          <select className={inputClassName()} value={provider} onChange={(event) => setProvider(event.target.value as CoreProviderSelection)}>
+            <option value="all">All providers</option>
+            <option value="mpmb">MPMB</option>
+            <option value="open5e">Open5e</option>
+          </select>
+          <select className={inputClassName()} value={rulesMode} onChange={(event) => setRulesMode(event.target.value as RulesMode)}>
+            <option value="2014">Rules 2014</option>
+            <option value="2024">Rules 2024</option>
+          </select>
           <select className={inputClassName()} value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
             <option value="">All classes</option>
             {classes.map((entry) => (
@@ -112,7 +129,7 @@ export function ContentBrowserPage() {
               className={inputClassName()}
               value={equipmentCategory}
               onChange={(event) => {
-                const value = event.target.value as EquipmentFilters["category"] | "all";
+                const value = event.target.value as EquipmentDefinition["category"] | "all";
                 setEquipmentCategory(value);
               }}
             >
@@ -142,7 +159,7 @@ export function ContentBrowserPage() {
 
       <Panel title="Data Notes">
         <p className="text-sm text-slate-600">
-          This browser uses normalized declarative content only. Imperative MPMB hooks are intentionally ignored in Phase 1.
+          This browser resolves content through the V2 core registry (`provider` + `rulesMode`) with active source selection from the V2 source store.
         </p>
       </Panel>
     </div>

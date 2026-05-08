@@ -1,36 +1,21 @@
 import { create } from "zustand";
-import { getActiveSourceKeys, getAvailableSources, regenerateContentForSelectedSources } from "../services/data/adapter";
-import { resolveSourceProvider, sourceKeysForProvider } from "../services/data/sourceProvider";
-
-export type SourcePreset =
-  | "all"
-  | "provider-open5e"
-  | "provider-mpmb"
-  | "official-handbooks"
-  | "official-books"
-  | "ua"
-  | "adventure"
-  | "mpmb-pdf-core"
-  | "mpmb-upstream-2014-core"
-  | "mpmb-upstream-2024-core"
-  | "open5e-2014"
-  | "open5e-2024"
-  | "open5e-both";
+import type { SourceDefinition } from "../domain/content";
+import {
+  getV2AllSourceKeys,
+  getV2AvailableSources,
+  normalizeSourceSelection,
+  persistSourceSelection,
+  readPersistedSourceSelection,
+  resolveSourceSelectionRuntime,
+  sourcePresetKeys,
+  type SourcePreset,
+  type SourceRegenerationStats,
+} from "../features/content/sourceSelectionService";
 
 const SOURCE_SELECTION_STORAGE_KEY = "mpmb-character-builder:sources:v1";
 
-type SourceRegenerationStats = {
-  sourceCount: number;
-  classCount: number;
-  subclassCount: number;
-  speciesCount: number;
-  backgroundCount: number;
-  featCount: number;
-  spellCount: number;
-  equipmentCount: number;
-};
-
 type SourceStore = {
+  availableSources: SourceDefinition[];
   generation: number;
   draftSelectedSourceKeys: string[];
   activeSourceKeys: string[];
@@ -45,109 +30,20 @@ type SourceStore = {
   regenerate: () => void;
 };
 
-const availableSources = getAvailableSources();
-const allSourceKeys = availableSources.map((source) => source.key);
-
-function readPersistedSelection(): string[] | undefined {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-  try {
-    const raw = window.localStorage.getItem(SOURCE_SELECTION_STORAGE_KEY);
-    if (!raw) {
-      return undefined;
-    }
-    const parsed = JSON.parse(raw) as { selectedSourceKeys?: string[] };
-    if (!Array.isArray(parsed.selectedSourceKeys)) {
-      return undefined;
-    }
-    return parsed.selectedSourceKeys.filter((key) => allSourceKeys.includes(key));
-  } catch {
-    return undefined;
-  }
-}
-
-function persistSelection(selectedSourceKeys: string[]) {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.setItem(SOURCE_SELECTION_STORAGE_KEY, JSON.stringify({ selectedSourceKeys }, null, 2));
-}
-
-function presetKeys(preset: SourcePreset): string[] {
-  if (preset === "all") {
-    return allSourceKeys;
-  }
-  if (preset === "provider-open5e") {
-    return sourceKeysForProvider(availableSources, "open5e");
-  }
-  if (preset === "provider-mpmb") {
-    return sourceKeysForProvider(availableSources, "mpmb");
-  }
-  if (preset === "official-handbooks") {
-    return availableSources
-      .filter((source) => resolveSourceProvider(source) === "mpmb" && /handbook/i.test(source.name))
-      .map((source) => source.key);
-  }
-  if (preset === "official-books") {
-    return availableSources
-      .filter(
-        (source) =>
-          resolveSourceProvider(source) === "mpmb" &&
-          (/sources/i.test(source.group ?? "") || /book/i.test(source.group ?? "")),
-      )
-      .map((source) => source.key);
-  }
-  if (preset === "ua") {
-    return availableSources
-      .filter(
-        (source) =>
-          resolveSourceProvider(source) === "mpmb" &&
-          (/unearthed arcana/i.test(source.group ?? "") || /^UA[:]/i.test(source.key)),
-      )
-      .map((source) => source.key);
-  }
-  if (preset === "mpmb-pdf-core") {
-    return availableSources.filter((source) => source.key.toLowerCase().startsWith("mpmbpdf-")).map((source) => source.key);
-  }
-  if (preset === "mpmb-upstream-2014-core") {
-    return availableSources
-      .filter((source) => source.key.toLowerCase().startsWith("mpmbup14-") || (source.group ?? "").toLowerCase().includes("mpmb upstream 2014"))
-      .map((source) => source.key);
-  }
-  if (preset === "mpmb-upstream-2024-core") {
-    return availableSources
-      .filter((source) => source.key.toLowerCase().startsWith("mpmbup24-") || (source.group ?? "").toLowerCase().includes("mpmb upstream 2024"))
-      .map((source) => source.key);
-  }
-  if (preset === "open5e-2014") {
-    return availableSources
-      .filter((source) => source.group === "Open5e 2014" || source.key === "srd-2014" || source.key === "open5e")
-      .map((source) => source.key);
-  }
-  if (preset === "open5e-2024") {
-    return availableSources
-      .filter((source) => source.group === "Open5e 2024" || source.key === "srd-2024" || source.key === "open5e-2024")
-      .map((source) => source.key);
-  }
-  if (preset === "open5e-both") {
-    return sourceKeysForProvider(availableSources, "open5e");
-  }
-  return availableSources
-    .filter((source) => resolveSourceProvider(source) === "mpmb" && /adventure/i.test(source.group ?? ""))
-    .map((source) => source.key);
-}
-
-const initialSelected = readPersistedSelection() ?? getActiveSourceKeys();
-regenerateContentForSelectedSources(initialSelected);
+const availableSources = getV2AvailableSources();
+const allSourceKeys = getV2AllSourceKeys();
+const initialSelected = normalizeSourceSelection(readPersistedSourceSelection(SOURCE_SELECTION_STORAGE_KEY) ?? allSourceKeys);
+const initialRuntime = resolveSourceSelectionRuntime(initialSelected);
 
 export const useSourceStore = create<SourceStore>((set, get) => ({
+  availableSources,
   generation: 0,
-  draftSelectedSourceKeys: initialSelected,
-  activeSourceKeys: initialSelected,
+  draftSelectedSourceKeys: initialRuntime.selectedSourceKeys,
+  activeSourceKeys: initialRuntime.selectedSourceKeys,
+  lastStats: initialRuntime.stats,
   setDraftSelectedSourceKeys: (keys) =>
     set(() => ({
-      draftSelectedSourceKeys: Array.from(new Set(keys.filter((key) => allSourceKeys.includes(key)))),
+      draftSelectedSourceKeys: normalizeSourceSelection(keys),
     })),
   toggleDraftSourceKey: (key) =>
     set((state) => {
@@ -162,13 +58,13 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       }
       return {
         ...state,
-        draftSelectedSourceKeys: Array.from(selected),
+        draftSelectedSourceKeys: normalizeSourceSelection(Array.from(selected)),
       };
     }),
   applyPresetToDraft: (preset) =>
     set((state) => ({
       ...state,
-      draftSelectedSourceKeys: presetKeys(preset),
+      draftSelectedSourceKeys: normalizeSourceSelection(sourcePresetKeys(preset, state.availableSources)),
     })),
   selectAllDraft: () =>
     set((state) => ({
@@ -187,14 +83,14 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     })),
   regenerate: () => {
     const selected = get().draftSelectedSourceKeys;
-    const stats = regenerateContentForSelectedSources(selected);
-    persistSelection(selected);
+    const runtime = resolveSourceSelectionRuntime(selected);
+    persistSourceSelection(runtime.selectedSourceKeys, SOURCE_SELECTION_STORAGE_KEY);
     set((state) => ({
       ...state,
       generation: state.generation + 1,
-      activeSourceKeys: selected,
+      activeSourceKeys: runtime.selectedSourceKeys,
       lastRegeneratedAt: new Date().toISOString(),
-      lastStats: stats,
+      lastStats: runtime.stats,
     }));
   },
 }));

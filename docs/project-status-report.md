@@ -1,10 +1,23 @@
 ![img.png](ui%20images/img.png)# Projektstatusbericht – D&D Character Builder
 
-Stand: 2026-05-02
+Stand: 2026-05-07
 
 ## 1. Kurzfazit
 Das Projekt hat jetzt ein funktionsfähiges Fundament mit zwei Datenprovidern (`open5e`, `mpmb`), reproduzierbaren Ingestion-Pipelines, zentraler `rulesMode`-Auflösung (`2014 | 2024`) und einer lauffähigen lokalen Builder-/Sheet-UI.  
 Die kritischen Runtime-Probleme in der MPMB-Generierung sind aktuell auf **0 Parse-Fehler** reduziert.
+
+Neu gestartet ist die **V2-Phase `mpmb-core-first`**:
+- getrennte MPMB-Core-Snapshots für `rulesMode=2014` und `rulesMode=2024`
+- neue Layer `mpmbRuntime`, `mpmbCore`, `mpmbNormalization`, `characterEngine`
+- Wizard-V2-, Spell-Management- und Dice-Basis als separater neuer Pfad
+- PDF/Open5e bleiben erhalten, sind aber im V2-Pfad nicht mehr strukturelle Primärbasis für `provider=mpmb`
+
+Aktueller UI-Status der Phase:
+- Builder-Route `/builder/:id` läuft standardmäßig über `useWizardV2State` + `useSpellManagement`
+- Sheet-Route `/sheet/:id` läuft standardmäßig über `useCharacterEngine`
+- Content-Route `/content` läuft standardmäßig über `useContentBrowserV2State`
+- Source-Selection läuft standardmäßig über `sourceSelectionService` + V2 `sourceStore`
+- Legacy-Adapterpfade sind aus den Haupt-UI-Flows entfernt; Adapter bleibt als expliziter Compat-/Test-Layer
 
 ## 2. Was ist umgesetzt
 
@@ -50,6 +63,12 @@ Die kritischen Runtime-Probleme in der MPMB-Generierung sind aktuell auf **0 Par
   - `data/imports/mpmb-upstream-2014/manifests/comparison-report.json`
   - `data/imports/mpmb-upstream-2024/manifests/comparison-report.json`
 
+### F) Content/Source V2 (neu)
+- `sourceStore` nutzt V2-Source-Selection-Service statt Adapter-Regeneration.
+- `SourceSelectionPanel` liest verfügbare Quellen aus dem V2-Store.
+- `ContentBrowserPage` nutzt V2-Core-Registry-Auflösung (`provider` + `rulesMode`) statt Adapter-Getter.
+- Legacy-Panels (`SpellSelectionPanel`, `FeatSelectionPanel`) sind in `src/features/character/legacy/` gekapselt.
+
 ## 3. Aktuelle Absicherungen
 
 ### A) Automatisierte Prüfungen
@@ -58,12 +77,15 @@ Die kritischen Runtime-Probleme in der MPMB-Generierung sind aktuell auf **0 Par
 - `npm run build` (inkl. `data:generate`)
 
 ### B) Testabdeckung (aktueller Stand)
-- **14 Testdateien, 35 Tests, alle grün**.
+- **29 Testdateien, 90 Tests, alle grün**.
 - Abgedeckt u. a.:
   - Open5e-Client/Pagination/Normalisierung/Merge
   - MPMB-PDF-Extraktion/Normalisierung
   - Runtime-Fix-Regressionen
   - Adapterfunktionen
+  - V2 Core/CharacterEngine/WizardV2/SpellManagement
+  - V2 Content-Browser/Source-Selection
+  - V2 UI-Integrationspfad (Wizard/Spell/Sheet/Save-Load)
   - Rules-Mode-Resolver inkl. Provider-Unabhängigkeit
   - Persistence/Migration
 
@@ -71,7 +93,7 @@ Die kritischen Runtime-Probleme in der MPMB-Generierung sind aktuell auf **0 Par
 - Baseline-Schwellen für Entity-Counts und Parse-Fehler sind im Generator verankert.
 - Aktueller Lauf (`latest-runtime-summary.json`):
   - local: classes 15 / subclasses 230 / species 312 / backgrounds 132 / feats 227 / spells 264 / equipment 661
-  - merged: classes 51 / subclasses 283 / species 352 / backgrounds 140 / feats 244 / spells 1243 / equipment 1522
+  - merged: classes 75 / subclasses 307 / species 404 / backgrounds 145 / feats 261 / spells 1925 / equipment 2349
   - parseErrors: **0**
 
 ### D) Fachliche Guardrails
@@ -87,19 +109,18 @@ Die kritischen Runtime-Probleme in der MPMB-Generierung sind aktuell auf **0 Par
 
 ## 5. Empfehlung: nächster sinnvoller Schritt
 
-### Empfohlene Phase 2 (priorisiert)
-1. **Deterministische Normalisierung für Background/Feat-Verknüpfung**
-   - origin-feat-/granted-feat-Auflösung über explizite Mapping-Tabelle statt nur Textmatch.
-2. **Rules-Mode-Resolver weiter formalisieren**
-   - Replacement- und Canonical-Mappings für strittige Klassen/Subclasses zentral konfigurieren.
-3. **Anwendungs-Engine für „rechenbare Basisregeln“**
-   - zuerst eng: Proficiency Bonus, Save-Proficiencies, Skill-Proficiencies, Spell-Preparation-Basis.
-4. **Regressions-Gates im CI**
-   - automatische Prüfung von Entity-Counts + Parse-Fehler + Resolver-Snapshots pro Commit.
+### Empfohlene Folgephase (nach UI-Umschaltung)
+1. **Adapter-Compat-Layer weiter reduzieren**
+   - nur noch explizite Legacy-/Test-Zugriffe behalten, produktive Aufrufe weiter abbauen.
+2. **Legacy-UI-Bausteine aufräumen**
+   - gekapselte Legacy-Module mittelfristig entfernen, sobald keine Consumer mehr existieren.
+3. **Persistenzschema für tiefere Wizard-Profile erweitern**
+   - derzeit noch nicht persistierte tiefere Profile/About-Felder modellieren.
+4. **Regressions-Gates im CI für V2-Standardpfad verpflichtend machen**
+   - feste Tests für Builder-/Sheet-/Content-/Source-Pfad ohne Adapter-Abhängigkeit.
 5. **Performance/Bundling**
-   - Code-Splitting für Content-Browser/Sheet, um Initial-Bundle zu verkleinern.
+   - weiteres Code-Splitting für nicht-kritische Legacy-/Support-Bereiche.
 
 ## 6. Praktische Priorität für sofort
 Wenn nur ein nächster Schritt gestartet werden soll:  
-**Background/Feat- und Species-Conversion in einen deterministischen „Applied Rules Output“ überführen** (statt primär als Notes/Markierung).  
-Das ist der größte Hebel, um vom Daten- und Resolver-Fundament zu konsistenter Character-Build-Logik zu kommen.
+**CI-Gates auf den V2-Standardpfad festziehen** (inkl. Guards gegen neue UI-Adapter-Imports), damit kein stiller Rückfall in Altpfade mehr möglich ist.

@@ -1,19 +1,6 @@
 import { Link, useParams } from "react-router-dom";
-import { useMemo } from "react";
 import { Panel } from "../components/ui/Panel";
-import {
-  getBackgrounds,
-  getCharacterActionResources,
-  getAppliedCharacterRules,
-  getCharacterProgression,
-  getClassById,
-  getDerivedCharacterStats,
-  getFeats,
-  getFeaturesForClassLevel,
-  getSpecies,
-  getSpellById,
-  getSubclassesForClass,
-} from "../services/data/adapter";
+import { useCharacterEngine } from "../features/character/hooks";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
 
@@ -21,19 +8,11 @@ const abilities = ["str", "dex", "con", "int", "wis", "cha"] as const;
 
 export function CharacterSheetPage() {
   const generation = useSourceStore((state) => state.generation);
+  const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
   const { id } = useParams<{ id: string }>();
   const characters = useCharacterStore((state) => state.characters);
   const draft = characters.find((entry) => entry.id === id);
-  const dataContext = useMemo(
-    () => ({
-      provider: draft?.provider ?? "mpmb",
-      rulesMode: draft?.rulesMode ?? "2024",
-    }),
-    [draft?.provider, draft?.rulesMode],
-  );
-  const speciesById = useMemo(() => new Map(getSpecies(dataContext).map((entry) => [entry.id, entry])), [dataContext, generation]);
-  const backgroundById = useMemo(() => new Map(getBackgrounds(dataContext).map((entry) => [entry.id, entry])), [dataContext, generation]);
-  const featById = useMemo(() => new Map(getFeats(dataContext).map((entry) => [entry.id, entry])), [dataContext, generation]);
+  const engineView = useCharacterEngine(draft, activeSourceKeys, generation);
 
   if (!draft) {
     return (
@@ -46,25 +25,25 @@ export function CharacterSheetPage() {
     );
   }
 
-  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, dataContext) : undefined;
-  const subclassDef = classDef
-    ? getSubclassesForClass(classDef.id, {
-        ...dataContext,
-        classLevel: draft.classSelection.level,
-      }).find((entry) => entry.id === draft.subclassSelection.subclassId)
-    : undefined;
-  const speciesDef = draft.speciesSelection.speciesId ? speciesById.get(draft.speciesSelection.speciesId) : undefined;
-  const backgroundDef = draft.backgroundSelection.backgroundId ? backgroundById.get(draft.backgroundSelection.backgroundId) : undefined;
-  const selectedFeats = draft.featIds.map((idValue) => featById.get(idValue)).filter(isDefined);
-  const selectedSpells = draft.spellSelection.selectedSpellIds.map((idValue) => getSpellById(idValue, dataContext)).filter(isDefined);
-  const features = getFeaturesForClassLevel(draft.classSelection.classId, draft.subclassSelection.subclassId, draft.classSelection.level, {
-    ...dataContext,
-    classLevel: draft.classSelection.level,
-  });
-  const appliedRules = getAppliedCharacterRules(draft, dataContext);
-  const derivedStats = getDerivedCharacterStats(draft, dataContext);
-  const progression = getCharacterProgression(draft, dataContext);
-  const actionResources = getCharacterActionResources(draft, dataContext);
+  if (!engineView) {
+    return (
+      <Panel title="V2 state unavailable">
+        <p className="text-sm text-slate-600">The V2 character engine state could not be resolved for this character.</p>
+      </Panel>
+    );
+  }
+
+  const classDef = engineView.engine.classDef;
+  const subclassDef = engineView.engine.subclassDef;
+  const speciesDef = engineView.engine.speciesDef;
+  const backgroundDef = engineView.engine.backgroundDef;
+  const selectedFeats = engineView.engine.selectedFeats;
+  const selectedSpells = engineView.engine.selectedSpells;
+  const features = engineView.engine.progression.unlockedFeatures;
+  const appliedRules = engineView.engine.appliedRules;
+  const derivedStats = engineView.engine.derivedStats;
+  const progression = engineView.engine.progression;
+  const actionResources = engineView.engine.actionResources;
 
   return (
     <div className="space-y-4">
@@ -436,8 +415,4 @@ export function CharacterSheetPage() {
       </div>
     </div>
   );
-}
-
-function isDefined<T>(value: T | undefined): value is T {
-  return value !== undefined;
 }

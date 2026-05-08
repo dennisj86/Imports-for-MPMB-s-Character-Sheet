@@ -111,8 +111,8 @@ The merged app snapshot remains:
 ### MPMB Upstream Core Ingestion (Local Repos)
 `mpmb` now supports local upstream core imports from two local repositories:
 
-- 2014 upstream: `/home/dennis/IdeaProjects/MPMBs-Character-Record-Sheet`
-- 2024 upstream: `/home/dennis/IdeaProjects/2024_MPMBs-Character-Record-Sheet`
+- 2014 upstream (copied in-repo core): `docs/Sheet skripte`
+- 2024 upstream (copied in-repo core): `docs/Sheet skripte 2024`
 
 Commands:
 ```sh
@@ -141,6 +141,40 @@ MPMB_UPSTREAM_2014_PATH=/path/to/2014/repo npm run import:mpmb:upstream:2014
 MPMB_UPSTREAM_2024_PATH=/path/to/2024/repo npm run import:mpmb:upstream:2024
 ```
 
+### MPMB Core V2 Architecture (mpmb-core-first)
+The V2 path now introduces a dedicated core stack that separates rules modes at snapshot level and keeps old MVP paths parallel:
+
+- `src/services/mpmbRuntime/`
+  - load plan for `_variables/*`, `_functions/*`, additional content, WotC overlays
+- `src/services/mpmbCore/`
+  - provider/rulesMode-aware core snapshot registry
+- `src/services/mpmbNormalization/`
+  - deterministic mode/layer snapshot merge
+- `src/services/characterEngine/`
+  - applied/derived/progression/action/wizard state from selected core snapshot
+- `src/features/wizardV2/`
+  - Wizard V2 state preparation from the new engine
+- `src/features/spellManagement/`
+  - spell choice management service on top of V2 engine
+- `src/features/dice/`
+  - shared dice utility for upcoming sheet tools
+
+### V2 UI Standard Path
+The app routes now use the V2 services as default runtime path:
+
+- `/builder/:id`
+  - `useWizardV2State(...)` for wizard steps/validations/completion
+  - `useSpellManagement(...)` + `applySpellSelectionToDraft(...)` for spell choice handling
+- `/sheet/:id`
+  - `useCharacterEngine(...)` for applied rules, derived stats, progression, and action/resources
+
+This removes direct adapter usage from the main Builder/Sheet component tree.
+
+Remaining adapter usage is currently a compatibility scope for:
+- legacy regression tests
+- explicit compatibility calls in `services/data/adapter.ts`
+- source-selection/content-browser no longer use adapter in normal runtime
+
 ### Internal MPMB Source Tiers
 Within provider `mpmb`, sources are merged additively with tiered precedence:
 
@@ -165,7 +199,21 @@ Open5e remains a separate provider and is not merged into `mpmb` semantics.
 - Presets include `MPMB PDF Core` for the PDF-derived source keys.
 - Click **Regenerate** to reload the active in-app catalog from the selected sources.
 - The selection is persisted locally for the next app start.
+- The source-selection flow is V2-driven via:
+  - `src/features/content/sourceSelectionService.ts`
+  - `src/store/sourceStore.ts`
 - `Outlander / Wanderer` is primarily expected from native imported/generated data; manual fallback is only injected when no native Outlander/Wanderer entry exists.
+
+### Content Browser Runtime Path
+`/content` now resolves data through the V2 core stack (not adapter getters):
+
+- `src/features/content/useContentBrowserV2State.ts`
+  - builds mode/provider-aware snapshot via `mpmbCore`
+  - resolves classes/subclasses/species/backgrounds/feats/spells/equipment
+- `src/pages/ContentBrowserPage.tsx`
+  - consumes V2 content state and service-level filters
+
+The route is lazy-loaded in `src/app/App.tsx` as initial step for bundle isolation.
 
 ### Provider vs Rules Mode
 The builder now separates data origin from rules interpretation:

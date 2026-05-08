@@ -1,3 +1,5 @@
+// Compat layer: legacy/test-facing facade kept for backward compatibility.
+// Productive UI runtime paths should use V2 services/hooks (`mpmbCore`, `wizardV2`, `spellManagement`, `characterEngine`).
 import { contentSnapshot } from "./content";
 import type {
   BackgroundDefinition,
@@ -40,23 +42,13 @@ import {
   resolveSubclasses,
   type RulesQueryContext,
 } from "./rulesModeResolver";
-import { resolveAppliedCharacterRules } from "./appliedRulesResolver";
-import { resolveCharacterActionResources } from "./actionResourceResolver";
 import {
   applyStartingEquipmentChoiceToInventory,
-  getClassSkillChoiceState as resolveClassSkillChoiceState,
-  getSkillChoiceStates as resolveSkillChoiceStates,
   getEligibleFeatsForChoice as selectEligibleFeatsForChoice,
   getEligibleSpellsForChoice as selectEligibleSpellsForChoice,
-  getRequiredBuilderChoices as resolveRequiredBuilderChoices,
-  isCharacterCreationComplete as resolveCharacterCreationComplete,
-  resolveFeatEligibility,
-  resolveStartingEquipmentChoices,
-  resolveSpellEligibility,
-  validateBuilderStep as resolveBuilderStepValidation,
 } from "./builderWizardResolver";
-import { resolveDerivedStats } from "./derivedStatsResolver";
-import { resolveLevelProgression } from "./progressionResolver";
+import { createMpmbCoreRegistry, resolveSnapshotForCoreContext } from "../mpmbCore";
+import { resolveCharacterEngineState, resolveCharacterWizardState } from "../characterEngine";
 
 function normalizeKey(value: string | undefined): string {
   return String(value ?? "")
@@ -85,39 +77,14 @@ export type DataQueryContext = RulesQueryContext & {
 };
 
 const fullSnapshot = contentSnapshot;
-let activeSnapshot: MpmContentSnapshot = fullSnapshot;
 let activeSourceKeys = new Set(fullSnapshot.sources.map((source) => source.key));
+let activeCoreRegistry = createMpmbCoreRegistry(fullSnapshot);
 
-function sourceRefMatchesSelection(sourceRefs: string[], selection: Set<string>): boolean {
-  if (selection.size === 0) {
-    return false;
-  }
-  if (sourceRefs.length === 0) {
-    return true;
-  }
-  return sourceRefs.some((ref) => {
-    const sourceKey = ref.split(":")[0]?.trim();
-    return Boolean(sourceKey) && selection.has(sourceKey);
+function getSnapshotForContext(context: DataQueryContext = {}): MpmContentSnapshot {
+  return resolveSnapshotForCoreContext(activeCoreRegistry, {
+    provider: context.provider ?? "all",
+    rulesMode: context.rulesMode,
   });
-}
-
-function filterBySources<T extends { sourceRefs: string[] }>(entries: T[], selection: Set<string>): T[] {
-  return entries.filter((entry) => sourceRefMatchesSelection(entry.sourceRefs, selection));
-}
-
-function applySourceSelection(sourceKeys: string[]): MpmContentSnapshot {
-  const selection = new Set(sourceKeys);
-  return {
-    ...fullSnapshot,
-    sources: fullSnapshot.sources.filter((source) => selection.has(source.key)),
-    classes: filterBySources(fullSnapshot.classes, selection),
-    subclasses: filterBySources(fullSnapshot.subclasses, selection),
-    species: filterBySources(fullSnapshot.species, selection),
-    backgrounds: filterBySources(fullSnapshot.backgrounds, selection),
-    feats: filterBySources(fullSnapshot.feats, selection),
-    spells: filterBySources(fullSnapshot.spells, selection),
-    equipment: filterBySources(fullSnapshot.equipment, selection),
-  };
 }
 
 export function getAvailableSources(): SourceDefinition[] {
@@ -142,9 +109,10 @@ export function getActiveSourceKeys(): string[] {
 
 export function regenerateContentForSelectedSources(sourceKeys: string[]) {
   activeSourceKeys = new Set(sourceKeys);
-  activeSnapshot = applySourceSelection(sourceKeys);
+  activeCoreRegistry = createMpmbCoreRegistry(fullSnapshot, sourceKeys);
+  const activeSnapshot = activeCoreRegistry.selectedSnapshot;
   return {
-    sourceCount: activeSnapshot.sources.length,
+    sourceCount: activeSourceKeys.size,
     classCount: activeSnapshot.classes.length,
     subclassCount: activeSnapshot.subclasses.length,
     speciesCount: activeSnapshot.species.length,
@@ -156,7 +124,7 @@ export function regenerateContentForSelectedSources(sourceKeys: string[]) {
 }
 
 export function getClasses(context: DataQueryContext = {}): ClassDefinition[] {
-  return resolveClasses(activeSnapshot.classes, context);
+  return resolveClasses(getSnapshotForContext(context).classes, context);
 }
 
 export function getClassById(id: string, context: DataQueryContext = {}): ClassDefinition | undefined {
@@ -164,13 +132,14 @@ export function getClassById(id: string, context: DataQueryContext = {}): ClassD
 }
 
 export function getSubclassesForClass(classId: string, context: DataQueryContext = {}): SubclassDefinition[] {
+  const snapshot = getSnapshotForContext(context);
   const classes = getClasses(context);
-  const parentClass = classes.find((entry) => entry.id === classId) ?? activeSnapshot.classes.find((entry) => entry.id === classId);
+  const parentClass = classes.find((entry) => entry.id === classId) ?? snapshot.classes.find((entry) => entry.id === classId);
   if (!parentClass) {
     return [];
   }
   const classesForResolution = classes.some((entry) => entry.id === parentClass.id) ? classes : [...classes, parentClass];
-  const resolved = resolveSubclasses(activeSnapshot.subclasses, classesForResolution, {
+  const resolved = resolveSubclasses(snapshot.subclasses, classesForResolution, {
     ...context,
     selectedClassId: parentClass.id,
   });
@@ -185,11 +154,11 @@ export function getSubclassesForClass(classId: string, context: DataQueryContext
 }
 
 export function getSpecies(context: DataQueryContext = {}): SpeciesDefinition[] {
-  return resolveSpecies(activeSnapshot.species, context);
+  return resolveSpecies(getSnapshotForContext(context).species, context);
 }
 
 export function getBackgrounds(context: DataQueryContext = {}): BackgroundDefinition[] {
-  return resolveBackgrounds(activeSnapshot.backgrounds, context);
+  return resolveBackgrounds(getSnapshotForContext(context).backgrounds, context);
 }
 
 export function getBackgroundById(id: string, context: DataQueryContext = {}): BackgroundDefinition | undefined {
@@ -197,7 +166,7 @@ export function getBackgroundById(id: string, context: DataQueryContext = {}): B
 }
 
 export function getFeats(context: DataQueryContext = {}): FeatDefinition[] {
-  return resolveFeats(activeSnapshot.feats, context);
+  return resolveFeats(getSnapshotForContext(context).feats, context);
 }
 
 function normalizeLookup(value: string): string {
@@ -222,7 +191,7 @@ export function findFeatByNameLike(name: string, context: DataQueryContext = {})
 
 export function getSpells(filters: SpellFilters = {}, context: DataQueryContext = {}): SpellDefinition[] {
   const query = filters.query?.toLowerCase().trim();
-  const spellRows = resolveSpells(activeSnapshot.spells, context);
+  const spellRows = resolveSpells(getSnapshotForContext(context).spells, context);
   return spellRows.filter((spell) => {
     if (query && !spell.name.toLowerCase().includes(query) && !spell.key.toLowerCase().includes(query)) {
       return false;
@@ -244,13 +213,13 @@ export function getSpells(filters: SpellFilters = {}, context: DataQueryContext 
 }
 
 export function getSpellById(id: string, context: DataQueryContext = {}): SpellDefinition | undefined {
-  return resolveSpells(activeSnapshot.spells, context).find((entry) => entry.id === id);
+  return resolveSpells(getSnapshotForContext(context).spells, context).find((entry) => entry.id === id);
 }
 
 export function getEquipmentCatalog(filters: EquipmentFilters = {}, context: DataQueryContext = {}): EquipmentDefinition[] {
   const query = filters.query?.toLowerCase().trim();
   const rarity = filters.rarity?.toLowerCase().trim();
-  const equipmentRows = resolveEquipment(activeSnapshot.equipment, context);
+  const equipmentRows = resolveEquipment(getSnapshotForContext(context).equipment, context);
   return equipmentRows.filter((item) => {
     if (query && !item.name.toLowerCase().includes(query) && !item.key.toLowerCase().includes(query)) {
       return false;
@@ -287,44 +256,8 @@ export function getAppliedCharacterRules(draft: CharacterDraft, context: DataQue
     provider: context.provider ?? draft.provider,
     rulesMode: context.rulesMode ?? draft.rulesMode,
   };
-  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
-  const subclassDef =
-    classDef && draft.subclassSelection.subclassId
-      ? getSubclassesForClass(classDef.id, {
-          ...effectiveContext,
-          classLevel: draft.classSelection.level,
-        }).find((entry) => entry.id === draft.subclassSelection.subclassId)
-      : undefined;
-  const speciesDef = draft.speciesSelection.speciesId
-    ? getSpecies(effectiveContext).find((entry) => entry.id === draft.speciesSelection.speciesId)
-    : undefined;
-  const backgroundDef = draft.backgroundSelection.backgroundId
-    ? getBackgrounds(effectiveContext).find((entry) => entry.id === draft.backgroundSelection.backgroundId)
-    : undefined;
-  const featCatalog = getFeats(effectiveContext);
-  const selectedSpells = draft.spellSelection.selectedSpellIds
-    .map((idValue) => getSpellById(idValue, effectiveContext))
-    .filter((entry): entry is SpellDefinition => Boolean(entry));
-  const levelFeatures = getFeaturesForClassLevel(
-    draft.classSelection.classId,
-    draft.subclassSelection.subclassId,
-    draft.classSelection.level,
-    {
-      ...effectiveContext,
-      classLevel: draft.classSelection.level,
-    },
-  );
-
-  return resolveAppliedCharacterRules({
-    draft,
-    classDef,
-    subclassDef,
-    speciesDef,
-    backgroundDef,
-    featCatalog,
-    selectedSpells,
-    levelFeatures,
-  });
+  const snapshot = getSnapshotForContext(effectiveContext);
+  return resolveCharacterEngineState(snapshot, draft, effectiveContext).appliedRules;
 }
 
 export function getDerivedCharacterStats(draft: CharacterDraft, context: DataQueryContext = {}): DerivedCharacterStats {
@@ -332,26 +265,8 @@ export function getDerivedCharacterStats(draft: CharacterDraft, context: DataQue
     provider: context.provider ?? draft.provider,
     rulesMode: context.rulesMode ?? draft.rulesMode,
   };
-  const appliedRules = getAppliedCharacterRules(draft, effectiveContext);
-  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
-  const subclassDef =
-    classDef && draft.subclassSelection.subclassId
-      ? getSubclassesForClass(classDef.id, {
-          ...effectiveContext,
-          classLevel: draft.classSelection.level,
-        }).find((entry) => entry.id === draft.subclassSelection.subclassId)
-      : undefined;
-  const speciesDef = draft.speciesSelection.speciesId
-    ? getSpecies(effectiveContext).find((entry) => entry.id === draft.speciesSelection.speciesId)
-    : undefined;
-  const equipmentCatalog = getEquipmentCatalog({}, effectiveContext);
-
-  return resolveDerivedStats(draft, appliedRules, {
-    classDef,
-    subclassDef,
-    speciesDef,
-    equipmentCatalog,
-  });
+  const snapshot = getSnapshotForContext(effectiveContext);
+  return resolveCharacterEngineState(snapshot, draft, effectiveContext).derivedStats;
 }
 
 export function getCharacterProgression(draft: CharacterDraft, context: DataQueryContext = {}): LevelProgressionResult {
@@ -359,29 +274,8 @@ export function getCharacterProgression(draft: CharacterDraft, context: DataQuer
     provider: context.provider ?? draft.provider,
     rulesMode: context.rulesMode ?? draft.rulesMode,
   };
-  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
-  const availableSubclasses = classDef
-    ? getSubclassesForClass(classDef.id, {
-        ...effectiveContext,
-        classLevel: draft.classSelection.level,
-      })
-    : [];
-  const subclassDef =
-    classDef && draft.subclassSelection.subclassId
-      ? availableSubclasses.find((entry) => entry.id === draft.subclassSelection.subclassId)
-      : undefined;
-  const appliedRules = getAppliedCharacterRules(draft, effectiveContext);
-  const derivedStats = getDerivedCharacterStats(draft, effectiveContext);
-  const selectedSpells = draft.spellSelection.selectedSpellIds
-    .map((idValue) => getSpellById(idValue, effectiveContext))
-    .filter((entry): entry is SpellDefinition => Boolean(entry));
-
-  return resolveLevelProgression(draft, appliedRules, derivedStats, {
-    classDef,
-    subclassDef,
-    availableSubclasses,
-    selectedSpells,
-  });
+  const snapshot = getSnapshotForContext(effectiveContext);
+  return resolveCharacterEngineState(snapshot, draft, effectiveContext).progression;
 }
 
 export function getCharacterActionResources(draft: CharacterDraft, context: DataQueryContext = {}): CharacterActionResourceState {
@@ -389,103 +283,24 @@ export function getCharacterActionResources(draft: CharacterDraft, context: Data
     provider: context.provider ?? draft.provider,
     rulesMode: context.rulesMode ?? draft.rulesMode,
   };
-  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
-  const availableSubclasses = classDef
-    ? getSubclassesForClass(classDef.id, {
-        ...effectiveContext,
-        classLevel: draft.classSelection.level,
-      })
-    : [];
-  const subclassDef =
-    classDef && draft.subclassSelection.subclassId
-      ? availableSubclasses.find((entry) => entry.id === draft.subclassSelection.subclassId)
-      : undefined;
-  const speciesDef = draft.speciesSelection.speciesId
-    ? getSpecies(effectiveContext).find((entry) => entry.id === draft.speciesSelection.speciesId)
-    : undefined;
-  const backgroundDef = draft.backgroundSelection.backgroundId
-    ? getBackgrounds(effectiveContext).find((entry) => entry.id === draft.backgroundSelection.backgroundId)
-    : undefined;
-  const featCatalog = getFeats(effectiveContext);
-  const selectedFeats = draft.featIds
-    .map((idValue) => featCatalog.find((entry) => entry.id === idValue))
-    .filter((entry): entry is FeatDefinition => Boolean(entry));
-  const selectedSpells = draft.spellSelection.selectedSpellIds
-    .map((idValue) => getSpellById(idValue, effectiveContext))
-    .filter((entry): entry is SpellDefinition => Boolean(entry));
-  const equipmentCatalog = getEquipmentCatalog({}, effectiveContext);
-  const appliedRules = getAppliedCharacterRules(draft, effectiveContext);
-  const derivedStats = getDerivedCharacterStats(draft, effectiveContext);
-  const progression = resolveLevelProgression(draft, appliedRules, derivedStats, {
-    classDef,
-    subclassDef,
-    availableSubclasses,
-    selectedSpells,
-  });
-
-  return resolveCharacterActionResources(draft, appliedRules, derivedStats, progression, {
-    classDef,
-    subclassDef,
-    speciesDef,
-    backgroundDef,
-    selectedFeats,
-    selectedSpells,
-    equipmentCatalog,
-  });
-}
-
-function buildWizardResolverInput(draft: CharacterDraft, context: DataQueryContext = {}) {
-  const effectiveContext: DataQueryContext = {
-    provider: context.provider ?? draft.provider,
-    rulesMode: context.rulesMode ?? draft.rulesMode,
-  };
-  const classDef = draft.classSelection.classId ? getClassById(draft.classSelection.classId, effectiveContext) : undefined;
-  const availableSubclasses = classDef
-    ? getSubclassesForClass(classDef.id, {
-      ...effectiveContext,
-      classLevel: draft.classSelection.level,
-    })
-    : [];
-  const subclassDef =
-    classDef && draft.subclassSelection.subclassId
-      ? availableSubclasses.find((entry) => entry.id === draft.subclassSelection.subclassId)
-      : undefined;
-  const backgroundDef = draft.backgroundSelection.backgroundId
-    ? getBackgrounds(effectiveContext).find((entry) => entry.id === draft.backgroundSelection.backgroundId)
-    : undefined;
-  const feats = getFeats(effectiveContext);
-  const spells = getSpells({}, effectiveContext);
-  const appliedRules = getAppliedCharacterRules(draft, effectiveContext);
-  const derivedStats = getDerivedCharacterStats(draft, effectiveContext);
-  const progression = resolveLevelProgression(draft, appliedRules, derivedStats, {
-    classDef,
-    subclassDef,
-    availableSubclasses,
-    selectedSpells: draft.spellSelection.selectedSpellIds
-      .map((idValue) => spells.find((entry) => entry.id === idValue))
-      .filter((entry): entry is SpellDefinition => Boolean(entry)),
-  });
-
-  return {
-    draft,
-    rulesMode: effectiveContext.rulesMode ?? draft.rulesMode,
-    classDef,
-    subclassDef,
-    backgroundDef,
-    feats,
-    spells,
-    appliedRules,
-    progression,
-    derivedStats,
-  };
+  const snapshot = getSnapshotForContext(effectiveContext);
+  return resolveCharacterEngineState(snapshot, draft, effectiveContext).actionResources;
 }
 
 export function resolveFeatEligibilityForBuilder(draft: CharacterDraft, context: DataQueryContext = {}): FeatChoiceContext[] {
-  return resolveFeatEligibility(buildWizardResolverInput(draft, context));
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  return resolveCharacterWizardState(snapshot, draft, context).featContexts;
 }
 
 export function resolveSpellEligibilityForBuilder(draft: CharacterDraft, context: DataQueryContext = {}): SpellChoiceContext[] {
-  return resolveSpellEligibility(buildWizardResolverInput(draft, context));
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  return resolveCharacterWizardState(snapshot, draft, context).spellContexts;
 }
 
 export function getEligibleFeatsForChoice(
@@ -510,24 +325,33 @@ export function getClassSkillChoiceStateForBuilder(
   draft: CharacterDraft,
   context: DataQueryContext = {},
 ): ClassSkillChoiceState {
-  const resolved = buildWizardResolverInput(draft, context);
-  return resolveClassSkillChoiceState(draft, resolved.appliedRules);
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  return resolveCharacterWizardState(snapshot, draft, context).classSkillChoiceState;
 }
 
 export function getSkillChoiceStatesForBuilder(
   draft: CharacterDraft,
   context: DataQueryContext = {},
 ): SkillChoiceState[] {
-  const resolved = buildWizardResolverInput(draft, context);
-  return resolveSkillChoiceStates(draft, resolved.appliedRules);
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  return resolveCharacterWizardState(snapshot, draft, context).skillChoiceStates;
 }
 
 export function getStartingEquipmentChoicesForBuilder(
   draft: CharacterDraft,
   context: DataQueryContext = {},
 ): StartingEquipmentChoiceContext[] {
-  const resolved = buildWizardResolverInput(draft, context);
-  return resolveStartingEquipmentChoices(resolved);
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  return resolveCharacterWizardState(snapshot, draft, context).equipmentChoices;
 }
 
 export function applyStartingEquipmentChoiceForBuilder(
@@ -536,8 +360,11 @@ export function applyStartingEquipmentChoiceForBuilder(
   optionId: string,
   context: DataQueryContext = {},
 ): CharacterDraft {
-  const resolved = buildWizardResolverInput(draft, context);
-  const equipmentChoices = resolveStartingEquipmentChoices(resolved);
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  const equipmentChoices = resolveCharacterWizardState(snapshot, draft, context).equipmentChoices;
   const choice = equipmentChoices.find((entry) => entry.id === equipmentContextId);
   if (!choice) {
     return draft;
@@ -546,7 +373,10 @@ export function applyStartingEquipmentChoiceForBuilder(
   if (!option) {
     return draft;
   }
-  const equipmentCatalog = getEquipmentCatalog({}, context);
+  const equipmentCatalog = getEquipmentCatalog({}, {
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
   return {
     ...draft,
     inventory: applyStartingEquipmentChoiceToInventory(draft.inventory, equipmentContextId, option, equipmentCatalog),
@@ -557,8 +387,11 @@ export function getRequiredBuilderChoices(
   draft: CharacterDraft,
   context: DataQueryContext = {},
 ) {
-  const resolved = buildWizardResolverInput(draft, context);
-  return resolveRequiredBuilderChoices(resolved.appliedRules, resolved.progression);
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  return resolveCharacterWizardState(snapshot, draft, context).requiredChoices;
 }
 
 export function validateBuilderStep(
@@ -566,37 +399,33 @@ export function validateBuilderStep(
   stepId: WizardStepId,
   context: DataQueryContext = {},
 ): WizardStepValidation {
-  const resolved = buildWizardResolverInput(draft, context);
-  const featContexts = resolveFeatEligibility(resolved);
-  const spellContexts = resolveSpellEligibility(resolved);
-  const skillChoices = resolveSkillChoiceStates(draft, resolved.appliedRules);
-  const equipmentChoices = resolveStartingEquipmentChoices(resolved);
-  return resolveBuilderStepValidation(stepId, resolved, featContexts, spellContexts, skillChoices, equipmentChoices);
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  return resolveCharacterWizardState(snapshot, draft, context).validations[stepId];
 }
 
 export function getBuilderStepValidations(
   draft: CharacterDraft,
   context: DataQueryContext = {},
 ): Record<WizardStepId, WizardStepValidation> {
-  const resolved = buildWizardResolverInput(draft, context);
-  const featContexts = resolveFeatEligibility(resolved);
-  const spellContexts = resolveSpellEligibility(resolved);
-  const skillChoices = resolveSkillChoiceStates(draft, resolved.appliedRules);
-  const equipmentChoices = resolveStartingEquipmentChoices(resolved);
-  const stepIds: WizardStepId[] = ["class", "species", "background", "abilities", "feats", "skills", "spells", "equipment", "review"];
-  const output = {} as Record<WizardStepId, WizardStepValidation>;
-  for (const stepId of stepIds) {
-    output[stepId] = resolveBuilderStepValidation(stepId, resolved, featContexts, spellContexts, skillChoices, equipmentChoices);
-  }
-  return output;
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  return resolveCharacterWizardState(snapshot, draft, context).validations;
 }
 
 export function isCharacterCreationComplete(
   draft: CharacterDraft,
   context: DataQueryContext = {},
 ) {
-  const validations = Object.values(getBuilderStepValidations(draft, context));
-  return resolveCharacterCreationComplete(validations);
+  const snapshot = getSnapshotForContext({
+    provider: context.provider ?? draft.provider,
+    rulesMode: context.rulesMode ?? draft.rulesMode,
+  });
+  return resolveCharacterWizardState(snapshot, draft, context).completion;
 }
 
 export { getConvertedBackgroundBenefits, getConvertedSpeciesTraits };
@@ -606,5 +435,6 @@ export function getContentMeta() {
     ...fullSnapshot.meta,
     activeSourceKeys: getActiveSourceKeys(),
     totalSources: fullSnapshot.sources.length,
+    activeSourceCount: activeCoreRegistry.selectedSnapshot.sources.length,
   };
 }

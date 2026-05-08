@@ -2,35 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FormField, inputClassName } from "../components/ui/FormField";
 import { Panel } from "../components/ui/Panel";
+import type { AppliedCharacterRules } from "../domain/appliedRules";
 import type { CharacterDraft } from "../domain/character";
+import type { DerivedCharacterStats } from "../domain/derivedStats";
+import type { LevelProgressionResult } from "../domain/progression";
+import type { BackgroundDefinition, ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../domain/content";
 import { AbilityScoreEditor } from "../features/character/components/AbilityScoreEditor";
 import { InventoryEditor } from "../features/character/components/InventoryEditor";
 import { FeatChoiceSection } from "../features/character-builder/wizard/components/FeatChoiceSection";
 import { SpellChoiceSection } from "../features/character-builder/wizard/components/SpellChoiceSection";
 import { WizardStepRail } from "../features/character-builder/wizard/components/WizardStepRail";
-import { getVisibleWizardSteps } from "../features/character-builder/wizard/stepDefinitions";
-import type { WizardStepId, WizardStepState } from "../domain/builderWizard";
-import {
-  applyStartingEquipmentChoiceForBuilder,
-  getAppliedCharacterRules,
-  getBackgrounds,
-  getBuilderStepValidations,
-  getCharacterProgression,
-  getClassById,
-  getClasses,
-  getDerivedCharacterStats,
-  getEquipmentCatalog,
-  getFeats,
-  getRequiredBuilderChoices,
-  getSkillChoiceStatesForBuilder,
-  getSpecies,
-  getStartingEquipmentChoicesForBuilder,
-  getSpellById,
-  getSubclassesForClass,
-  isCharacterCreationComplete,
-  resolveFeatEligibilityForBuilder,
-  resolveSpellEligibilityForBuilder,
-} from "../services/data/adapter";
+import type { SkillChoiceState, StartingEquipmentChoiceContext, WizardCompletionState, WizardStepId, WizardStepState, WizardStepValidation } from "../domain/builderWizard";
+import { useWizardV2State } from "../features/wizardV2";
+import { applySpellSelectionToDraft, useSpellManagement } from "../features/spellManagement";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
 
@@ -41,28 +25,25 @@ type AbilityMethod = (typeof ABILITY_METHODS)[number];
 
 const STEP_IDS: WizardStepId[] = ["class", "species", "background", "abilities", "feats", "skills", "spells", "equipment", "review"];
 
+type BuilderRequiredChoice = {
+  id: string;
+  kind: "origin-feat" | "ability-score-choice" | "skill-choice" | "subclass-selection" | "asi-or-feat" | "spell-selection" | "feature-choice";
+  description: string;
+  source: string;
+  required: boolean;
+};
+
 export function CharacterBuilderPage() {
   const generation = useSourceStore((state) => state.generation);
+  const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const characters = useCharacterStore((state) => state.characters);
   const updateCharacter = useCharacterStore((state) => state.updateCharacter);
   const draft = useMemo(() => characters.find((entry) => entry.id === id), [characters, id]);
   const [abilityMethod, setAbilityMethod] = useState<AbilityMethod>("manual");
-
-  const dataContext = useMemo(
-    () => ({
-      provider: draft?.provider ?? "mpmb",
-      rulesMode: draft?.rulesMode ?? "2024",
-    }),
-    [draft?.provider, draft?.rulesMode],
-  );
-
-  const classes = useMemo(() => getClasses(dataContext), [dataContext, generation]);
-  const speciesOptions = useMemo(() => getSpecies(dataContext), [dataContext, generation]);
-  const backgrounds = useMemo(() => getBackgrounds(dataContext), [dataContext, generation]);
-  const feats = useMemo(() => getFeats(dataContext), [dataContext, generation]);
-  const equipmentCatalog = useMemo(() => getEquipmentCatalog({}, dataContext), [dataContext, generation]);
+  const wizardView = useWizardV2State(draft, activeSourceKeys, generation);
+  const spellManagementView = useSpellManagement(draft, activeSourceKeys, generation);
 
   if (!id || !draft) {
     return (
@@ -75,39 +56,37 @@ export function CharacterBuilderPage() {
     );
   }
 
-  const selectedClass = draft.classSelection.classId ? getClassById(draft.classSelection.classId, dataContext) : undefined;
-  const subclassOptions = selectedClass
-    ? getSubclassesForClass(selectedClass.id, {
-      ...dataContext,
-      classLevel: draft.classSelection.level,
-    })
-    : [];
-  const selectedSubclass = subclassOptions.find((entry) => entry.id === draft.subclassSelection.subclassId);
-  const selectedSpecies = draft.speciesSelection.speciesId ? speciesOptions.find((entry) => entry.id === draft.speciesSelection.speciesId) : undefined;
-  const selectedBackground = draft.backgroundSelection.backgroundId ? backgrounds.find((entry) => entry.id === draft.backgroundSelection.backgroundId) : undefined;
-  const selectedFeatEntries = draft.featIds.map((featId) => feats.find((entry) => entry.id === featId)).filter(isDefined);
-  const selectedSpellEntries = draft.spellSelection.selectedSpellIds.map((spellId) => getSpellById(spellId, dataContext)).filter(isDefined);
+  if (!wizardView || !spellManagementView) {
+    return (
+      <Panel title="V2 state unavailable">
+        <p className="text-sm text-slate-600">The V2 builder state could not be resolved for this character.</p>
+      </Panel>
+    );
+  }
 
-  const appliedRules = getAppliedCharacterRules(draft, dataContext);
-  const derivedStats = getDerivedCharacterStats(draft, dataContext);
-  const progression = getCharacterProgression(draft, dataContext);
-  const featChoiceContexts = resolveFeatEligibilityForBuilder(draft, dataContext);
-  const spellChoiceContexts = resolveSpellEligibilityForBuilder(draft, dataContext);
-  const skillChoiceStates = getSkillChoiceStatesForBuilder(draft, dataContext);
-  const startingEquipmentChoices = getStartingEquipmentChoicesForBuilder(draft, dataContext);
-  const requiredChoices = getRequiredBuilderChoices(draft, dataContext);
-  const validations = getBuilderStepValidations(draft, dataContext);
-  const completion = isCharacterCreationComplete(draft, dataContext);
+  const classes = wizardView.classes;
+  const speciesOptions = wizardView.speciesOptions;
+  const backgrounds = wizardView.backgrounds;
+  const equipmentCatalog = wizardView.engine.equipmentCatalog;
+  const selectedClass = wizardView.selectedClass;
+  const subclassOptions = wizardView.subclassOptions;
+  const selectedSubclass = wizardView.selectedSubclass;
+  const selectedSpecies = wizardView.selectedSpecies;
+  const selectedBackground = wizardView.selectedBackground;
+  const selectedFeatEntries = wizardView.engine.selectedFeats;
+  const selectedSpellEntries = spellManagementView.spellManagement.selectedSpells;
 
-  const definitionContext = useMemo(
-    () => ({
-      validations,
-      hasFeatChoices: featChoiceContexts.length > 0,
-      hasSpellChoices: spellChoiceContexts.length > 0,
-    }),
-    [featChoiceContexts.length, spellChoiceContexts.length, validations],
-  );
-  const visibleSteps = useMemo(() => getVisibleWizardSteps(definitionContext), [definitionContext]);
+  const appliedRules = wizardView.engine.appliedRules;
+  const derivedStats = wizardView.engine.derivedStats;
+  const progression = wizardView.engine.progression;
+  const featChoiceContexts = wizardView.wizard.featContexts;
+  const spellChoiceContexts = spellManagementView.spellManagement.contexts;
+  const skillChoiceStates = wizardView.wizard.skillChoiceStates;
+  const startingEquipmentChoices = wizardView.wizard.equipmentChoices;
+  const requiredChoices = wizardView.wizard.requiredChoices;
+  const validations = wizardView.wizard.validations;
+  const completion = wizardView.wizard.completion;
+  const visibleSteps = wizardView.wizardUi.steps;
 
   const [currentStepId, setCurrentStepId] = useState<WizardStepId>(() => {
     const key = `${WIZARD_STEP_STORAGE_PREFIX}${draft.id}`;
@@ -135,15 +114,29 @@ export function CharacterBuilderPage() {
 
   const currentStepIndex = Math.max(0, visibleSteps.findIndex((step) => step.id === currentStepId));
   const currentStepDefinition = visibleSteps[currentStepIndex];
-  const currentValidation = validations[currentStepId];
+  const currentValidation = validations[currentStepId] ?? {
+    stepId: currentStepId,
+    completed: false,
+    blocked: false,
+    pending: false,
+    errors: [],
+    warnings: [],
+  };
   const stepStates: WizardStepState[] = visibleSteps.map((step) => {
-    const validation = validations[step.id];
+    const validation = validations[step.id] ?? {
+      stepId: step.id,
+      completed: false,
+      blocked: false,
+      pending: false,
+      errors: [],
+      warnings: [],
+    };
     return {
       id: step.id,
       title: step.title,
       order: step.order,
       visible: true,
-      substeps: [...step.substeps],
+      substeps: [],
       imageRefs: [...step.imageRefs],
       validation,
       status:
@@ -204,6 +197,7 @@ export function CharacterBuilderPage() {
           <ClassStep
             classes={classes}
             draft={draft}
+            resolveSubclassesForClass={wizardView.resolveSubclassesForClass}
             subclassOptions={subclassOptions}
             updateCharacter={updateCharacter}
           />
@@ -277,30 +271,8 @@ export function CharacterBuilderPage() {
           <SpellChoiceSection
             contexts={spellChoiceContexts}
             onToggleSpell={(contextId, spellId, selected) => {
-              const choiceContext = spellChoiceContexts.find((entry) => entry.id === contextId);
-              if (!choiceContext) {
-                return;
-              }
               updateCharacter(draft.id, (current) => {
-                const scopedSelectedForContext = getScopedSpellSelectionsForContext(current.featureChoices, contextId);
-                if (selected) {
-                  const contextSelectedCount = scopedSelectedForContext.length;
-                  const maxSelections = choiceContext.maxSelections ?? choiceContext.requiredCount;
-                  if (maxSelections > 0 && contextSelectedCount >= maxSelections && !scopedSelectedForContext.includes(spellId)) {
-                    return current;
-                  }
-                }
-                const nextFeatureChoices = setScopedSpellSelection(current.featureChoices, contextId, spellId, selected);
-                const contextEligibleSpellIds = new Set(spellChoiceContexts.flatMap((entry) => entry.eligibleSpells.map((spell) => spell.id)));
-                const retainedLegacy = current.spellSelection.selectedSpellIds.filter((idValue) => !contextEligibleSpellIds.has(idValue));
-                const scopedSelected = collectScopedSelectedSpellIds(nextFeatureChoices, spellChoiceContexts.map((entry) => entry.id));
-                return {
-                  ...current,
-                  featureChoices: nextFeatureChoices,
-                  spellSelection: {
-                    selectedSpellIds: Array.from(new Set([...retainedLegacy, ...scopedSelected])),
-                  },
-                };
+                return applySpellSelectionToDraft(current, spellManagementView.spellManagement, contextId, spellId, selected);
               });
             }}
           />
@@ -308,6 +280,7 @@ export function CharacterBuilderPage() {
 
         {currentStepId === "equipment" ? (
           <EquipmentStep
+            applyStartingEquipmentChoiceToDraft={wizardView.applyStartingEquipmentChoiceToDraft}
             catalog={equipmentCatalog}
             draft={draft}
             startingEquipmentChoices={startingEquipmentChoices}
@@ -383,12 +356,14 @@ export function CharacterBuilderPage() {
 function ClassStep({
   draft,
   classes,
+  resolveSubclassesForClass,
   subclassOptions,
   updateCharacter,
 }: {
   draft: CharacterDraft;
-  classes: ReturnType<typeof getClasses>;
-  subclassOptions: ReturnType<typeof getSubclassesForClass>;
+  classes: ClassDefinition[];
+  resolveSubclassesForClass: (classId: string, classLevel?: number) => SubclassDefinition[];
+  subclassOptions: SubclassDefinition[];
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
 }) {
   return (
@@ -493,11 +468,7 @@ function ClassStep({
             updateCharacter(draft.id, (current) => {
               const classId = event.target.value || undefined;
               const subclasses = classId
-                ? getSubclassesForClass(classId, {
-                  provider: current.provider,
-                  rulesMode: current.rulesMode,
-                  classLevel: current.classSelection.level,
-                })
+                ? resolveSubclassesForClass(classId, current.classSelection.level)
                 : [];
               const keepsCurrentSubclass = subclasses.some((entry) => entry.id === current.subclassSelection.subclassId);
               return {
@@ -551,8 +522,8 @@ function SpeciesStep({
   updateCharacter,
 }: {
   draft: CharacterDraft;
-  speciesOptions: ReturnType<typeof getSpecies>;
-  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
+  speciesOptions: SpeciesDefinition[];
+  appliedRules: AppliedCharacterRules;
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
 }) {
   return (
@@ -605,8 +576,8 @@ function BackgroundStep({
   updateCharacter,
 }: {
   draft: CharacterDraft;
-  backgrounds: ReturnType<typeof getBackgrounds>;
-  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
+  backgrounds: BackgroundDefinition[];
+  appliedRules: AppliedCharacterRules;
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
 }) {
   const selectedBackground = draft.backgroundSelection.backgroundId
@@ -689,8 +660,8 @@ function AbilitiesStep({
   draft: CharacterDraft;
   abilityMethod: AbilityMethod;
   setAbilityMethod: (method: AbilityMethod) => void;
-  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
-  derivedStats: ReturnType<typeof getDerivedCharacterStats>;
+  appliedRules: AppliedCharacterRules;
+  derivedStats: DerivedCharacterStats;
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
 }) {
   const originModes = appliedRules.abilityScoreAdjustments.availableOriginModes ?? [];
@@ -762,7 +733,7 @@ function AbilitiesStep({
               const usedByOther = appliedRules.abilityScoreAdjustments.choiceStates
                 .filter((entry) => entry.id !== choice.id && entry.source === choice.source)
                 .map((entry) => entry.selectedAbility)
-                .filter(isDefined);
+                .filter((entry): entry is keyof CharacterDraft["abilityScores"] => entry !== undefined);
               return (
                 <div key={choice.id} className="rounded border border-slate-200 p-2">
                   <p className="text-xs font-medium text-slate-700">
@@ -838,9 +809,9 @@ function SkillsStep({
   updateCharacter,
 }: {
   draft: CharacterDraft;
-  skillChoiceStates: ReturnType<typeof getSkillChoiceStatesForBuilder>;
-  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
-  derivedStats: ReturnType<typeof getDerivedCharacterStats>;
+  skillChoiceStates: SkillChoiceState[];
+  appliedRules: AppliedCharacterRules;
+  derivedStats: DerivedCharacterStats;
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
 }) {
   return (
@@ -917,11 +888,13 @@ function EquipmentStep({
   draft,
   catalog,
   startingEquipmentChoices,
+  applyStartingEquipmentChoiceToDraft,
   updateCharacter,
 }: {
   draft: CharacterDraft;
-  catalog: ReturnType<typeof getEquipmentCatalog>;
-  startingEquipmentChoices: ReturnType<typeof getStartingEquipmentChoicesForBuilder>;
+  catalog: EquipmentDefinition[];
+  startingEquipmentChoices: StartingEquipmentChoiceContext[];
+  applyStartingEquipmentChoiceToDraft: (draft: CharacterDraft, contextId: string, selectedOptionId: string) => CharacterDraft;
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
 }) {
   return (
@@ -965,11 +938,7 @@ function EquipmentStep({
                   className="mt-2 rounded bg-slate-800 px-2 py-1 text-xs text-white disabled:bg-slate-300"
                   disabled={!selectedOptionId}
                   onClick={() => {
-                    const selected = context.options.find((entry) => entry.id === selectedOptionId);
-                    if (!selected) {
-                      return;
-                    }
-                    updateCharacter(draft.id, (current) => applyStartingEquipmentChoiceForBuilder(current, context.id, selected.id));
+                    updateCharacter(draft.id, (current) => applyStartingEquipmentChoiceToDraft(current, context.id, selectedOptionId));
                   }}
                   type="button"
                 >
@@ -1026,11 +995,11 @@ function ReviewStep({
   selectedBackground?: string;
   selectedFeats: string[];
   selectedSpells: string[];
-  appliedRules: ReturnType<typeof getAppliedCharacterRules>;
-  progression: ReturnType<typeof getCharacterProgression>;
-  requiredChoices: ReturnType<typeof getRequiredBuilderChoices>;
-  validations: ReturnType<typeof getBuilderStepValidations>;
-  completion: ReturnType<typeof isCharacterCreationComplete>;
+  appliedRules: AppliedCharacterRules;
+  progression: LevelProgressionResult;
+  requiredChoices: BuilderRequiredChoice[];
+  validations: Record<WizardStepId, WizardStepValidation>;
+  completion: WizardCompletionState;
   setCurrentStepId: (stepId: WizardStepId) => void;
 }) {
   return (
@@ -1148,8 +1117,8 @@ function ReviewStep({
 }
 
 function findFirstActionableStep(
-  steps: ReturnType<typeof getVisibleWizardSteps>,
-  validations: ReturnType<typeof getBuilderStepValidations>,
+  steps: Array<{ id: WizardStepId; completed: boolean }>,
+  validations: Record<WizardStepId, WizardStepValidation>,
 ): WizardStepId {
   for (const step of steps) {
     const validation = validations[step.id];
@@ -1189,51 +1158,9 @@ function getFeatureChoiceValue(existing: Array<{ featureId: string; optionId: st
   return existing.find((entry) => entry.featureId === featureId)?.optionId;
 }
 
-function spellChoiceFeatureId(contextId: string, spellId: string): string {
-  return `spell-choice:${contextId}:${spellId}`;
-}
-
-function getScopedSpellSelectionsForContext(
-  existing: Array<{ featureId: string; optionId: string }>,
-  contextId: string,
-): string[] {
-  const prefix = `spell-choice:${contextId}:`;
-  const selected = existing
-    .filter((entry) => entry.featureId.startsWith(prefix))
-    .map((entry) => entry.featureId.slice(prefix.length))
-    .filter(Boolean);
-  return Array.from(new Set(selected));
-}
-
-function setScopedSpellSelection(
-  existing: Array<{ featureId: string; optionId: string }>,
-  contextId: string,
-  spellId: string,
-  selected: boolean,
-): Array<{ featureId: string; optionId: string }> {
-  return setFeatureChoice(existing, spellChoiceFeatureId(contextId, spellId), selected ? "selected" : undefined);
-}
-
-function collectScopedSelectedSpellIds(
-  existing: Array<{ featureId: string; optionId: string }>,
-  contextIds: string[],
-): string[] {
-  const selected = new Set<string>();
-  for (const contextId of contextIds) {
-    for (const spellId of getScopedSpellSelectionsForContext(existing, contextId)) {
-      selected.add(spellId);
-    }
-  }
-  return Array.from(selected);
-}
-
 function clampLevel(value: number): number {
   if (!Number.isFinite(value)) {
     return 1;
   }
   return Math.min(20, Math.max(1, Math.round(value)));
-}
-
-function isDefined<T>(value: T | undefined): value is T {
-  return value !== undefined;
 }

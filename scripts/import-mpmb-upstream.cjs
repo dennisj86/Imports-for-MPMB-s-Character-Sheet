@@ -6,8 +6,8 @@ const { executeSections, normalizeCapturedRegistries } = require("./mpmb-pdf/cap
 
 const repoRoot = path.resolve(__dirname, "..");
 
-const defaultUpstreamPath2014 = "/home/dennis/IdeaProjects/MPMBs-Character-Record-Sheet";
-const defaultUpstreamPath2024 = "/home/dennis/IdeaProjects/2024_MPMBs-Character-Record-Sheet";
+const defaultUpstreamPath2014 = path.join(repoRoot, "docs", "Sheet skripte");
+const defaultUpstreamPath2024 = path.join(repoRoot, "docs", "Sheet skripte 2024");
 
 const presetConfigs = {
   "mpmb-upstream-2014": {
