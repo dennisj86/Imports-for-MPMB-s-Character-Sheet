@@ -1,17 +1,27 @@
 import type { CharacterActionResourceState, ResourceRechargeType } from "../../domain/actionResources";
-import type { ActiveConditionState, CharacterPlayState, ConcentrationState } from "../../domain/playState";
+import type { ActiveConditionState, CharacterPlayState, ConcentrationState, HitDicePool } from "../../domain/playState";
 import { createDefaultCharacterPlayState, PLAY_STATE_SCHEMA_VERSION } from "../../domain/playState";
 import type { SpellDefinition } from "../../domain/content";
 import type { RollRequest, RollResult } from "../../domain/rolls";
+import { rollDiceExpression } from "../../features/dice";
 import type { CharacterEngineState } from "../characterEngine";
 import { createRollPlayEvent, executeRollRequest } from "../rolls";
 import { findConditionDefinition, normalizeActiveConditionState } from "./conditionDefinitions";
+import {
+  deriveHitDicePoolsFromEngine,
+  hitDiceStatesEqual,
+  normalizeHitDiceState,
+  recoverHitDiceOnLongRest,
+  type HitDieSpendResult,
+} from "./hitDice";
 import { createPlayEvent } from "./playEventLog";
 import { reduceCharacterPlayState } from "./playStateReducer";
 import { resolveRestRecoveryPlan, type RestRecoveryPlan } from "./restResolver";
 
 export interface PlayStateRuntimeContext {
   maxHp: number;
+  constitutionModifier: number;
+  hitDicePools: HitDicePool[];
   resourceMaxByKey: Record<string, number>;
   resourceRechargeByKey: Record<string, ResourceRechargeType>;
   resourceNameByKey: Record<string, string>;
@@ -77,8 +87,11 @@ function normalizeCounterMap(input: Record<string, number>): Record<string, numb
 
 function normalizePlayStateCounters(
   playState: CharacterPlayState,
+  sourceHitDicePools?: HitDicePool[],
+  now?: string,
 ): CharacterPlayState {
   const activeConditions = normalizeActiveConditions(playState.activeConditions, playState.updatedAt);
+  const hitDice = normalizeHitDiceState(playState.hitDice, sourceHitDicePools, now ?? playState.updatedAt);
   return {
     ...playState,
     currentHp: clampNonNegativeInteger(playState.currentHp),
@@ -91,6 +104,7 @@ function normalizePlayStateCounters(
     },
     spentResources: normalizeCounterMap(playState.spentResources),
     spellSlots: normalizeCounterMap(playState.spellSlots),
+    hitDice,
     activeConditions,
   };
 }
@@ -136,13 +150,18 @@ export function ensureCharacterPlayState(
   characterId: string,
   options: {
     maxHp?: number;
+    hitDicePools?: HitDicePool[];
     now?: string;
   } = {},
 ): CharacterPlayState {
   if (!playState || playState.schemaVersion !== PLAY_STATE_SCHEMA_VERSION || playState.characterId !== characterId) {
-    return createDefaultCharacterPlayState(characterId, options);
+    return {
+      ...createDefaultCharacterPlayState(characterId, options),
+      hitDice: normalizeHitDiceState(undefined, options.hitDicePools, options.now),
+    };
   }
-  const normalized = normalizePlayStateCounters(playState);
+  const normalized = normalizePlayStateCounters(playState, options.hitDicePools, options.now);
+  const originalHitDice = playState.hitDice ?? { pools: [] };
   const unchanged =
     normalized.currentHp === playState.currentHp &&
     normalized.tempHp === playState.tempHp &&
@@ -151,6 +170,7 @@ export function ensureCharacterPlayState(
     normalized.deathSaves.stable === playState.deathSaves.stable &&
     normalized.deathSaves.dead === playState.deathSaves.dead &&
     activeConditionsEqual(normalized.activeConditions, playState.activeConditions) &&
+    hitDiceStatesEqual(normalized.hitDice, originalHitDice) &&
     Object.keys(normalized.spentResources).every((key) => normalized.spentResources[key] === playState.spentResources[key]) &&
     Object.keys(normalized.spellSlots).every((key) => normalized.spellSlots[key] === playState.spellSlots[key]) &&
     Object.keys(playState.spentResources).every((key) => normalized.spentResources[key] === playState.spentResources[key]) &&
@@ -180,6 +200,7 @@ export function createPlayStateFromEngine(
     ...base,
     spentResources,
     spellSlots,
+    hitDice: normalizeHitDiceState(undefined, runtime.hitDicePools, now),
   };
 }
 
@@ -189,6 +210,7 @@ export function shouldBootstrapPlayStateFromEngine(
 ): boolean {
   const noResourceUsage = Object.values(playState.spentResources).every((value) => clampNonNegativeInteger(value) === 0);
   const noSlotUsage = Object.values(playState.spellSlots).every((value) => clampNonNegativeInteger(value) === 0);
+  const noHitDiceUsage = (playState.hitDice?.pools ?? []).every((pool) => clampNonNegativeInteger(pool.spent) === 0);
   const untouched =
     playState.playEvents.length === 0 &&
     playState.tempHp === 0 &&
@@ -199,7 +221,8 @@ export function shouldBootstrapPlayStateFromEngine(
     !playState.deathSaves.stable &&
     !playState.deathSaves.dead &&
     noResourceUsage &&
-    noSlotUsage;
+    noSlotUsage &&
+    noHitDiceUsage;
   return untouched && playState.currentHp <= 1 && runtime.maxHp > 1;
 }
 
@@ -207,6 +230,10 @@ export function buildPlayStateRuntimeContext(
   engine: CharacterEngineState,
 ): PlayStateRuntimeContext {
   const maxHp = Math.max(1, clampNonNegativeInteger(engine.derivedStats.hitPoints.max));
+  const constitutionModifier = Number.isFinite(engine.derivedStats.abilityScores.con.modifier)
+    ? Math.trunc(engine.derivedStats.abilityScores.con.modifier)
+    : 0;
+  const hitDicePools = deriveHitDicePoolsFromEngine(engine);
   const resourceMaxByKey: Record<string, number> = {};
   const resourceRechargeByKey: Record<string, ResourceRechargeType> = {};
   const resourceNameByKey: Record<string, string> = {};
@@ -228,6 +255,8 @@ export function buildPlayStateRuntimeContext(
   }
   return {
     maxHp,
+    constitutionModifier,
+    hitDicePools,
     resourceMaxByKey,
     resourceRechargeByKey,
     resourceNameByKey,
@@ -300,6 +329,32 @@ export function resolveSpellSlotCounters(
     .sort((left, right) => left.level - right.level);
 }
 
+function summarizeHitDiceSpendingSinceLastRest(playState: CharacterPlayState): {
+  spentCount: number;
+  healingTotal: number;
+  appliedHealing: number;
+} {
+  const lastRestTime = playState.lastRestAt ? Date.parse(playState.lastRestAt) : Number.NEGATIVE_INFINITY;
+  return playState.playEvents.reduce(
+    (summary, event) => {
+      if (event.type !== "hit-die-spent") {
+        return summary;
+      }
+      const eventTime = Date.parse(event.timestamp);
+      if (Number.isFinite(lastRestTime) && Number.isFinite(eventTime) && eventTime < lastRestTime) {
+        return summary;
+      }
+      const result = event.payload.result as Partial<HitDieSpendResult> | undefined;
+      return {
+        spentCount: summary.spentCount + 1,
+        healingTotal: summary.healingTotal + (typeof result?.healingTotal === "number" ? result.healingTotal : 0),
+        appliedHealing: summary.appliedHealing + (typeof result?.appliedHealing === "number" ? result.appliedHealing : 0),
+      };
+    },
+    { spentCount: 0, healingTotal: 0, appliedHealing: 0 },
+  );
+}
+
 export function applyDamage(
   playState: CharacterPlayState,
   amount: number,
@@ -344,6 +399,106 @@ export function applyHealing(
       },
     }),
   });
+}
+
+export interface SpendHitDieOptions {
+  rng?: () => number;
+  now?: string;
+}
+
+function recordHitDieSpendBlocked(
+  playState: CharacterPlayState,
+  poolId: string,
+  label: string | undefined,
+  reason: "unknown" | "depleted" | "hp-full",
+  now?: string,
+): CharacterPlayState {
+  const timestamp = nowTimestamp(now);
+  return reduceCharacterPlayState(playState, {
+    type: "record-event",
+    timestamp,
+    event: createPlayEvent({
+      timestamp,
+      type: "hit-die-spend-blocked",
+      shortLabel: `${label ?? poolId} blocked`,
+      payload: {
+        poolId,
+        label,
+        reason,
+      },
+    }),
+  });
+}
+
+export function spendHitDie(
+  playState: CharacterPlayState,
+  runtime: PlayStateRuntimeContext,
+  poolId: string,
+  options: SpendHitDieOptions = {},
+): CharacterPlayState {
+  const timestamp = nowTimestamp(options.now);
+  const hitDice = normalizeHitDiceState(playState.hitDice, runtime.hitDicePools, timestamp);
+  const poolIndex = hitDice.pools.findIndex((pool) => pool.id === poolId);
+  const pool = poolIndex >= 0 ? hitDice.pools[poolIndex] : undefined;
+  if (!pool) {
+    return recordHitDieSpendBlocked(playState, poolId, undefined, "unknown", timestamp);
+  }
+  if (pool.remaining <= 0) {
+    return recordHitDieSpendBlocked({ ...playState, hitDice }, pool.id, pool.label, "depleted", timestamp);
+  }
+  const hpBefore = clampWithin(playState.currentHp, 0, runtime.maxHp);
+  if (hpBefore >= runtime.maxHp) {
+    return recordHitDieSpendBlocked({ ...playState, hitDice }, pool.id, pool.label, "hp-full", timestamp);
+  }
+
+  const dieExpression = `1d${pool.die}`;
+  const roll = rollDiceExpression(dieExpression, options.rng);
+  const rawRoll = roll.terms.find((term) => term.kind === "dice")?.rolls[0] ?? roll.total;
+  const healingTotal = Math.max(0, rawRoll + runtime.constitutionModifier);
+  const hpAfter = clampWithin(hpBefore + healingTotal, 0, runtime.maxHp);
+  const appliedHealing = hpAfter - hpBefore;
+  const nextPools = hitDice.pools.map((entry, index) =>
+    index === poolIndex
+      ? {
+          ...entry,
+          remaining: clampWithin(entry.remaining - 1, 0, entry.max),
+          spent: clampWithin(entry.spent + 1, 0, entry.max),
+        }
+      : entry,
+  );
+  const result: HitDieSpendResult = {
+    poolId: pool.id,
+    poolLabel: pool.label,
+    dieExpression,
+    rawRoll,
+    constitutionModifier: runtime.constitutionModifier,
+    healingTotal,
+    appliedHealing,
+    hpBefore,
+    hpAfter,
+  };
+
+  return reduceCharacterPlayState(
+    {
+      ...playState,
+      hitDice,
+    },
+    {
+      type: "spend-hit-die",
+      hitDicePools: nextPools,
+      currentHp: hpAfter,
+      maxHp: runtime.maxHp,
+      timestamp,
+      event: createPlayEvent({
+        timestamp,
+        type: "hit-die-spent",
+        shortLabel: `${pool.label}: +${appliedHealing} HP`,
+        payload: {
+          result,
+        },
+      }),
+    },
+  );
 }
 
 export function setCurrentHp(
@@ -875,7 +1030,11 @@ export function applyShortRest(
   now?: string,
 ): CharacterPlayState {
   const timestamp = nowTimestamp(now);
-  return reduceCharacterPlayState(playState, {
+  const hitDice = normalizeHitDiceState(playState.hitDice, runtime.hitDicePools, timestamp);
+  const hitDiceRemaining = hitDice.pools.reduce((sum, pool) => sum + pool.remaining, 0);
+  const hitDiceMax = hitDice.pools.reduce((sum, pool) => sum + pool.max, 0);
+  const hitDiceSpending = summarizeHitDiceSpendingSinceLastRest(playState);
+  return reduceCharacterPlayState({ ...playState, hitDice }, {
     type: "short-rest",
     resetResourceKeys: runtime.restPlan.shortRest.resourceKeys,
     resetSpellSlotKeys: runtime.restPlan.shortRest.spellSlotKeys,
@@ -892,7 +1051,12 @@ export function applyShortRest(
         resetSpellSlotCount: runtime.restPlan.shortRest.spellSlotKeys.length,
         skipped: runtime.restPlan.shortRest.skipped,
         notes: runtime.restPlan.shortRest.notes,
-        hpRecovery: "hit-dice-not-modeled",
+        hpRecovery: "hit-dice-explicit",
+        hitDiceAvailable: hitDiceRemaining,
+        hitDiceMax,
+        hitDiceSpentDuringRest: hitDiceSpending.spentCount,
+        hitDiceHealingTotal: hitDiceSpending.healingTotal,
+        hitDiceAppliedHealing: hitDiceSpending.appliedHealing,
       },
     }),
   });
@@ -904,12 +1068,26 @@ export function applyLongRest(
   now?: string,
 ): CharacterPlayState {
   const timestamp = nowTimestamp(now);
-  return reduceCharacterPlayState(playState, {
+  const hitDice = normalizeHitDiceState(playState.hitDice, runtime.hitDicePools, timestamp);
+  const recovered = recoverHitDiceOnLongRest(hitDice.pools);
+  const recoveryEvent =
+    recovered.result.recoveredTotal > 0
+      ? createPlayEvent({
+          timestamp,
+          type: "hit-dice-recovered",
+          shortLabel: `Hit Dice recovered ${recovered.result.recoveredTotal}`,
+          payload: {
+            recovery: recovered.result,
+          },
+        })
+      : undefined;
+  return reduceCharacterPlayState({ ...playState, hitDice }, {
     type: "long-rest",
     resetResourceKeys: runtime.restPlan.longRest.resourceKeys,
     resetSpellSlotKeys: runtime.restPlan.longRest.spellSlotKeys,
     clearConditionIds: clearableConditionIdsForRest(playState, "long-rest"),
     maxHp: runtime.maxHp,
+    hitDicePools: recovered.pools,
     timestamp,
     event: createPlayEvent({
       timestamp,
@@ -925,7 +1103,11 @@ export function applyLongRest(
         hpRecovery: "set-to-max",
         deathSavesReset: true,
         concentrationEnded: Boolean(playState.concentration),
+        hitDiceRecovered: recovered.result.recoveredTotal,
+        hitDiceRecoveryBudget: recovered.result.recoveryBudget,
+        hitDiceRecoveryPools: recovered.result.pools,
       },
     }),
+    extraEvents: recoveryEvent ? [recoveryEvent] : [],
   });
 }

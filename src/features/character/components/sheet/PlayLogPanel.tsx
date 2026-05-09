@@ -29,11 +29,40 @@ function describeEvent(event: CharacterPlayEvent): string | undefined {
   if (event.type === "resource-spend-blocked") {
     return typeof event.payload.reason === "string" ? `Resource spend blocked: ${event.payload.reason}` : "Resource spend blocked.";
   }
+  if (event.type === "hit-die-spent") {
+    const result = event.payload.result;
+    if (result && typeof result === "object" && "rawRoll" in result) {
+      const hitDie = result as { dieExpression?: string; rawRoll?: number; constitutionModifier?: number; healingTotal?: number; appliedHealing?: number };
+      const con = typeof hitDie.constitutionModifier === "number" ? (hitDie.constitutionModifier >= 0 ? `+${hitDie.constitutionModifier}` : `${hitDie.constitutionModifier}`) : "";
+      return `${hitDie.dieExpression ?? "hit die"} rolled ${hitDie.rawRoll ?? "?"} ${con} = ${hitDie.healingTotal ?? "?"}; applied ${hitDie.appliedHealing ?? "?"} HP`;
+    }
+    return "Hit die spent.";
+  }
+  if (event.type === "hit-die-spend-blocked") {
+    return typeof event.payload.reason === "string" ? `Hit die blocked: ${event.payload.reason}` : "Hit die blocked.";
+  }
+  if (event.type === "hit-dice-recovered") {
+    const recovery = event.payload.recovery;
+    if (recovery && typeof recovery === "object" && "recoveredTotal" in recovery) {
+      const result = recovery as { recoveredTotal?: number; recoveryBudget?: number };
+      return `Recovered ${result.recoveredTotal ?? 0} of up to ${result.recoveryBudget ?? 0} hit dice.`;
+    }
+    return "Hit dice recovered.";
+  }
   if (event.type === "rest-short" || event.type === "rest-long") {
     const resources = typeof event.payload.resetResourceCount === "number" ? `${event.payload.resetResourceCount} resources` : undefined;
     const slots = typeof event.payload.resetSpellSlotCount === "number" ? `${event.payload.resetSpellSlotCount} slot pools` : undefined;
     const skipped = Array.isArray(event.payload.skipped) && event.payload.skipped.length ? `${event.payload.skipped.length} manual/special skipped` : undefined;
-    return [resources, slots, skipped].filter(Boolean).join(" · ") || undefined;
+    const hitDice =
+      event.type === "rest-short" && typeof event.payload.hitDiceAvailable === "number" && typeof event.payload.hitDiceMax === "number"
+        ? `${event.payload.hitDiceAvailable}/${event.payload.hitDiceMax} hit dice available`
+        : event.type === "rest-long" && typeof event.payload.hitDiceRecovered === "number"
+          ? `${event.payload.hitDiceRecovered} hit dice recovered`
+          : undefined;
+    const healing = typeof event.payload.hitDiceAppliedHealing === "number" && event.payload.hitDiceAppliedHealing > 0
+      ? `${event.payload.hitDiceAppliedHealing} HP from hit dice`
+      : undefined;
+    return [resources, slots, hitDice, healing, skipped].filter(Boolean).join(" · ") || undefined;
   }
   return undefined;
 }

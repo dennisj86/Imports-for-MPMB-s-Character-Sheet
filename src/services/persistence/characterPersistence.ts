@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CharacterDraft } from "../../domain/character";
-import { createDefaultCharacterPlayState } from "../../domain/playState";
+import { createDefaultCharacterPlayState, type CharacterHitDiceState, type HitDieSize } from "../../domain/playState";
 import { ensureCharacterPlayState } from "../playState";
 
 const abilityScoresSchema = z.object({
@@ -45,6 +45,46 @@ const activeConditionSchema = z.union([
     }),
 ]);
 
+function parseHitDieSize(value: unknown): HitDieSize | undefined {
+  const numeric = typeof value === "string" ? Number(value.replace(/[^\d]/g, "")) : Number(value);
+  return numeric === 6 || numeric === 8 || numeric === 10 || numeric === 12 ? numeric : undefined;
+}
+
+const hitDiceSchema = z.unknown().optional().transform((value): CharacterHitDiceState => {
+  if (!value || typeof value !== "object") {
+    return { pools: [] };
+  }
+  const pools = Array.isArray((value as { pools?: unknown }).pools)
+    ? (value as { pools: unknown[] }).pools
+    : [];
+  const normalizedPools: CharacterHitDiceState["pools"] = pools
+    .map((entry, index): CharacterHitDiceState["pools"][number] | undefined => {
+      if (!entry || typeof entry !== "object") {
+        return undefined;
+      }
+      const source = entry as Record<string, unknown>;
+      const die = parseHitDieSize(source.die);
+      if (!die) {
+        return undefined;
+      }
+      return {
+        id: typeof source.id === "string" && source.id ? source.id : `hit-dice:persisted-${index}:d${die}`,
+        die,
+        sourceClassId: typeof source.sourceClassId === "string" ? source.sourceClassId : undefined,
+        sourceClassName: typeof source.sourceClassName === "string" ? source.sourceClassName : undefined,
+        max: typeof source.max === "number" ? source.max : 0,
+        remaining: typeof source.remaining === "number" ? source.remaining : 0,
+        spent: typeof source.spent === "number" ? source.spent : 0,
+        label: typeof source.label === "string" && source.label ? source.label : `Hit Dice d${die}`,
+      };
+    })
+    .filter((entry): entry is CharacterHitDiceState["pools"][number] => Boolean(entry));
+  return {
+    pools: normalizedPools,
+    updatedAt: typeof (value as { updatedAt?: unknown }).updatedAt === "string" ? (value as { updatedAt: string }).updatedAt : undefined,
+  };
+});
+
 const playStateSchema = z.object({
   schemaVersion: z.literal(1),
   characterId: z.string(),
@@ -58,6 +98,7 @@ const playStateSchema = z.object({
   }),
   spentResources: z.record(z.number().int().nonnegative()),
   spellSlots: z.record(z.number().int().nonnegative()),
+  hitDice: hitDiceSchema,
   activeConditions: z.array(activeConditionSchema),
   concentration: z
     .object({
@@ -90,6 +131,9 @@ const playStateSchema = z.object({
         "concentration-replace",
         "concentration-end",
         "resource-spend-blocked",
+        "hit-die-spent",
+        "hit-die-spend-blocked",
+        "hit-dice-recovered",
         "rest-short",
         "rest-long",
       ]),

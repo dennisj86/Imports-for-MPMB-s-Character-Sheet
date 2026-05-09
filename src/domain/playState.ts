@@ -24,6 +24,24 @@ export interface ConcentrationState {
   notes?: string;
 }
 
+export type HitDieSize = 6 | 8 | 10 | 12;
+
+export interface HitDicePool {
+  id: string;
+  die: HitDieSize;
+  sourceClassId?: string;
+  sourceClassName?: string;
+  max: number;
+  remaining: number;
+  spent: number;
+  label: string;
+}
+
+export interface CharacterHitDiceState {
+  pools: HitDicePool[];
+  updatedAt?: string;
+}
+
 export type CharacterPlayEventType =
   | "hp-damage"
   | "hp-healing"
@@ -43,6 +61,9 @@ export type CharacterPlayEventType =
   | "concentration-replace"
   | "concentration-end"
   | "resource-spend-blocked"
+  | "hit-die-spent"
+  | "hit-die-spend-blocked"
+  | "hit-dice-recovered"
   | "rest-short"
   | "rest-long";
 
@@ -62,6 +83,7 @@ export interface CharacterPlayState {
   deathSaves: CharacterDeathSaveState;
   spentResources: Record<string, number>;
   spellSlots: Record<string, number>;
+  hitDice: CharacterHitDiceState;
   activeConditions: ActiveConditionState[];
   concentration: ConcentrationState | null;
   playEvents: CharacterPlayEvent[];
@@ -98,6 +120,10 @@ export function createDefaultCharacterPlayState(
     },
     spentResources: {},
     spellSlots: {},
+    hitDice: {
+      pools: [],
+      updatedAt: now,
+    },
     activeConditions: [],
     concentration: null,
     playEvents: [],

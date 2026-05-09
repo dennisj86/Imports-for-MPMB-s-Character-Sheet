@@ -1,4 +1,4 @@
-import type { ActiveConditionState, CharacterDeathSaveState, CharacterPlayEvent, CharacterPlayState, ConcentrationState } from "../../domain/playState";
+import type { ActiveConditionState, CharacterDeathSaveState, CharacterPlayEvent, CharacterPlayState, ConcentrationState, HitDicePool } from "../../domain/playState";
 import { appendPlayEvent } from "./playEventLog";
 
 function clampNonNegative(value: number): number {
@@ -190,6 +190,14 @@ export type PlayStateAction =
       timestamp?: string;
     }
   | {
+      type: "spend-hit-die";
+      hitDicePools: HitDicePool[];
+      currentHp: number;
+      maxHp: number;
+      event?: CharacterPlayEvent;
+      timestamp?: string;
+    }
+  | {
       type: "short-rest";
       resetResourceKeys: string[];
       resetSpellSlotKeys: string[];
@@ -203,7 +211,9 @@ export type PlayStateAction =
       resetSpellSlotKeys: string[];
       clearConditionIds?: string[];
       maxHp: number;
+      hitDicePools?: HitDicePool[];
       event?: CharacterPlayEvent;
+      extraEvents?: CharacterPlayEvent[];
       timestamp?: string;
     };
 
@@ -401,6 +411,24 @@ export function reduceCharacterPlayState(
     return withEvent(state, action.event, action.timestamp);
   }
 
+  if (action.type === "spend-hit-die") {
+    const maxHp = Math.max(1, clampNonNegative(action.maxHp));
+    const currentHp = clampWithin(action.currentHp, 0, maxHp);
+    return withEvent(
+      {
+        ...state,
+        currentHp,
+        deathSaves: currentHp > 0 ? resetDeathSaves() : state.deathSaves,
+        hitDice: {
+          pools: action.hitDicePools,
+          updatedAt: action.timestamp ?? new Date().toISOString(),
+        },
+      },
+      action.event,
+      action.timestamp,
+    );
+  }
+
   if (action.type === "short-rest") {
     const nextSpentResources = { ...state.spentResources };
     for (const key of action.resetResourceKeys) {
@@ -437,7 +465,7 @@ export function reduceCharacterPlayState(
       nextSlots[key] = 0;
     }
     const clearConditionIds = new Set(action.clearConditionIds ?? []);
-    return withEvent(
+    return withEvents(
       {
         ...state,
         currentHp: maxHp,
@@ -446,12 +474,18 @@ export function reduceCharacterPlayState(
         concentration: null,
         spentResources: nextSpentResources,
         spellSlots: nextSlots,
+        hitDice: action.hitDicePools
+          ? {
+              pools: action.hitDicePools,
+              updatedAt: action.timestamp ?? new Date().toISOString(),
+            }
+          : state.hitDice,
         activeConditions: clearConditionIds.size
           ? state.activeConditions.filter((entry) => !clearConditionIds.has(entry.id))
           : state.activeConditions,
         lastRestAt: action.timestamp ?? new Date().toISOString(),
       },
-      action.event,
+      [action.event, ...(action.extraEvents ?? [])].filter((event): event is CharacterPlayEvent => Boolean(event)),
       action.timestamp,
     );
   }

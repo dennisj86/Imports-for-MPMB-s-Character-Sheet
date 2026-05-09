@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generatedAt": "2026-05-08T13:20:59.437Z",
+    "generatedAt": "2026-05-08T13:48:30.517Z",
     "sourceFiles": [
       "WotC material/pub_20140818_PHB.js",
       "WotC 2024/pub_20240917_PHB.js",
@@ -1349,7 +1349,7 @@
           "key": "the right tool for the job",
           "name": "The Right Tool for the Job",
           "minLevel": 3,
-          "description": "In 1 hour (during a rest) I can create a set of artisan's tools that last until I do so again"
+          "description": "[using thieves' or artisan's tools]In 1 hour (during a rest) I can create a set of artisan's tools that last until I do so again"
         },
         {
           "id": "class:artificer:feature:tool-expertise",
@@ -2185,7 +2185,7 @@
           "key": "favored enemy",
           "name": "Favored Enemy",
           "minLevel": 1,
-          "description": "Use the \"Choose Feature\" button above to select a favored enemy\n   Choose from beasts, fey, humanoids, monstrosities, or undead\n   I get a bonus to damage rolls with weapon attacks against the chosen favored enemy\n   I have adv. on Wis (Survival) to track and Int checks to recall info about them\n   I also learn one language of my choice, typically one associated with the favored enemy"
+          "description": "Use the \"Choose Feature\" button above to select a favored enemy\nChoose from beasts, fey, humanoids, monstrosities, or undead\nI get a bonus to damage rolls with weapon attacks against the chosen favored enemy\nI have adv. on Wis (Survival) to track and Int checks to recall info about them\nI also learn one language of my choice, typically one associated with the favored enemy"
         },
         {
           "id": "class:rangerua:feature:fighting-style",
@@ -2198,7 +2198,7 @@
           "key": "natural explorer",
           "name": "Natural Explorer",
           "minLevel": 1,
-          "description": "On my first turn in combat, I have adv. on attacks against those that did not yet act\n   I ignore difficult terrain; I have adv. on Initiative; I have benefits in travel, see page 3"
+          "description": "On my first turn in combat, I have adv. on attacks against those that did not yet act\nI ignore difficult terrain; I have adv. on Initiative; I have benefits in travel, see page 3"
         },
         {
           "id": "class:rangerua:feature:spellcasting",
@@ -2212,21 +2212,21 @@
           "key": "primeval awareness",
           "name": "Primeval Awareness",
           "minLevel": 3,
-          "description": "If I haven't attacked a beast within the last 10 min, I can communicate with it\n   As an action, I convey simple ideas, and read mood, intent, emotions, needs, etc.\n   By concentrating for 1 min, I know if any of my favored enemies are within 5 miles\n   Per group, I sense the number, general direction, distance, and type of favored enemy"
+          "description": "If I haven't attacked a beast within the last 10 min, I can communicate with it\nAs an action, I convey simple ideas, and read mood, intent, emotions, needs, etc.\nBy concentrating for 1 min, I know if any of my favored enemies are within 5 miles\nPer group, I sense the number, general direction, distance, and type of favored enemy"
         },
         {
           "id": "class:rangerua:feature:subclassfeature3",
           "key": "subclassfeature3",
           "name": "Ranger Conclave",
           "minLevel": 3,
-          "description": "Choose a Ranger Conclave you strive to emulate and put it in the \"Class\" field\n   Choose either Beast Conclave, Deep Stalker Conclave or Hunter Conclave"
+          "description": "Choose a Ranger Conclave you strive to emulate and put it in the \"Class\" field\nChoose either Beast Conclave, Deep Stalker Conclave or Hunter Conclave"
         },
         {
           "id": "class:rangerua:feature:greater-favored-enemy",
           "key": "greater favored enemy",
           "name": "Greater Favored Enemy",
           "minLevel": 6,
-          "description": "Use the \"Choose Feature\" button above to select a greater favored enemy\n   Choose from aberrations, celestials, constructs, dragons, elementals, fiends, or giants\n   I get all the bonuses from Favored Enemy for this creature type as well\n   Additionally, I have adv. on saves vs. spells and abilities of this greater favored enemy"
+          "description": "Use the \"Choose Feature\" button above to select a greater favored enemy\nChoose from aberrations, celestials, constructs, dragons, elementals, fiends, or giants\nI get all the bonuses from Favored Enemy for this creature type as well\nAdditionally, I have adv. on saves vs. spells and abilities of this greater favored enemy"
         },
         {
           "id": "class:rangerua:feature:fleet-of-foot",
@@ -2240,7 +2240,7 @@
           "key": "hide in plain sight",
           "name": "Hide in Plain Sight",
           "minLevel": 10,
-          "description": "When I hide on my turn without moving, others take -10 Wis (Perception) to find me\n   This lasts until something reveals my presence, or until I (voluntarily) move/fall prone"
+          "description": "When I hide on my turn without moving, others take -10 Wis (Perception) to find me\nThis lasts until something reveals my presence, or until I (voluntarily) move/fall prone"
         },
         {
           "id": "class:rangerua:feature:vanish",
@@ -2254,7 +2254,7 @@
           "key": "feral senses",
           "name": "Feral Senses",
           "minLevel": 18,
-          "description": "When not blinded or deafened, I'm aware of invisible, non-hidden creatures in 30 ft\n   I don't have disadvantage when attacking creatures I am aware of but can't see"
+          "description": "When not blinded or deafened, I'm aware of invisible, non-hidden creatures in 30 ft\nI don't have disadvantage when attacking creatures I am aware of but can't see"
         },
         {
           "id": "class:rangerua:feature:foe-slayer",
@@ -2394,14 +2394,14 @@
           "key": "combat maneuvers",
           "name": "Combat Maneuvers",
           "minLevel": 2,
-          "description": "Use the \"Choose Feature\" button above to add a Maneuver to the third page\n   I can use a Maneuver by expending a superiority die (only one Maneuver per attack)"
+          "description": "Use the \"Choose Feature\" button above to add a Maneuver to the third page\nI can use a Maneuver by expending a superiority die (only one Maneuver per attack)"
         },
         {
           "id": "class:spell-less-ranger:feature:combat-superiority",
           "key": "combat superiority",
           "name": "Combat Superiority",
           "minLevel": 2,
-          "description": "I gain a number of superiority dice that I can use to fuel special Maneuvers\n   I regain all superiority dice after a short rest",
+          "description": "I gain a number of superiority dice that I can use to fuel special Maneuvers\nI regain all superiority dice after a short rest",
           "usages": [
             "",
             4,
@@ -2447,7 +2447,7 @@
           "key": "subclassfeature3",
           "name": "Ranger Archetype",
           "minLevel": 3,
-          "description": "Choose a Ranger Archetype you strive to emulate and put it in the \"Class\" field\n   Choose either Spell-less Beast Master or Spell-less Hunter"
+          "description": "Choose a Ranger Archetype you strive to emulate and put it in the \"Class\" field\nChoose either Spell-less Beast Master or Spell-less Hunter"
         },
         {
           "id": "class:spell-less-ranger:feature:natural-antivenom",
@@ -3028,7 +3028,7 @@
           "key": "subclassfeature15",
           "name": "Chemical Mastery",
           "minLevel": 15,
-          "description": "[each spell 1× per long rest]I have resistance to acid and poison damage and immunity to being poisoned\nI can cast Greater Restoration and Heal each once per long rest without a spell slot\nI need alchemist's supplies as a focus for it, but the spells require no material components"
+          "description": "I have resistance to acid and poison damage and immunity to being poisoned\nI can cast Greater Restoration and Heal each once per long rest without a spell slot\nI need alchemist's supplies as a focus for it, but the spells require no material components"
         }
       ]
     },
@@ -3236,14 +3236,14 @@
           "key": "subclassfeature2",
           "name": "Channel Divinity: Arcane Abjuration",
           "minLevel": 2,
-          "description": "As an action, one celestial, elemental, fey, or fiend within 30 ft must make a Wis save\n   If it fails and is able to see/hear me, it is turned for 1 min or until it takes damage\n   Turned: move away, never within 30 ft of me, no reactions or actions other than Dash\n   Turned: may Dodge instead of Dash when nowhere to move and unable to escape bonds\n   If its CR is low enough and it is not on its home plane, it is banished for 1 min instead\n   Banished: sent to home plane, reappearing where it was if the effect ends before 1 min"
+          "description": "As an action, one celestial, elemental, fey, or fiend within 30 ft must make a Wis save\nIf it fails and is able to see/hear me, it is turned for 1 min or until it takes damage\nTurned: move away, never within 30 ft of me, no reactions or actions other than Dash\nTurned: may Dodge instead of Dash when nowhere to move and unable to escape bonds\nIf its CR is low enough and it is not on its home plane, it is banished for 1 min instead\nBanished: sent to home plane, reappearing where it was if the effect ends before 1 min"
         },
         {
           "id": "subclass:cleric-arcana-domain:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Spell Breaker",
           "minLevel": 6,
-          "description": "When I restore HP to an ally with a 1st-level or higher spell, I can also end one spell\n   The chosen spell on the ally ends if it is equal or lower level to the spell slot level used"
+          "description": "When I restore HP to an ally with a 1st-level or higher spell, I can also end one spell\nThe chosen spell on the ally ends if it is equal or lower level to the spell slot level used"
         },
         {
           "id": "subclass:cleric-arcana-domain:feature:subclassfeature8",
@@ -3257,7 +3257,7 @@
           "key": "subclassfeature17",
           "name": "Arcane Mastery",
           "minLevel": 17,
-          "description": "I add four wizards spells, a 6th, 7th, 8th, and 9th-level spell, to my domain spells\n   As any domain spell, these spells are automatically prepared and count as cleric spells"
+          "description": "I add four wizards spells, a 6th, 7th, 8th, and 9th-level spell, to my domain spells\nAs any domain spell, these spells are automatically prepared and count as cleric spells"
         }
       ]
     },
@@ -3345,7 +3345,7 @@
           "key": "subclassfeature3",
           "name": "Arcane Arrow",
           "minLevel": 3,
-          "description": "As a bonus action, I can create one magical arrow that I can fire with a bow\n   A shot with the arrow counts as magical and does additional force damage on a hit\n   When I create the arrow, I can apply one of my known Arcane Shots on it\n   This arrow lasts until the end of my turn or until I hit or miss a target with it",
+          "description": "As a bonus action, I can create one magical arrow that I can fire with a bow\nA shot with the arrow counts as magical and does additional force damage on a hit\nWhen I create the arrow, I can apply one of my known Arcane Shots on it\nThis arrow lasts until the end of my turn or until I hit or miss a target with it",
           "usages": 2,
           "recovery": "short rest"
         },
@@ -3361,14 +3361,14 @@
           "key": "subclassfeature3.2",
           "name": "Archer's Lore",
           "minLevel": 3,
-          "description": "I gain proficiency with two skills\n   I can choose from: Arcana, Athletics, Nature, Perception, Stealth, or Survival"
+          "description": "I gain proficiency with two skills\nI can choose from: Arcana, Athletics, Nature, Perception, Stealth, or Survival"
         },
         {
           "id": "subclass:fighter-arcane-archer-ua:feature:subclassfeature7",
           "key": "subclassfeature7",
           "name": "Conjure Arrows",
           "minLevel": 7,
-          "description": "As an action, I can create up to 20 nonmagical arrows that remain for 10 minutes\n   The arrows vanish if I use this feature again with 10 minutes"
+          "description": "As an action, I can create up to 20 nonmagical arrows that remain for 10 minutes\nThe arrows vanish if I use this feature again with 10 minutes"
         },
         {
           "id": "subclass:fighter-arcane-archer-ua:feature:subclassfeature15",
@@ -3538,7 +3538,7 @@
           "key": "subclassfeature17",
           "name": "Spell Thief",
           "minLevel": 17,
-          "description": "As a reaction, after a spell is cast at me, I can try to negate and steal it\n   The caster makes a save against my spell DC with his/her spellcasting ability\n   On failure, the caster forgets how to cast that spell for eight hours\n   If I have a spell slot of a high enough level for it, I learn how to cast it during this time",
+          "description": "As a reaction, after a spell is cast at me, I can try to negate and steal it\nThe caster makes a save against my spell DC with his/her spellcasting ability\nOn failure, the caster forgets how to cast that spell for eight hours\nIf I have a spell slot of a high enough level for it, I learn how to cast it during this time",
           "usages": 1,
           "recovery": "long rest"
         }
@@ -3827,7 +3827,7 @@
           "key": "subclassfeature3.1",
           "name": "Assassinate",
           "minLevel": 3,
-          "description": "I have adv. on attack rolls against creatures that have not taken a turn in combat yet\n   Any hit I score against a creature that is surprised is a critical hit"
+          "description": "I have adv. on attack rolls against creatures that have not taken a turn in combat yet\nAny hit I score against a creature that is surprised is a critical hit"
         },
         {
           "id": "subclass:rogue-assassin:feature:subclassfeature3",
@@ -3848,7 +3848,7 @@
           "key": "subclassfeature13",
           "name": "Imposter",
           "minLevel": 13,
-          "description": "After 3 hours of studying a person, I can mimic speech, writing, and behavior\n   I have advantage on Charisma (Deception) checks to maintain this ruse"
+          "description": "After 3 hours of studying a person, I can mimic speech, writing, and behavior\nI have advantage on Charisma (Deception) checks to maintain this ruse"
         },
         {
           "id": "subclass:rogue-assassin:feature:subclassfeature17",
@@ -4360,21 +4360,21 @@
           "key": "subclassfeature3",
           "name": "Bonus Proficiencies",
           "minLevel": 3,
-          "description": "I gain proficiency with two skills or one skill and any one tool\n   For skills I can choose from Animal Handling, Insight, Performance, or Persuasion"
+          "description": "I gain proficiency with two skills or one skill and any one tool\nFor skills I can choose from Animal Handling, Insight, Performance, or Persuasion"
         },
         {
           "id": "subclass:fighter-cavalier-ua:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Born in the Saddle",
           "minLevel": 3,
-          "description": "I have advantage on saves to avoid falling off my mount, and land on my feet if I fail\n   Mounting or dismounting a creature costs me only 5 ft of movement instead of half"
+          "description": "I have advantage on saves to avoid falling off my mount, and land on my feet if I fail\nMounting or dismounting a creature costs me only 5 ft of movement instead of half"
         },
         {
           "id": "subclass:fighter-cavalier-ua:feature:subclassfeature3-2",
           "key": "subclassfeature3.2",
           "name": "Combat Superiority",
           "minLevel": 3,
-          "description": "I gain a number of superiority dice that I can use to fuel special maneuvers (see below)\n   I can use only one maneuver per attack; I regain all superiority dice after a short rest\n    - Use after rolling to influence/control an animal; I add the superiority die to the roll\n    - Use after rolling to hit; I add the superiority die to my attack roll\n    - Use on a mount, before rolling to hit with a lance; I add the die to the damage roll\n       Also, the target must make a Str save (DC 8 + Prof + Str mod) or be knocked prone\n    - As a reaction when I'm hit or my mount is hit, I add the superiority die to AC\n       If the attack still hits, I or my mount only take half damage from it",
+          "description": "I gain a number of superiority dice that I can use to fuel special maneuvers (see below)\nI can use only one maneuver per attack; I regain all superiority dice after a short rest\n• Use after rolling to influence/control an animal; I add the superiority die to the roll\n• Use after rolling to hit; I add the superiority die to my attack roll\n• Use on a mount, before rolling to hit with a lance; I add the die to the damage roll\n   Also, the target must make a Str save (DC 8 + Prof + Str mod) or be knocked prone\n• As a reaction when I'm hit or my mount is hit, I add the superiority die to AC\n   If the attack still hits, I or my mount only take half damage from it",
           "usages": [
             0,
             0,
@@ -4404,7 +4404,7 @@
           "key": "subclassfeature7",
           "name": "Ferocious Charger",
           "minLevel": 7,
-          "description": "I can use two superiority dice, instead of just one, to increase the damage of my lance\n   If doing so, the target has disadvantage on its Str save to avoid being knocked prone",
+          "description": "I can use two superiority dice, instead of just one, to increase the damage of my lance\nIf doing so, the target has disadvantage on its Str save to avoid being knocked prone",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -4891,7 +4891,7 @@
           "key": "subclassfeature2.1",
           "name": "Combat Wild Shape",
           "minLevel": 2,
-          "description": "As a bonus action while in Wild Shape, I can expend spell slots to heal myself\n   I regain 1d8 HP per expended spell slot level; I can use Wild Shape as a bonus action"
+          "description": "As a bonus action while in Wild Shape, I can expend spell slots to heal myself\nI regain 1d8 HP per expended spell slot level; I can use Wild Shape as a bonus action"
         },
         {
           "id": "subclass:druid-circle-of-the-moon:feature:subclassfeature2-wild-shape",
@@ -4963,7 +4963,7 @@
           "key": "subclassfeature6",
           "name": "Improved Circle Forms",
           "minLevel": 6,
-          "description": "While in Wild Shape form, I gain **Lunar Radiance**: my attacks can deal Radiant damage, and **Increased Toughness**: I add my Wisdom modifier to my Constitution saving throws."
+          "description": "While in Wild Shape form, I gain ***Lunar Radiance***: my attacks can deal Radiant damage, and ***Increased Toughness***: I add my Wisdom modifier to my Constitution saving throws."
         },
         {
           "id": "subclass:druid-moon:feature:subclassfeature10",
@@ -4979,7 +4979,7 @@
           "key": "subclassfeature14",
           "name": "Lunar Form",
           "minLevel": 14,
-          "description": "**Improved Lunar Radiance**. Once per turn, I can deal +2d10 Radiant damage on a hit with a WS attack. **Shared Moonlight**. I can bring along an ally with Moonlight Step, see above."
+          "description": "***Improved Lunar Radiance***. Once per turn, I can deal +2d10 Radiant damage on a hit with a WS attack. ***Shared Moonlight***. I can bring along an ally with Moonlight Step, see above."
         }
       ]
     },
@@ -5037,6 +5037,56 @@
           "name": "Scourge of the Ancients",
           "minLevel": 14,
           "description": "When I use a bonus action to command my companion, I can expend a spell slot so that:\n • It becomes Huge if there is room, and gains 10 times the spell slot level in temp HP\n • On a hit, the companion's Strike deals an extra 1d8 + the spell slot level damage\n • Its walking (and climbing or swimming) speed increases with 5 ft per spell slot level\nThese benefits last for 1 hour, until the companion vanishes, or until I use this again"
+        }
+      ]
+    },
+    {
+      "id": "subclass:druid-sea",
+      "key": "druid-sea",
+      "classId": "class:druid",
+      "classKey": "druid",
+      "canonicalClassKey": "druid",
+      "name": "Circle of the Sea",
+      "sourceRefs": [
+        "P24:87"
+      ],
+      "sourceMeta": {
+        "sourceSystem": "mpmb",
+        "sourceDocumentKey": "P24",
+        "sourceDocumentName": "P24:87",
+        "edition": "unknown",
+        "importPreset": "mpmb-local",
+        "rawSourceRef": "druid-sea",
+        "dataStatus": "partial"
+      },
+      "features": [
+        {
+          "id": "subclass:druid-sea:feature:subclassfeature3",
+          "key": "subclassfeature3",
+          "name": "Wrath of the Sea",
+          "minLevel": 3,
+          "description": "As a Bonus Action, I can expend 1 Wild Shape use to create a 5-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 5-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 5-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 5-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 5-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me. When manifested and as a Bonus Actions on my turn thereafter, I can have a creature I can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me or around an ally within 60 ft that I can see, or around both by expending 2 WS uses. When manifested and as a Bonus Actions on turns thereafter, the bearer can have a creature they can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me or around an ally within 60 ft that I can see, or around both by expending 2 WS uses. When manifested and as a Bonus Actions on turns thereafter, the bearer can have a creature they can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me or around an ally within 60 ft that I can see, or around both by expending 2 WS uses. When manifested and as a Bonus Actions on turns thereafter, the bearer can have a creature they can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me or around an ally within 60 ft that I can see, or around both by expending 2 WS uses. When manifested and as a Bonus Actions on turns thereafter, the bearer can have a creature they can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me or around an ally within 60 ft that I can see, or around both by expending 2 WS uses. When manifested and as a Bonus Actions on turns thereafter, the bearer can have a creature they can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me or around an ally within 60 ft that I can see, or around both by expending 2 WS uses. When manifested and as a Bonus Actions on turns thereafter, the bearer can have a creature they can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated.\nAs a Bonus Action, I can expend 1 Wild Shape use to create a 10-ft Emanation of ocean spray around me or around an ally within 60 ft that I can see, or around both by expending 2 WS uses. When manifested and as a Bonus Actions on turns thereafter, the bearer can have a creature they can see in the area make a Constitution save or take 1d6 Cold damage per my Wisdom modifier and, if it's Large or smaller, be pushed 15 ft away.\nThis lasts for 10 min or until I dismiss it (no action), manifest it again, or I'm Incapacitated."
+        },
+        {
+          "id": "subclass:druid-sea:feature:subclassfeature6",
+          "key": "subclassfeature6",
+          "name": "Aquatic Affinity",
+          "minLevel": 6,
+          "description": "I gain a Swim Speed equal to my Speed and Wrath of the Sea is now a 10-ft Emanation."
+        },
+        {
+          "id": "subclass:druid-sea:feature:subclassfeature10",
+          "key": "subclassfeature10",
+          "name": "Stormborn",
+          "minLevel": 10,
+          "description": "While my Wrath of the Sea is active, it now also grants: ***Resistance*** to Cold, Lightning, and Thunder damage, and ***Flight***. A Fly Speed equal to my Speed."
+        },
+        {
+          "id": "subclass:druid-sea:feature:subclassfeature14",
+          "key": "subclassfeature14",
+          "name": "Oceanic Gift",
+          "minLevel": 14,
+          "description": "I can create Wrath of the Sea around an ally within 60 ft that I can see instead of myself, or around both my and the ally by expending 2 Wild Shape uses.\nIt grants all benefits to the bearer, but always uses my spell save DC and my Wisdom mod."
         }
       ]
     },
@@ -5126,14 +5176,14 @@
           "key": "subclassfeature2",
           "name": "Beast Speech",
           "minLevel": 2,
-          "description": "I can talk with beasts, they understand me and I them, to the limit of their intelligence\n   This doesn't automatically make me friends with all beasts"
+          "description": "I can talk with beasts, they understand me and I them, to the limit of their intelligence\nThis doesn't automatically make me friends with all beasts"
         },
         {
           "id": "subclass:druid-circle-of-the-shepherd-ua:feature:subclassfeature2-1",
           "key": "subclassfeature2.1",
           "name": "Spirit Bond",
           "minLevel": 2,
-          "description": "As a bonus action, I can summon a spirit to an empty space within 60 ft that I can see\n   The Bear, Hawk, or Wolf spirit, creates a 30-ft radius aura and persist for 1 minute\n   It doesn't occupy space, is immobile, and counts as neither a creature nor an object\n    - Bear: my allies in the area and I instantly gain 5 + my druid level in temp HP\n       While in the aura, my allies and I gain advantage on Strength checks and saves\n    - Hawk: my allies and I gain advantage on attacks against targets in the aura\n    - Wolf: my allies and I gain advantage on ability checks to detect targets in the aura\n       If I cast a healing spell with a spell slot, allies in the aura heal my druid level in HP",
+          "description": "As a bonus action, I can summon a spirit to an empty space within 60 ft that I can see\nThe Bear, Hawk, or Wolf spirit, creates a 30-ft radius aura and persist for 1 minute\nIt doesn't occupy space, is immobile, and counts as neither a creature nor an object\n• Bear: my allies in the area and I instantly gain 5 + my druid level in temp HP\n   While in the aura, my allies and I gain advantage on Strength checks and saves\n• Hawk: my allies and I gain advantage on attacks against targets in the aura\n• Wolf: my allies and I gain advantage on ability checks to detect targets in the aura\n   If I cast a healing spell with a spell slot, allies in the aura heal my druid level in HP",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -5156,7 +5206,7 @@
           "key": "subclassfeature14",
           "name": "Faithful Summons",
           "minLevel": 14,
-          "description": "When I am reduced to 0 HP or incapacitated against my will, I can summon protectors\n   I gain the benefits of a Conjure Animals spell as if cast with a 9th-level spell slot\n   It summons 4 beast of my choice with CR 2 or lower within 20 ft of me for 1 hour\n   If they receive no commands from me, they protect me from harm and attack foes",
+          "description": "When I am reduced to 0 HP or incapacitated against my will, I can summon protectors\nI gain the benefits of a Conjure Animals spell as if cast with a 9th-level spell slot\nIt summons 4 beast of my choice with CR 2 or lower within 20 ft of me for 1 hour\nIf they receive no commands from me, they protect me from harm and attack foes",
           "usages": 1,
           "recovery": "long rest"
         }
@@ -5194,7 +5244,7 @@
           "key": "subclassfeature2.1",
           "name": "Spirit Totem",
           "minLevel": 2,
-          "description": "As a bonus action, I can summon, or move, a spirit to a point I can see within 60 ft\nThe spirit is a Bear, Hawk, or Unicorn (see below), which has a 30-ft radius aura\nIt is incorporeal, immobile, doesn't counts as a creature or object, and persists for 1 min\n - Bear: my allies in the area and I instantly gain 5 + my druid level in temp HP\n    While in the aura, my allies and I gain advantage on Strength checks and saves\n - Hawk: As a reaction, I can grant advantage on an attack vs. a target in the aura\n - Unicorn: my allies and I gain advantage on ability checks to detect targets in the aura\n    If I cast a healing spell with a spell slot, allies in the aura heal my druid level in HP",
+          "description": "As a bonus action, I can summon, or move, a spirit to a point I can see within 60 ft\nThe spirit is a Bear, Hawk, or Unicorn (see below), which has a 30-ft radius aura\nIt is incorporeal, immobile, doesn't counts as a creature or object, and persists for 1 min\n• Bear: my allies in the area and I instantly gain 5 + my druid level in temp HP\n   While in the aura, my allies and I gain advantage on Strength checks and saves\n• Hawk: As a reaction, I can grant advantage on an attack vs. a target in the aura\n• Unicorn: my allies and I gain advantage on ability checks to detect targets in the aura\n   If I cast a healing spell with a spell slot, allies in the aura heal my druid level in HP",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -5220,6 +5270,67 @@
           "description": "When I am reduced to 0 HP or incapacitated against my will, I can cast Conjure Animals\nThis is done as if using a 9th-level spell slot to summon 4 beast of my choice up to CR 2\nThey appear within 20 ft of me, last 1 hour, and protect me from harm and attack foes",
           "usages": 1,
           "recovery": "long rest"
+        }
+      ]
+    },
+    {
+      "id": "subclass:druid-stars",
+      "key": "druid-stars",
+      "classId": "class:druid",
+      "classKey": "druid",
+      "canonicalClassKey": "druid",
+      "name": "Circle of the Stars",
+      "sourceRefs": [
+        "P24:88"
+      ],
+      "sourceMeta": {
+        "sourceSystem": "mpmb",
+        "sourceDocumentKey": "P24",
+        "sourceDocumentName": "P24:88",
+        "edition": "unknown",
+        "importPreset": "mpmb-local",
+        "rawSourceRef": "druid-stars",
+        "dataStatus": "partial"
+      },
+      "features": [
+        {
+          "id": "subclass:druid-stars:feature:subclassfeature3",
+          "key": "subclassfeature3",
+          "name": "Star Map",
+          "minLevel": 3,
+          "description": "I can use this Tiny object as my spellcasting focus. While holding it, I know Guidance and always have Guiding Bolt prepared, which I can cast my Wisdom mod times per Long Rest without a spell slot. I can recreate it with a 1-hour ceremony during a Short or Long Rest.",
+          "usages": "Wisdom modifier per ",
+          "recovery": "Long Rest"
+        },
+        {
+          "id": "subclass:druid-stars:feature:subclassfeature3-1",
+          "key": "subclassfeature3.1",
+          "name": "Starry Form",
+          "minLevel": 3,
+          "description": "As a Bonus Action, I can expend a WS use to take on a glowing form with the benefits of a constellation (3rd page). I shed Bright Light in 10 ft and Dim Light for an additional 10 ft.\nThis lasts for 10 minutes or until I dismiss it (no action), use it again, or I'm Incapacitated."
+        },
+        {
+          "id": "subclass:druid-stars:feature:subclassfeature6",
+          "key": "subclassfeature6",
+          "name": "Cosmic Omen",
+          "minLevel": 6,
+          "description": "When I finish a Long Rest, I roll a die to determine which omen I can use until my next LR.\nAs a Reaction when I see a creature within 30 ft about to make a D20 test, I can use it to:\n**Weal (even)**. Add 1d6 to the total. **Woe (odd)**. Subtract 1d6 from the total.",
+          "usages": "Wisdom modifier per ",
+          "recovery": "Long Rest"
+        },
+        {
+          "id": "subclass:druid-stars:feature:subclassfeature10",
+          "key": "subclassfeature10",
+          "name": "Twinkling Constellations",
+          "minLevel": 10,
+          "description": "[improves constellations, see 3rd page]While in my Starry Form, I can change the constellation at the start of each of my turns."
+        },
+        {
+          "id": "subclass:druid-stars:feature:subclassfeature14",
+          "key": "subclassfeature14",
+          "name": "Full of Stars",
+          "minLevel": 14,
+          "description": "While in my Starry Form, I have Resistance to Bludgeoning, Piercing, and Slashing damage."
         }
       ]
     },
@@ -5257,7 +5368,7 @@
           "key": "subclassfeature2.1",
           "name": "Starry Form",
           "minLevel": 2,
-          "description": "As a bonus action, I can expend a use of wild shape to take on a starry form for 10 min\nIn that form I shed bright light in a 10-ft radius and dim light for an extra 10-ft radius\nWhen I do so, I choose one constellation that glimmers on my body, granting me benefits\nSee the 3rd page's \"Notes\" section for the benefits of the possible constellations"
+          "description": "As a bonus action, I can expend a use of wild shape to take on a starry form for 10 min\nIn that form I shed bright light in a 10-ft radius and dim light for an extra 10-ft radius\nWhen I do so, I choose one constellation that glimmers on my body, granting me benefits\nSee the 3rd page \"Notes\" section for the benefits of the possible constellations"
         },
         {
           "id": "subclass:druid-circle-of-the-stars:feature:subclassfeature6",
@@ -5273,7 +5384,7 @@
           "key": "subclassfeature10",
           "name": "Twinkling Constellations",
           "minLevel": 10,
-          "description": "While in my starry form, I can change the constellation at the start of each of my turns\nThe benefit of my constellations improve, see the 3rd page's \"Notes\" section"
+          "description": "While in my starry form, I can change the constellation at the start of each of my turns\nThe benefit of my constellations improve, see the 3rd page \"Notes\" section"
         },
         {
           "id": "subclass:druid-circle-of-the-stars:feature:subclassfeature14",
@@ -5363,7 +5474,7 @@
           "key": "subclassfeature2",
           "name": "Harvest's Scythe",
           "minLevel": 2,
-          "description": "I have a pool of energy represented by a number of d10s equal to my druid level\n   When I roll damage for a spell, I can do extra necrotic damage with dice from the pool\n   I can spend up to half my druid level worth of dice from the pool at once\n   If I any hostiles die from an augmented spell, I can heal one ally I can see within 30 ft\n   The ally regains 2 HP per die spent; or 5 HP per die if one of the slain was undead",
+          "description": "I have a pool of energy represented by a number of d10s equal to my druid level\nWhen I roll damage for a spell, I can do extra necrotic damage with dice from the pool\nI can spend up to half my druid level worth of dice from the pool at once\nIf I any hostiles die from an augmented spell, I can heal one ally I can see within 30 ft\nThe ally regains 2 HP per die spent; or 5 HP per die if one of the slain was undead",
           "usages": [
             "",
             "2d10 per ",
@@ -5393,7 +5504,7 @@
           "key": "subclassfeature6",
           "name": "Speech Beyond the Grave",
           "minLevel": 6,
-          "description": "Once per short rest, I can cast Speak with Dead without spell slots or material comp.\n   The target and I can understand each other, regardless of language or intelligence",
+          "description": "Once per short rest, I can cast Speak with Dead without spell slots or material comp.\nThe target and I can understand each other, regardless of language or intelligence",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -5402,7 +5513,7 @@
           "key": "subclassfeature10",
           "name": "Watcher at the Threshold",
           "minLevel": 10,
-          "description": "I gain resistance to necrotic and radiant damage\n   While I'm not incapacitated, allies within 30 ft of me gain adv. on their death saves"
+          "description": "I gain resistance to necrotic and radiant damage\nWhile I'm not incapacitated, allies within 30 ft of me gain adv. on their death saves"
         },
         {
           "id": "subclass:druid-circle-of-twilight-ua:feature:subclassfeature14",
@@ -6036,7 +6147,7 @@
           "key": "subclassfeature3.1",
           "name": "Enthralling Performance",
           "minLevel": 3,
-          "description": "By performing for at least 10 minutes, I can charm humanoids within 60 ft of me\n   At the end of the performance, my Cha mod number of targets must make a Wis save\n   On a fail, a target is charmed for 1 hour; If success, it doesn't knows I tried to charm it\n   While charmed, the target idolizes me, hinders those opposing me, and avoids violence\n   This lasts until a target takes damage, I attack it, or if it sees me attacking its allies",
+          "description": "By performing for at least 10 minutes, I can charm humanoids within 60 ft of me\nAt the end of the performance, my Cha mod number of targets must make a Wis save\nOn a fail, a target is charmed for 1 hour; If success, it doesn't knows I tried to charm it\nWhile charmed, the target idolizes me, hinders those opposing me, and avoids violence\nThis lasts until a target takes damage, I attack it, or if it sees me attacking its allies",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -6045,14 +6156,14 @@
           "key": "subclassfeature3",
           "name": "Mantle of Inspiration",
           "minLevel": 3,
-          "description": "As a bonus action, I expend one bardic inspiration die to aid those within 60 ft of me\n   A number of allies equal to my Cha mod gain twice the die roll in temporary HP\n   They can use a reaction to move their speed toward me, without opportunity attacks"
+          "description": "As a bonus action, I expend one bardic inspiration die to aid those within 60 ft of me\nA number of allies equal to my Cha mod gain twice the die roll in temporary HP\nThey can use a reaction to move their speed toward me, without opportunity attacks"
         },
         {
           "id": "subclass:bard-college-of-glamour-ua:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Mantle of Majesty",
           "minLevel": 6,
-          "description": "As a bonus action, I take on an appearance of unearthly beauty for 1 minute\n   As a bonus action during this time, I can cast Command without using a spell slot\n   Creatures charmed by me automatically fail their saves against these Command spells",
+          "description": "As a bonus action, I take on an appearance of unearthly beauty for 1 minute\nAs a bonus action during this time, I can cast Command without using a spell slot\nCreatures charmed by me automatically fail their saves against these Command spells",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -6061,7 +6172,7 @@
           "key": "subclassfeature14",
           "name": "Unbreakable Majesty",
           "minLevel": 14,
-          "description": "As an action, I can cast Sanctuary on myself without using a spell slot\n   If a creature fails its save to this, I gain adv. on all Cha checks against it for 1 min\n   In addition, the target has disadv. on saves it makes against my spells on my next turn",
+          "description": "As an action, I can cast Sanctuary on myself without using a spell slot\nIf a creature fails its save to this, I gain adv. on all Cha checks against it for 1 min\nIn addition, the target has disadv. on saves it makes against my spells on my next turn",
           "usages": 1,
           "recovery": "short rest"
         }
@@ -6099,7 +6210,7 @@
           "key": "subclassfeature3.1",
           "name": "Tumbling Fool",
           "minLevel": 3,
-          "description": "As a bonus action, I tumble which gives the benefits of the Dash and Disengage actions\n   I also gain a climbing speed at my current speed and half damage from falling"
+          "description": "As a bonus action, I tumble which gives the benefits of the Dash and Disengage actions\nI also gain a climbing speed at my current speed and half damage from falling"
         },
         {
           "id": "subclass:bard-college-of-satire-ua:feature:subclassfeature6",
@@ -6115,7 +6226,7 @@
           "key": "subclassfeature14",
           "name": "Fool's Luck",
           "minLevel": 14,
-          "description": "[one bardic inspiration die]\n   When I fail an ability check, saving throw, or attack roll, I can add one inspiration die\n   If this turns the roll into a success, I have to note down the number rolled\n   I can't use this ability again until the DM subtracts the amount from a check or attack",
+          "description": "When I fail an ability check, saving throw, or attack roll, I can add one inspiration die\nIf this turns the roll into a success, I have to note down the number rolled\nI can't use this ability again until the DM subtracts the amount from a check or attack",
           "usages": 1,
           "recovery": "reset"
         }
@@ -6328,7 +6439,7 @@
           "key": "subclassfeature3.2",
           "name": "Blade Flourish",
           "minLevel": 3,
-          "description": "When I take the Attack action on my turn, I can do one of the following flourishes:\n   I have to use a dagger, longsword, rapier, scimitar, or shortsword while doing this\n    - Defensive Flourish [one Bardic Inspiration die]\n       As a bonus action, I add the die to my AC until the start of my next turn\n    - Trick Shooter's Flourish [one Bardic Inspiration die]\n       As a bonus action with a dagger ranged attack, I add the die to the attack roll\n       If the target is an unattended, inanimate object, the result of the die is doubled\n    - Unnerving Flourish [one Bardic Inspiration die]\n       As a bonus action when reducing a foe to 0 HP with a melee attack, I leave it alive\n       The target stays at 1 HP and is frightened of me for my Cha modifier in minutes\n       It must also make a Cha save at a DC of my spell save + the bardic inspiration die\n       If failed, it answers truthfully any questions I ask and obeys me while frightened"
+          "description": "When I take the Attack action on my turn, I can do one of the following flourishes:\nI have to use a dagger, longsword, rapier, scimitar, or shortsword while doing this\n• Defensive Flourish [one Bardic Inspiration die]\n   As a bonus action, I add the die to my AC until the start of my next turn\n• Trick Shooter's Flourish [one Bardic Inspiration die]\n   As a bonus action with a dagger ranged attack, I add the die to the attack roll\n   If the target is an unattended, inanimate object, the result of the die is doubled\n• Unnerving Flourish [one Bardic Inspiration die]\n   As a bonus action when reducing a foe to 0 HP with a melee attack, I leave it alive\n   The target stays at 1 HP and is frightened of me for my Cha modifier in minutes\n   It must also make a Cha save at a DC of my spell save + the bardic inspiration die\n   If failed, it answers truthfully any questions I ask and obeys me while frightened"
         },
         {
           "id": "subclass:bard-college-of-swords-ua:feature:subclassfeature3",
@@ -6441,7 +6552,7 @@
           "key": "subclassfeature3.1",
           "name": "Combat Inspiration",
           "minLevel": 3,
-          "description": "My Bardic Inspiration can also be used to add the die to a weapon damage roll\n   Alternatively, it can be used as a reaction to add the die to AC against one attack"
+          "description": "My Bardic Inspiration can also be used to add the die to a weapon damage roll\nAlternatively, it can be used as a reaction to add the die to AC against one attack"
         },
         {
           "id": "subclass:bard-college-of-valor:feature:subclassfeature14",
@@ -6533,14 +6644,14 @@
           "key": "subclassfeature3",
           "name": "Venomous Blades",
           "minLevel": 3,
-          "description": "When I hit with a weapon attack, I can expend a bardic inspiration die to add damage\n   I roll the inspiration die twice, dealing the total in Poison damage to the target\n   I can do this no more than once per round on my turn"
+          "description": "When I hit with a weapon attack, I can expend a bardic inspiration die to add damage\nI roll the inspiration die twice, dealing the total in Poison damage to the target\nI can do this no more than once per round on my turn"
         },
         {
           "id": "subclass:bard-college-of-whispers-ua:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Venomous Words",
           "minLevel": 3,
-          "description": "By speaking in private with a humanoid for at least 10 minutes, I can try to frighten it\n   After the conversation, the target must make a Wisdom save or be frightened of me\n   If the save is successful, the target doesn't know I try to frighten it\n   While frightened, the target avoids the company of others, including its allies\n   The target also tries to hide in the most secret, safest place available to it\n   This lasts for 1 hour or until it is attacked/damaged, or if it sees me attacking its allies",
+          "description": "By speaking in private with a humanoid for at least 10 minutes, I can try to frighten it\nAfter the conversation, the target must make a Wisdom save or be frightened of me\nIf the save is successful, the target doesn't know I try to frighten it\nWhile frightened, the target avoids the company of others, including its allies\nThe target also tries to hide in the most secret, safest place available to it\nThis lasts for 1 hour or until it is attacked/damaged, or if it sees me attacking its allies",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -6549,14 +6660,14 @@
           "key": "subclassfeature6",
           "name": "Mantle of Whispers",
           "minLevel": 6,
-          "description": "As a reaction when a creature dies within 5 ft or by my hand, I can capture its shadow\n   I can use shadows of those with the same type and size as me (or Medium if I'm Small)\n   I can have only one captured shadow at a time and I can don it as a shadow disguise"
+          "description": "As a reaction when a creature dies within 5 ft or by my hand, I can capture its shadow\nI can use shadows of those with the same type and size as me (or Medium if I'm Small)\nI can have only one captured shadow at a time and I can don it as a shadow disguise"
         },
         {
           "id": "subclass:bard-college-of-whispers-ua:feature:subclassfeature14",
           "key": "subclassfeature14",
           "name": "Shadow Lore",
           "minLevel": 14,
-          "description": "As an action, I whisper to a creature within 30 ft that can hear and understand me\n   Only the target can hear me; It must make a Wisdom save or be charmed by me\n   If failed, it thinks I know its most mortifying secret, otherwise it only hears mumbling\n   While charmed, the target obeys my commands, but won't risk its life or fight for me\n   This lasts for 8 hours or until I or my allies attack or damage it\n   When the effect ends, the target has no idea why it was so afraid of me",
+          "description": "As an action, I whisper to a creature within 30 ft that can hear and understand me\nOnly the target can hear me; It must make a Wisdom save or be charmed by me\nIf failed, it thinks I know its most mortifying secret, otherwise it only hears mumbling\nWhile charmed, the target obeys my commands, but won't risk its life or fight for me\nThis lasts for 8 hours or until I or my allies attack or damage it\nWhen the effect ends, the target has no idea why it was so afraid of me",
           "usages": 1,
           "recovery": "long rest"
         }
@@ -6594,7 +6705,7 @@
           "key": "subclassfeature1.1",
           "name": "Reaper",
           "minLevel": 1,
-          "description": "I learn one necromancy cantrip of my choice from any spell list\n   My necromancy, single-target cantrips can affect two targets within 5 ft of each other"
+          "description": "I learn one necromancy cantrip of my choice from any spell list\nMy necromancy, single-target cantrips can affect two targets within 5 ft of each other"
         },
         {
           "id": "subclass:cleric-death-domain:feature:subclassfeature2",
@@ -6622,7 +6733,7 @@
           "key": "subclassfeature17",
           "name": "Improved Reaper",
           "minLevel": 17,
-          "description": "If I cast a 5th-level or lower necromancy spell that has one target, I can target two\n   They need to be within 5 ft of each other; I have to provide material comp. for both"
+          "description": "If I cast a 5th-level or lower necromancy spell that has one target, I can target two\nThey need to be within 5 ft of each other; I have to provide material comp. for both"
         }
       ]
     },
@@ -6651,14 +6762,14 @@
           "key": "subclassfeature3.1",
           "name": "Deep Stalker Magic",
           "minLevel": 3,
-          "description": "I have 90 ft darkvision and add a spell to my known spells at level 3, 5, 9, 13, and 17\n   These count as ranger spells, but do not count against the number of spells I can know"
+          "description": "I have 90 ft darkvision and add a spell to my known spells at level 3, 5, 9, 13, and 17\nThese count as ranger spells, but do not count against the number of spells I can know"
         },
         {
           "id": "subclass:ranger-deep-stalker-ua:feature:subclassfeature3",
           "key": "subclassfeature3",
           "name": "Underdark Scout",
           "minLevel": 3,
-          "description": "In the first turn of combat I have +10 ft speed and +1 attack with the Attack action\n   All turns after that, I can take the Hide action as a bonus action at the end of my turn"
+          "description": "In the first turn of combat I have +10 ft speed and +1 attack with the Attack action\nAll turns after that, I can take the Hide action as a bonus action at the end of my turn"
         },
         {
           "id": "subclass:ranger-deep-stalker-ua:feature:subclassfeature7",
@@ -6708,14 +6819,14 @@
           "key": "subclassfeature3.1",
           "name": "Deep Stalker Magic",
           "minLevel": 3,
-          "description": "I have 90 ft darkvision (or +30 ft) and gain extra known spells at level 3, 5, 9, 13, 17\n   These count as ranger spells, but do not count against the number of spells I can know"
+          "description": "I have 90 ft darkvision (or +30 ft) and gain extra known spells at level 3, 5, 9, 13, 17\nThese count as ranger spells, but do not count against the number of spells I can know"
         },
         {
           "id": "subclass:rangerua-deep-stalker-ua:feature:subclassfeature3",
           "key": "subclassfeature3",
           "name": "Underdark Scout",
           "minLevel": 3,
-          "description": "In the first turn of combat I have +10 ft speed and +1 attack with the Attack action\n   When I'm hiding or trying to hide, others gain no benefit from darkvision to detect me"
+          "description": "In the first turn of combat I have +10 ft speed and +1 attack with the Attack action\nWhen I'm hiding or trying to hide, others gain no benefit from darkvision to detect me"
         },
         {
           "id": "subclass:rangerua-deep-stalker-ua:feature:subclassfeature7",
@@ -7104,7 +7215,7 @@
           "key": "subclassfeature3.1",
           "name": "Weapon Bond",
           "minLevel": 3,
-          "description": "I can bond with up to two weapons by spending a short rest with each\n   I can't be disarmed of a bonded weapon and I can summon one as a bonus action"
+          "description": "I can bond with up to two weapons by spending a short rest with each\nI can't be disarmed of a bonded weapon and I can summon one as a bonus action"
         },
         {
           "id": "subclass:fighter-eldritch-knight:feature:subclassfeature7",
@@ -7118,14 +7229,14 @@
           "key": "subclassfeature10",
           "name": "Eldritch Strike",
           "minLevel": 10,
-          "description": "A creature hit by my weapon attack has disadv. on the save vs. the next spell I cast\n   This lasts until the end of my next turn"
+          "description": "A creature hit by my weapon attack has disadv. on the save vs. the next spell I cast\nThis lasts until the end of my next turn"
         },
         {
           "id": "subclass:fighter-eldritch-knight:feature:subclassfeature15",
           "key": "subclassfeature15",
           "name": "Arcane Charge",
           "minLevel": 15,
-          "description": "When I use Action Surge, I can also teleport up to 30 ft to an empty space I can see\n   I can do so before or after the extra action"
+          "description": "When I use Action Surge, I can also teleport up to 30 ft to an empty space I can see\nI can do so before or after the extra action"
         },
         {
           "id": "subclass:fighter-eldritch-knight:feature:subclassfeature18",
@@ -7233,7 +7344,7 @@
           "key": "subclassfeature1",
           "name": "Divine Magic",
           "minLevel": 1,
-          "description": "When I select my 1st level or higher spells, I can also pick spells from the cleric spell list\n   These cleric spells count as sorcerer spells for me"
+          "description": "When I select my 1st level or higher spells, I can also pick spells from the cleric spell list\nThese cleric spells count as sorcerer spells for me"
         },
         {
           "id": "subclass:sorcerer-favored-soul-ua2:feature:subclassfeature1-2",
@@ -7256,7 +7367,7 @@
           "key": "subclassfeature6",
           "name": "Blessed Countenance",
           "minLevel": 6,
-          "description": "Choose an otherworldly quality using the \"Choose Feature\" button above\n   When my proficiency bonus applies to a Charisma check, I double that bonus"
+          "description": "Choose an otherworldly quality using the \"Choose Feature\" button above\nWhen my proficiency bonus applies to a Charisma check, I double that bonus"
         },
         {
           "id": "subclass:sorcerer-favored-soul-ua2:feature:subclassfeature14",
@@ -7270,7 +7381,7 @@
           "key": "subclassfeature18",
           "name": "Unearthly Recovery",
           "minLevel": 18,
-          "description": "As a bonus action when I have less than half of my max HP, I can heal myself\n   I regain a number of HP equal to half my maximum hit points",
+          "description": "As a bonus action when I have less than half of my max HP, I can heal myself\nI regain a number of HP equal to half my maximum hit points",
           "usages": 1,
           "recovery": "long rest"
         }
@@ -7317,7 +7428,7 @@
           "key": "subclassfeature6",
           "name": "Empowered Healing",
           "minLevel": 6,
-          "description": "[1 sorcery point]When I roll dice for healing with one of my sorcerer spells, I can reroll them once\nBy spending 1 sorcery point, I can reroll any number of those dice for that spell"
+          "description": "When I roll dice for healing with one of my sorcerer spells, I can reroll them once\nBy spending 1 sorcery point, I can reroll any number of those dice for that spell"
         },
         {
           "id": "subclass:sorcerer-favoured-soul-uars:feature:subclassfeature14",
@@ -7553,7 +7664,7 @@
           "key": "subclassfeature1.1",
           "name": "Blessing of the Forge",
           "minLevel": 1,
-          "description": "At the end of a long rest, I can imbue magic into a nonmagical weapon or armor\n   It becomes magical: +1 AC if armor, or +1 to attack and damage rolls if a weapon\n   This lasts until the end of my next long rest",
+          "description": "At the end of a long rest, I can imbue magic into a nonmagical weapon or armor\nIt becomes magical: +1 AC if armor, or +1 to attack and damage rolls if a weapon\nThis lasts until the end of my next long rest",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -7569,14 +7680,14 @@
           "key": "subclassfeature2",
           "name": "Channel Divinity: Artisan's Blessing",
           "minLevel": 2,
-          "description": "During a short rest, I can conduct a ritual to craft an item that is at least part metal\n   The object can be worth up to 100 gp, and I must expend metals of equal value to it\n   The item can be an exact duplicate of a nonmagical item if I possess the original"
+          "description": "During a short rest, I can conduct a ritual to craft an item that is at least part metal\nThe object can be worth up to 100 gp, and I must expend metals of equal value to it\nThe item can be an exact duplicate of a nonmagical item if I possess the original"
         },
         {
           "id": "subclass:cleric-forge-domain-ua:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Soul of the Forge",
           "minLevel": 6,
-          "description": "I gain a +1 AC while wearing medium or heavy armor, and resistance to fire damage\n   When I hit a construct with an attack, I deal my cleric level in additional force damage"
+          "description": "I gain a +1 AC while wearing medium or heavy armor, and resistance to fire damage\nWhen I hit a construct with an attack, I deal my cleric level in additional force damage"
         },
         {
           "id": "subclass:cleric-forge-domain-ua:feature:subclassfeature8",
@@ -7590,7 +7701,7 @@
           "key": "subclassfeature17",
           "name": "Saint of Forge and Fire",
           "minLevel": 17,
-          "description": "I gain immunity to fire damage\n   If wearing heavy armor, I'm resistant to nonmagical bludg./piercing/slashing damage"
+          "description": "I gain immunity to fire damage\nIf wearing heavy armor, I'm resistant to nonmagical bludg./piercing/slashing damage"
         }
       ]
     },
@@ -7838,14 +7949,14 @@
           "key": "subclassfeature1.1",
           "name": "Circle of Mortality",
           "minLevel": 1,
-          "description": "Spells I cast to heal a living creature at 0 HP have their dice count as their max result\n   As a bonus action, I can cast the Spare the Dying cantrip, if I know it"
+          "description": "Spells I cast to heal a living creature at 0 HP have their dice count as their max result\nAs a bonus action, I can cast the Spare the Dying cantrip, if I know it"
         },
         {
           "id": "subclass:cleric-grave-domain-ua:feature:subclassfeature1-2",
           "key": "subclassfeature1.2",
           "name": "Eyes of the Grave",
           "minLevel": 1,
-          "description": "By spending 1 min in uninterrupted contemplation, I sense undead within 1 mile\n   I learn their number, distance, and direction from me\n   In addition, I know the creature type of the one with the highest CR",
+          "description": "By spending 1 min in uninterrupted contemplation, I sense undead within 1 mile\nI learn their number, distance, and direction from me\nIn addition, I know the creature type of the one with the highest CR",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -7854,7 +7965,7 @@
           "key": "subclassfeature2",
           "name": "Channel Divinity: Path to the Grave",
           "minLevel": 2,
-          "description": "As an action, I can touch a creature to make it take extra damage from one attack\n   It is vulnerable to all the damage from the next spell or attack from me or an ally\n   This only applies to the first time that source inflicts damage, and then ends\n   If the creature has resistance or is immune to the damage, it instead loses it"
+          "description": "As an action, I can touch a creature to make it take extra damage from one attack\nIt is vulnerable to all the damage from the next spell or attack from me or an ally\nThis only applies to the first time that source inflicts damage, and then ends\nIf the creature has resistance or is immune to the damage, it instead loses it"
         },
         {
           "id": "subclass:cleric-grave-domain-ua:feature:subclassfeature6",
@@ -7877,7 +7988,7 @@
           "key": "subclassfeature17",
           "name": "Keeper of Souls",
           "minLevel": 17,
-          "description": "Once per round, if I'm not incapacitated, I can manipulate the energy of the dying\n   When an enemy I can see dies within 30 ft of me, I or an ally within 30 ft regain HP\n   The HP regained is equal to the enemy's number of Hit Dice"
+          "description": "Once per round, if I'm not incapacitated, I can manipulate the energy of the dying\nWhen an enemy I can see dies within 30 ft of me, I or an ally within 30 ft regain HP\nThe HP regained is equal to the enemy's number of Hit Dice"
         }
       ]
     },
@@ -8478,21 +8589,21 @@
           "key": "subclassfeature3",
           "name": "Ear for Deceit",
           "minLevel": 3,
-          "description": "When using Wis (Insight) to sense if someone is lying, I can choose to use a fixed total\n   This total is 8 + Wis modifier + proficiency bonus (if proficient, or twice if expertise)"
+          "description": "When using Wis (Insight) to sense if someone is lying, I can choose to use a fixed total\nThis total is 8 + Wis modifier + proficiency bonus (if proficient, or twice if expertise)"
         },
         {
           "id": "subclass:rogue-inquisitive-ua:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Eye for Detail",
           "minLevel": 3,
-          "description": "I can use the bonus action granted by Cunning Action for the following as well:\n    - To make a Wisdom (Perception) check to spot a hidden creature or object\n    - To make an Intelligence (Investigation) check to uncover and decipher clues\n    - To use Insightful Fighting (see below)"
+          "description": "I can use the bonus action granted by Cunning Action for the following as well:\n• To make a Wisdom (Perception) check to spot a hidden creature or object\n• To make an Intelligence (Investigation) check to uncover and decipher clues\n• To use Insightful Fighting (see below)"
         },
         {
           "id": "subclass:rogue-inquisitive-ua:feature:subclassfeature3-2",
           "key": "subclassfeature3.2",
           "name": "Insightful Fighting",
           "minLevel": 3,
-          "description": "As an action or bonus action, I can decipher the tactics of an active opponent I can see\n   I have to make a Wisdom (Insight) check vs. the target's Charisma (Deception) check\n   If I succeed, I can use sneak attack on the target regardless of advantage/disadvantage\n   This benefit lasts for 1 minute or until I successfully use Insightful Fighting again"
+          "description": "As an action or bonus action, I can decipher the tactics of an active opponent I can see\nI have to make a Wisdom (Insight) check vs. the target's Charisma (Deception) check\nIf I succeed, I can use sneak attack on the target regardless of advantage/disadvantage\nThis benefit lasts for 1 minute or until I successfully use Insightful Fighting again"
         },
         {
           "id": "subclass:rogue-inquisitive-ua:feature:subclassfeature9",
@@ -8508,7 +8619,7 @@
           "key": "subclassfeature13",
           "name": "Unerring Eye",
           "minLevel": 13,
-          "description": "As an action, I can sense magical deceptions within 30 feet of me, but not what it does\n   I learn the presence of illusions, shapechanged creatures, or magic designed to deceive"
+          "description": "As an action, I can sense magical deceptions within 30 feet of me, but not what it does\nI learn the presence of illusions, shapechanged creatures, or magic designed to deceive"
         },
         {
           "id": "subclass:rogue-inquisitive-ua:feature:subclassfeature17",
@@ -8544,14 +8655,14 @@
           "key": "subclassfeature3",
           "name": "Born in the Saddle",
           "minLevel": 3,
-          "description": "Mounting or dismounting a creature costs me only 5 ft of movement\n   I have advantage on saving throws made to avoid falling off my mount\n   If I fall off my mount for less than 10 ft while not incapacitated, I land on my feet"
+          "description": "Mounting or dismounting a creature costs me only 5 ft of movement\nI have advantage on saving throws made to avoid falling off my mount\nIf I fall off my mount for less than 10 ft while not incapacitated, I land on my feet"
         },
         {
           "id": "subclass:fighter-knight-ua:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Implacable Mark",
           "minLevel": 3,
-          "description": "If I hit a creature with a melee weapon attack, I mark it until the end of my next turn\n   A marked target has disadv. on any attacks vs. those that didn't mark it\n   I can attack the target I marked if it is within 5 ft of me and does one of the following:\n    - It moves at least 1 foot on its turn\n    - It makes an attack that it suffers disadv. on from being marked\n   This attack uses my reaction, has adv., and adds my fighter level as extra damage\n   I can still do this if I already used my reaction this round, but not this turn",
+          "description": "If I hit a creature with a melee weapon attack, I mark it until the end of my next turn\nA marked target has disadv. on any attacks vs. those that didn't mark it\nI can attack the target I marked if it is within 5 ft of me and does one of the following:\n• It moves at least 1 foot on its turn\n• It makes an attack that it suffers disadv. on from being marked\nThis attack uses my reaction, has adv., and adds my fighter level as extra damage\nI can still do this if I already used my reaction this round, but not this turn",
           "usages": 3,
           "recovery": "short rest"
         },
@@ -8560,28 +8671,28 @@
           "key": "subclassfeature7",
           "name": "Noble Cavalry",
           "minLevel": 7,
-          "description": "I gain proficiency with two skills or one language\n   I can choose the skills from: Animal Handling, History, Insight, Persuasion, and Religion"
+          "description": "I gain proficiency with two skills or one language\nI can choose the skills from: Animal Handling, History, Insight, Persuasion, and Religion"
         },
         {
           "id": "subclass:fighter-knight-ua:feature:subclassfeature10",
           "key": "subclassfeature10",
           "name": "Hold the Line",
           "minLevel": 10,
-          "description": "As a reaction when a creature within 5 ft of me moves at least 1 ft, I can attack it\n   This attack is made with a melee weapon attack and deals extra damage on a hit\n   If this hits, the attack reduces the target's speed to 0 until the end of this turn"
+          "description": "As a reaction when a creature within 5 ft of me moves at least 1 ft, I can attack it\nThis attack is made with a melee weapon attack and deals extra damage on a hit\nIf this hits, the attack reduces the target's speed to 0 until the end of this turn"
         },
         {
           "id": "subclass:fighter-knight-ua:feature:subclassfeature15",
           "key": "subclassfeature15",
           "name": "Rapid Strike",
           "minLevel": 15,
-          "description": "If I have adv. on an attack, I can forgo it to make an extra attack as a bonus action\n   This attack has to be with the same weapon against the same target"
+          "description": "If I have adv. on an attack, I can forgo it to make an extra attack as a bonus action\nThis attack has to be with the same weapon against the same target"
         },
         {
           "id": "subclass:fighter-knight-ua:feature:subclassfeature18",
           "key": "subclassfeature18",
           "name": "Defender's Blade",
           "minLevel": 18,
-          "description": "I can do opportunity attacks if I already used my reaction this round, but not this turn\n   I gain a +1 bonus to AC when I'm wearing heavy armor"
+          "description": "I can do opportunity attacks if I already used my reaction this round, but not this turn\nI gain a +1 bonus to AC when I'm wearing heavy armor"
         }
       ]
     },
@@ -8610,7 +8721,7 @@
           "key": "subclassfeature1",
           "name": "Blessings of Knowledge",
           "minLevel": 1,
-          "description": "I learn two languages and gain proficiency and expertise with two skills\n   I can choose from the following: Arcana, History, Nature, or Religion"
+          "description": "I learn two languages and gain proficiency and expertise with two skills\nI can choose from the following: Arcana, History, Nature, or Religion"
         },
         {
           "id": "subclass:cleric-knowledge-domain:feature:subclassfeature2",
@@ -8624,7 +8735,7 @@
           "key": "subclassfeature6",
           "name": "Channel Divinity: Read Thoughts",
           "minLevel": 6,
-          "description": "As an action, one creature within 60 ft I can see must make a Wisdom save\n   If it fails, I can read its surface thoughts for 1 min, as long as it's within 60 ft of me\n   As an action, I can end this and cast Suggestion on it (it fails its save automatically)\n   If it succeeded on its save, I can't use this feature again on it until I finish a long rest"
+          "description": "As an action, one creature within 60 ft I can see must make a Wisdom save\nIf it fails, I can read its surface thoughts for 1 min, as long as it's within 60 ft of me\nAs an action, I can end this and cast Suggestion on it (it fails its save automatically)\nIf it succeeded on its save, I can't use this feature again on it until I finish a long rest"
         },
         {
           "id": "subclass:cleric-knowledge-domain:feature:subclassfeature8",
@@ -8706,7 +8817,7 @@
           "key": "subclassfeature2",
           "name": "Channel Divinity: Radiance of the Dawn",
           "minLevel": 2,
-          "description": "As an action, in 30 ft, magical darkness is dispelled and hostiles must make a Con save\n   Each takes radiant damage, saves for half, and negates with total cover"
+          "description": "As an action, in 30 ft, magical darkness is dispelled and hostiles must make a Con save\nEach takes radiant damage, saves for half, and negates with total cover"
         },
         {
           "id": "subclass:cleric-light-domain:feature:subclassfeature6",
@@ -8727,7 +8838,7 @@
           "key": "subclassfeature17",
           "name": "Corona of Light",
           "minLevel": 17,
-          "description": "As an action, I have an aura of 60 ft sunlight and 30 ft dim light for 1 min\n   Enemies in the sunlight have disadv. on saves vs. spells that deal fire or radiant damage"
+          "description": "As an action, I have an aura of 60 ft sunlight and 30 ft dim light for 1 min\nEnemies in the sunlight have disadv. on saves vs. spells that deal fire or radiant damage"
         }
       ]
     },
@@ -8863,7 +8974,7 @@
           "key": "subclassfeature18",
           "name": "Lunar Phenomenon",
           "minLevel": 18,
-          "description": "[per phase: 1× per long rest or 5 SP]As a bonus action, or as part of changing phase, I can use a power of the (new) phase:\n○ Full: Chosen creatures within 30 ft of me must make a Constitution save or be blinded\n   This lasts until their next turn ends; I also heal one creature within 30 ft for 3d8 HP\n● New: Chosen creatures within 30 ft of me must make a Dexterity save\n   If failed, they take 3d10 Necrotic damage and have 0 speed until their next turn ends\n   Also, I become invisible until the end of my next turn, or until I attack or cast a spell\n◖ Crescent: I can magically teleport to an unoccupied space I can see within 60 ft\n   I gain resistance to all damage until the start of my next turn\nI can use each phase's bonus action 1/LR, or by spending 5 sorcery points to use it again"
+          "description": "As a bonus action, or as part of changing phase, I can use a power of the (new) phase:\n○ Full: Chosen creatures within 30 ft of me must make a Constitution save or be blinded\n   This lasts until their next turn ends; I also heal one creature within 30 ft for 3d8 HP\n● New: Chosen creatures within 30 ft of me must make a Dexterity save\n   If failed, they take 3d10 Necrotic damage and have 0 speed until their next turn ends\n   Also, I become invisible until the end of my next turn, or until I attack or cast a spell\n◖ Crescent: I can magically teleport to an unoccupied space I can see within 60 ft\n   I gain resistance to all damage until the start of my next turn\nI can use each phase's bonus action 1/LR, or by spending 5 sorcery points to use it again"
         }
       ]
     },
@@ -8915,7 +9026,7 @@
           "key": "subclassfeature6.1",
           "name": "Waxing and Waning",
           "minLevel": 6,
-          "description": "[1 sorcery point]As a bonus action, I can spend 1 sorcery point to change my lunar phase\nI can cast each lunar phase's 1st-level spells once per long rest, if it is my current phase"
+          "description": "As a bonus action, I can spend 1 sorcery point to change my lunar phase\nI can cast each lunar phase's 1st-level spells once per long rest, if it is my current phase"
         },
         {
           "id": "subclass:sorcerer-lunar-sorcery:feature:subclassfeature14",
@@ -8929,7 +9040,7 @@
           "key": "subclassfeature18",
           "name": "Lunar Phenomenon",
           "minLevel": 18,
-          "description": "[per phase: 1× per long rest or 5 SP]As a bonus action, or as part of changing phase, I can use a power of the (new) phase:\n○ Full: Chosen creatures within 30 ft of me must make a Constitution save or be blinded\n  This lasts until their next turn ends; I also heal one creature within 30 ft for 3d8 HP\n● New: Chosen creatures within 30 ft of me must make a Dexterity save\n  If failed, they take 3d10 Necrotic damage and have 0 speed until their next turn ends\n  Also, I become invisible until the end of my next turn, or until I attack or cast a spell\n◖ Crescent: I can magically teleport to an unoccupied space I can see within 60 ft\n  Both of us gain resistance to all damage until the start of my next turn\nI can use each phase's bonus action 1/LR, or by spending 5 sorcery points to use it again"
+          "description": "As a bonus action, or as part of changing phase, I can use a power of the (new) phase:\n○ Full: Chosen creatures within 30 ft of me must make a Constitution save or be blinded\n  This lasts until their next turn ends; I also heal one creature within 30 ft for 3d8 HP\n● New: Chosen creatures within 30 ft of me must make a Dexterity save\n  If failed, they take 3d10 Necrotic damage and have 0 speed until their next turn ends\n  Also, I become invisible until the end of my next turn, or until I attack or cast a spell\n◖ Crescent: I can magically teleport to an unoccupied space I can see within 60 ft\n  Both of us gain resistance to all damage until the start of my next turn\nI can use each phase's bonus action 1/LR, or by spending 5 sorcery points to use it again"
         }
       ]
     },
@@ -9105,14 +9216,14 @@
           "key": "subclassfeature3",
           "name": "Bonus Proficiencies",
           "minLevel": 3,
-          "description": "I gain proficiency with two skills or one skill and any one tool\n   For skills I can choose Arcana, History, Insight, Investigation, Nature, or Perception"
+          "description": "I gain proficiency with two skills or one skill and any one tool\nFor skills I can choose Arcana, History, Insight, Investigation, Nature, or Perception"
         },
         {
           "id": "subclass:fighter-monster-hunter-ua:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Combat Superiority",
           "minLevel": 3,
-          "description": "I gain a number of superiority dice that I can use to fuel special maneuvers (see below)\n   I can use only one maneuver per attack; I regain all superiority dice after a short rest\n    - Use after rolling to hit; I add the superiority die to my attack roll\n    - Use after damaging a creature; I add the superiority die to the damage roll\n       Also, the attack imposes disadvantage on any concentration save resulting from it\n    - Use after Int/Wis/Cha save, before knowing success/fail; add the die to the save total\n    - Use with Wis (Perception) to detect hidden or Wis (Insight) to see if lying to me\n       After rolling but before knowing if success/fail; I add the superiority die to the check",
+          "description": "I gain a number of superiority dice that I can use to fuel special maneuvers (see below)\nI can use only one maneuver per attack; I regain all superiority dice after a short rest\n• Use after rolling to hit; I add the superiority die to my attack roll\n• Use after damaging a creature; I add the superiority die to the damage roll\n   Also, the attack imposes disadvantage on any concentration save resulting from it\n• Use after Int/Wis/Cha save, before knowing success/fail; add the die to the save total\n• Use with Wis (Perception) to detect hidden or Wis (Insight) to see if lying to me\n   After rolling but before knowing if success/fail; I add the superiority die to the check",
           "usages": [
             0,
             0,
@@ -9142,7 +9253,7 @@
           "key": "subclassfeature3.2",
           "name": "Hunter's Mysticism",
           "minLevel": 3,
-          "description": "I can cast Detect Magic as a ritual and Protection from Evil & Good once per long rest\n   I gain the ability to speak one of the following languages: Abyssal, Celestial, or Infernal",
+          "description": "I can cast Detect Magic as a ritual and Protection from Evil & Good once per long rest\nI gain the ability to speak one of the following languages: Abyssal, Celestial, or Infernal",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -9151,7 +9262,7 @@
           "key": "subclassfeature7",
           "name": "Monster Slayer",
           "minLevel": 7,
-          "description": "Whenever I use a superiority die, I can choose to expend two, adding both to the roll\n   If the target is an aberration, fey, fiend, or undead, both dice deal maximum damage",
+          "description": "Whenever I use a superiority die, I can choose to expend two, adding both to the roll\nIf the target is an aberration, fey, fiend, or undead, both dice deal maximum damage",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -9335,14 +9446,14 @@
           "key": "subclassfeature2",
           "name": "Channel Divinity: Charm Animals and Plants",
           "minLevel": 2,
-          "description": "As an action, all beasts and plants within 30 ft that I can see must make a Wis save\n   If failed, each is charmed and friendly to allies and me for 1 min or until damaged"
+          "description": "As an action, all beasts and plants within 30 ft that I can see must make a Wis save\nIf failed, each is charmed and friendly to allies and me for 1 min or until damaged"
         },
         {
           "id": "subclass:cleric-nature-domain:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Dampen Elements",
           "minLevel": 6,
-          "description": "As a reaction, if an ally in 30 ft or I takes acid/cold/fire/lightning/thunder damage,\n   I can grant resistance against that instance of damage"
+          "description": "As a reaction, if an ally in 30 ft or I takes acid/cold/fire/lightning/thunder damage,\nI can grant resistance against that instance of damage"
         },
         {
           "id": "subclass:cleric-nature-domain:feature:subclassfeature8",
@@ -9444,7 +9555,7 @@
           "key": "subclassfeature3",
           "name": "Channel Divinity: Conquering Strike",
           "minLevel": 3,
-          "description": "I can use my channel divinity to break a foe's will that I hit with my melee weapon\n   The target must make a Wisdom saving throw or become frightened for 1 minute\n   The target can repeat this save at the end of each or its turn to end the effect"
+          "description": "I can use my channel divinity to break a foe's will that I hit with my melee weapon\nThe target must make a Wisdom saving throw or become frightened for 1 minute\nThe target can repeat this save at the end of each or its turn to end the effect"
         },
         {
           "id": "subclass:paladin-oath-of-conquest-ua:feature:subclassfeature3-1",
@@ -9472,7 +9583,7 @@
           "key": "subclassfeature20",
           "name": "Invincible Conqueror",
           "minLevel": 20,
-          "description": "As an action, I can gain the following benefits for 1 minute:\n    - I have resistance all damage\n    - I can make an additional attack as part of my Attack action\n    - My melee weapons score critical hits on a roll of 19 or 20",
+          "description": "As an action, I can gain the following benefits for 1 minute:\n• I have resistance all damage\n• I can make an additional attack as part of my Attack action\n• My melee weapons score critical hits on a roll of 19 or 20",
           "usages": 1,
           "recovery": "long rest"
         }
@@ -9813,14 +9924,14 @@
           "key": "subclassfeature3",
           "name": "Channel Divinity: Nature's Wrath",
           "minLevel": 3,
-          "description": "As an action, a creature I can see within 10 ft must make a Str/Dex save (its choice)\n   If it fails this save, it is restrained until it succeeds on a save at the end of its turn"
+          "description": "As an action, a creature I can see within 10 ft must make a Str/Dex save (its choice)\nIf it fails this save, it is restrained until it succeeds on a save at the end of its turn"
         },
         {
           "id": "subclass:paladin-oath-of-the-ancients:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Channel Divinity: Turn the Faithless",
           "minLevel": 3,
-          "description": "As an action, all fey/fiends within 30 ft that can hear me must make a Wisdom save\n   If one fails, it is turned for 1 minute or until it takes damage and must show true form\n   Turned: move away, never within 30 ft of me, no reactions or actions other than Dash\n   Turned: may Dodge instead of Dash when nowhere to move and unable to escape bonds"
+          "description": "As an action, all fey/fiends within 30 ft that can hear me must make a Wisdom save\nIf one fails, it is turned for 1 minute or until it takes damage and must show true form\nTurned: move away, never within 30 ft of me, no reactions or actions other than Dash\nTurned: may Dodge instead of Dash when nowhere to move and unable to escape bonds"
         },
         {
           "id": "subclass:paladin-oath-of-the-ancients:feature:subclassfeature7",
@@ -9834,7 +9945,7 @@
           "key": "subclassfeature15",
           "name": "Undying Sentinel",
           "minLevel": 15,
-          "description": "If dropped to 0 hit points and not killed outright, I can choose to stay at 1 hit point\n   Additionally, I suffer no drawbacks of old age and can't be aged magically",
+          "description": "If dropped to 0 hit points and not killed outright, I can choose to stay at 1 hit point\nAdditionally, I suffer no drawbacks of old age and can't be aged magically",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -9881,14 +9992,14 @@
           "key": "subclassfeature3.1",
           "name": "Channel Divinity: Turn the Tide",
           "minLevel": 3,
-          "description": "As a bonus action, any chosen creatures within 30 ft that can hear me regains HP\n   Each regain 1d6 + my Charisma modifier HP, up to half of its total HP"
+          "description": "As a bonus action, any chosen creatures within 30 ft that can hear me regains HP\nEach regain 1d6 + my Charisma modifier HP, up to half of its total HP"
         },
         {
           "id": "subclass:paladin-oath-of-the-crown:feature:subclassfeature7",
           "key": "subclassfeature7",
           "name": "Divine Allegiance",
           "minLevel": 7,
-          "description": "When a creature within 5 feet of me takes damage, I can substitute my HP for it\n   The creature takes no damage and I take all of it; this damage can't be prevented"
+          "description": "When a creature within 5 feet of me takes damage, I can substitute my HP for it\nThe creature takes no damage and I take all of it; this damage can't be prevented"
         },
         {
           "id": "subclass:paladin-oath-of-the-crown:feature:subclassfeature15",
@@ -10051,14 +10162,14 @@
           "key": "subclassfeature3",
           "name": "Channel Divinity: Conjure Duplicate",
           "minLevel": 3,
-          "description": "As an action, I create 1 illusory duplicate of myself within 30 ft of me for 1 min (conc)\n   As a bonus action, I can move it up to 30 ft to a space I can see within 120 ft of me\n   I can cast spells as though I was in its space, but still have to use my own senses\n   I have advantage on attacks if the target is within 5 ft of the duplicate and me"
+          "description": "As an action, I create 1 illusory duplicate of myself within 30 ft of me for 1 min (conc)\nAs a bonus action, I can move it up to 30 ft to a space I can see within 120 ft of me\nI can cast spells as though I was in its space, but still have to use my own senses\nI have advantage on attacks if the target is within 5 ft of the duplicate and me"
         },
         {
           "id": "subclass:paladin-oath-of-treachery-ua:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Channel Divinity: Poison Strike",
           "minLevel": 3,
-          "description": "As a bonus action, I imbue one weapon or piece of ammunition with poison upon touch\n   This poison lasts for 1 minute and will affect the next time I hit a target with it\n   The target takes 2d10 + my paladin level poison damage immediately after the hit\n   I automatically roll 20 on the 2d10 if I have advantage on the attack roll"
+          "description": "As a bonus action, I imbue one weapon or piece of ammunition with poison upon touch\nThis poison lasts for 1 minute and will affect the next time I hit a target with it\nThe target takes 2d10 + my paladin level poison damage immediately after the hit\nI automatically roll 20 on the 2d10 if I have advantage on the attack roll"
         },
         {
           "id": "subclass:paladin-oath-of-treachery-ua:feature:subclassfeature7",
@@ -10072,7 +10183,7 @@
           "key": "subclassfeature7.1",
           "name": "Treacherous Strike",
           "minLevel": 7,
-          "description": "As a reaction when a creature within 5 ft misses me, I can redirect the attack\n   If it can be charmed, it rerolls the attack on a target of my choice within 5 ft of it",
+          "description": "As a reaction when a creature within 5 ft misses me, I can redirect the attack\nIf it can be charmed, it rerolls the attack on a target of my choice within 5 ft of it",
           "usages": 3,
           "recovery": "short rest"
         },
@@ -10081,7 +10192,7 @@
           "key": "subclassfeature15",
           "name": "Blackguard's Escape",
           "minLevel": 15,
-          "description": "As a reaction after I am hit by an attack, I can teleport up to 60 ft to a spot I can see\n   In doing this, I also become invisible (as the spell) until the end of my next turn",
+          "description": "As a reaction after I am hit by an attack, I can teleport up to 60 ft to a spot I can see\nIn doing this, I also become invisible (as the spell) until the end of my next turn",
           "usages": 1,
           "recovery": "short rest"
         }
@@ -10112,28 +10223,28 @@
           "key": "subclassfeature3",
           "name": "Channel Divinity: Abjure Enemy",
           "minLevel": 3,
-          "description": "As an action, one creature within 60 ft that I can see me must make a Wisdom save\n   If failed, it is frightened and its speed is 0 despite bonuses; if success, its speed is halved\n   This lasts for 1 minute or until it takes damage; Undead/fiends have disadv. on save"
+          "description": "As an action, one creature within 60 ft that I can see me must make a Wisdom save\nIf failed, it is frightened and its speed is 0 despite bonuses; if success, its speed is halved\nThis lasts for 1 minute or until it takes damage; Undead/fiends have disadv. on save"
         },
         {
           "id": "subclass:paladin-oath-of-vengeance:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Channel Divinity: Vow of Enmity",
           "minLevel": 3,
-          "description": "As a bonus action, I utter a vow against a creature I can see within 10 ft\n   I get adv. on attacks against it for 1 minute or until it drops to 0 HP or falls unconscious"
+          "description": "As a bonus action, I utter a vow against a creature I can see within 10 ft\nI get adv. on attacks against it for 1 minute or until it drops to 0 HP or falls unconscious"
         },
         {
           "id": "subclass:paladin-oath-of-vengeance:feature:subclassfeature7",
           "key": "subclassfeature7",
           "name": "Relentless Avenger",
           "minLevel": 7,
-          "description": "After I hit with an opportunity attack, I can move 1/2 my speed in the same reaction\n   This movement doesn't provoke opportunity attacks"
+          "description": "After I hit with an opportunity attack, I can move 1/2 my speed in the same reaction\nThis movement doesn't provoke opportunity attacks"
         },
         {
           "id": "subclass:paladin-oath-of-vengeance:feature:subclassfeature15",
           "key": "subclassfeature15",
           "name": "Soul of Vengeance",
           "minLevel": 15,
-          "description": "When an enemy I have an active Vow of Enmity against makes an attack, I can react\n   As a reaction, I can make a melee weapon attack against it if it is within range"
+          "description": "When an enemy I have an active Vow of Enmity against makes an attack, I can react\nAs a reaction, I can make a melee weapon attack against it if it is within range"
         },
         {
           "id": "subclass:paladin-oath-of-vengeance:feature:subclassfeature20",
@@ -10171,21 +10282,21 @@
           "key": "subclassfeature3",
           "name": "Channel Divinity: Control Undead",
           "minLevel": 3,
-          "description": "As an action, one undead (CR < paladin level) I can see in 30 ft must make a Wis save\n   If failed, it must obey my commands for 24 hours or until I use this on another"
+          "description": "As an action, one undead (CR < paladin level) I can see in 30 ft must make a Wis save\nIf failed, it must obey my commands for 24 hours or until I use this on another"
         },
         {
           "id": "subclass:paladin-oathbreaker:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Channel Divinity: Dreadful Aspect",
           "minLevel": 3,
-          "description": "As an action, anyone I choose within 30 ft that can see me must make a Wisdom save\n   If failed, it is frightened for 1 min or until it succeeds a save at the end of its turns\n   It can't save at the end of its turn if it's still within 30 ft of me"
+          "description": "As an action, anyone I choose within 30 ft that can see me must make a Wisdom save\nIf failed, it is frightened for 1 min or until it succeeds a save at the end of its turns\nIt can't save at the end of its turn if it's still within 30 ft of me"
         },
         {
           "id": "subclass:paladin-oathbreaker:feature:subclassfeature7",
           "key": "subclassfeature7",
           "name": "Aura of Hate",
           "minLevel": 7,
-          "description": "Fiends/undead within range and I add my Cha mod as bonus on melee weapon damage\n   Multiple Auras of Hate don't stack; only the strongest applies"
+          "description": "Fiends/undead within range and I add my Cha mod as bonus on melee weapon damage\nMultiple Auras of Hate don't stack; only the strongest applies"
         },
         {
           "id": "subclass:paladin-oathbreaker:feature:subclassfeature15",
@@ -10199,7 +10310,7 @@
           "key": "subclassfeature20",
           "name": "Dread Lord",
           "minLevel": 20,
-          "description": "As an action, I gain a 30-ft aura of gloom that reduces bright light to dim for 1 min\n   If frightened of me, foes starting their turn in the aura take 4d10 psychic damage\n   Attacks vs. my allies and me inside the aura have disadvantage if attackers need sight\n   As a bonus action, I can make a melee spell attack vs. a target inside the aura\n   If this attack hits, it does 3d10 + Charisma modifier necrotic damage",
+          "description": "As an action, I gain a 30-ft aura of gloom that reduces bright light to dim for 1 min\nIf frightened of me, foes starting their turn in the aura take 4d10 psychic damage\nAttacks vs. my allies and me inside the aura have disadvantage if attackers need sight\nAs a bonus action, I can make a melee spell attack vs. a target inside the aura\nIf this attack hits, it does 3d10 + Charisma modifier necrotic damage",
           "usages": 1,
           "recovery": "long rest"
         }
@@ -10907,14 +11018,14 @@
           "key": "subclassfeature3",
           "name": "Ancestral Protectors",
           "minLevel": 3,
-          "description": "As a bonus action while raging, I can choose a creature within 5 ft of me that I can see\n   The creature has disadvantage on attack rolls that don't target me\n   If it takes the Disengage action within 5 feet of me, its speed is halved for its turn\n   This lasts until the start of my next turn or my rage ends, whichever comes"
+          "description": "As a bonus action while raging, I can choose a creature within 5 ft of me that I can see\nThe creature has disadvantage on attack rolls that don't target me\nIf it takes the Disengage action within 5 feet of me, its speed is halved for its turn\nThis lasts until the start of my next turn or my rage ends, whichever comes"
         },
         {
           "id": "subclass:barbarian-ancestral-guardian-ua:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Ancestral Shield",
           "minLevel": 6,
-          "description": "While I'm raging, I can transfer my resistance to an ally I can see within 30 ft of me\n   As a reaction when an ally takes bludgeoning, piercing, or slashing damage\n   My ally keeps the resistance, and I lose it, until the start of my next turn"
+          "description": "While I'm raging, I can transfer my resistance to an ally I can see within 30 ft of me\nAs a reaction when an ally takes bludgeoning, piercing, or slashing damage\nMy ally keeps the resistance, and I lose it, until the start of my next turn"
         },
         {
           "id": "subclass:barbarian-ancestral-guardian-ua:feature:subclassfeature10",
@@ -10930,7 +11041,7 @@
           "key": "subclassfeature14",
           "name": "Vengeful Ancestors",
           "minLevel": 14,
-          "description": "While I'm raging, I can have my vengeful ancestors attack for 2d8 force damage\n   As a reaction when I or an ally I can see within 30 feet of me is damaged in melee"
+          "description": "While I'm raging, I can have my vengeful ancestors attack for 2d8 force damage\nAs a reaction when I or an ally I can see within 30 feet of me is damaged in melee"
         }
       ]
     },
@@ -11032,7 +11143,7 @@
           "key": "subclassfeature14",
           "name": "Spiked Retribution",
           "minLevel": 14,
-          "description": "When I'm hit in melee by an attacker within 5 ft, it takes 3 piercing damage\n   This only works while I'm wearing spiked armor, in rage, and I'm not incapacitated"
+          "description": "When I'm hit in melee by an attacker within 5 ft, it takes 3 piercing damage\nThis only works while I'm wearing spiked armor, in rage, and I'm not incapacitated"
         }
       ]
     },
@@ -11333,7 +11444,7 @@
           "key": "subclassfeature3",
           "name": "Storm Aura",
           "minLevel": 3,
-          "description": "While raging, I emanate a 10-ft radius aura that shapes the environment around me\" + \"\n   \" + \"Use the \"Choose Feature\" button above to select the aura"
+          "description": "While raging, I emanate a 10-ft radius aura that shapes the environment around me\nUse the \"Choose Feature\" button above to select the aura"
         },
         {
           "id": "subclass:barbarian-storm-herald-ua:feature:subclassfeature6",
@@ -11560,7 +11671,7 @@
           "key": "subclassfeature3",
           "name": "Divine Fury",
           "minLevel": 3,
-          "description": "While raging, I can become cloaked in an aura of divine power until my rage ends\" + \"\n   \" + \"Choose a damage type using the \"Choose Feature\" button above",
+          "description": "While raging, I can become cloaked in an aura of divine power until my rage ends\nChoose a damage type using the \"Choose Feature\" button above",
           "usages": 1,
           "recovery": "turn"
         },
@@ -11576,7 +11687,7 @@
           "key": "subclassfeature6",
           "name": "Zealous Focus",
           "minLevel": 6,
-          "description": "As a reaction when I fail a saving throw while raging, I can instead succeed on it\n   Doing so immediately ends my rage and I can't rage again until I finish a short rest",
+          "description": "As a reaction when I fail a saving throw while raging, I can instead succeed on it\nDoing so immediately ends my rage and I can't rage again until I finish a short rest",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -11585,7 +11696,7 @@
           "key": "subclassfeature10",
           "name": "Zealous Presence",
           "minLevel": 10,
-          "description": "As an action, I howl in fury and unleash a battle cry infused with divine energy\n   Allies within 60 ft of me gain adv. on attacks and saves until the start of my next turn",
+          "description": "As an action, I howl in fury and unleash a battle cry infused with divine energy\nAllies within 60 ft of me gain adv. on attacks and saves until the start of my next turn",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -11594,7 +11705,7 @@
           "key": "subclassfeature14",
           "name": "Rage Beyond Death",
           "minLevel": 14,
-          "description": "While raging, having 0 hit points doesn't knock me unconscious\n   I still must make death saves, and I suffer the normal effects of taking damage\n   However, if I would die due to failing death saves, I don't die until my rage ends"
+          "description": "While raging, having 0 hit points doesn't knock me unconscious\nI still must make death saves, and I suffer the normal effects of taking damage\nHowever, if I would die due to failing death saves, I don't die until my rage ends"
         }
       ]
     },
@@ -11940,7 +12051,7 @@
           "key": "subclassfeature3.1",
           "name": "Guardian Soul",
           "minLevel": 3,
-          "description": "As a bonus action, I transform to or from a guardian form, changing me as follows:\n    - I grow to Large size, all my movement is reduced to 5 ft, and I get +5 ft reach\n    - I gain half my ranger level in temporary HP at the start of each of my turns\n   This ends when I'm incapacitated; When it ends, I lose all temporary HP I got from it"
+          "description": "As a bonus action, I transform to or from a guardian form, changing me as follows:\n• I grow to Large size, all my movement is reduced to 5 ft, and I get +5 ft reach\n• I gain half my ranger level in temporary HP at the start of each of my turns\nThis ends when I'm incapacitated; When it ends, I lose all temporary HP I got from it"
         },
         {
           "id": "subclass:ranger-primeval-guardian-ua:feature:subclassfeature3-2",
@@ -11954,7 +12065,7 @@
           "key": "subclassfeature7",
           "name": "Ancient Fortitude",
           "minLevel": 7,
-          "description": "When I assume my guardian form, my HP & max HP increase by twice my ranger level\n   When I leave the form, my max HP reverts back, and any excess HP I have is lost"
+          "description": "When I assume my guardian form, my HP & max HP increase by twice my ranger level\nWhen I leave the form, my max HP reverts back, and any excess HP I have is lost"
         },
         {
           "id": "subclass:ranger-primeval-guardian-ua:feature:subclassfeature11",
@@ -11968,7 +12079,7 @@
           "key": "subclassfeature15",
           "name": "Guardian Aura",
           "minLevel": 15,
-          "description": "While I'm in my guardian form, I heal allies that start their turn within 30 ft of me\n   They heal half my ranger level if they are below half HP and not undead or constructs"
+          "description": "While I'm in my guardian form, I heal allies that start their turn within 30 ft of me\nThey heal half my ranger level if they are below half HP and not undead or constructs"
         }
       ]
     },
@@ -12004,7 +12115,7 @@
           "key": "subclassfeature3.1",
           "name": "Guardian Soul",
           "minLevel": 3,
-          "description": "As a bonus action, I transform to or from a guardian form, changing me as follows:\n    - I grow to Large size, all my movement is reduced to 5 ft, and I get +5 ft reach\n    - I gain half my ranger level in temporary HP at the start of each of my turns\n   This ends when I'm incapacitated; When it ends, I lose all temporary HP I got from it"
+          "description": "As a bonus action, I transform to or from a guardian form, changing me as follows:\n• I grow to Large size, all my movement is reduced to 5 ft, and I get +5 ft reach\n• I gain half my ranger level in temporary HP at the start of each of my turns\nThis ends when I'm incapacitated; When it ends, I lose all temporary HP I got from it"
         },
         {
           "id": "subclass:rangerua-primeval-guardian-conclave-ua:feature:subclassfeature3-2",
@@ -12018,7 +12129,7 @@
           "key": "subclassfeature7",
           "name": "Ancient Fortitude",
           "minLevel": 7,
-          "description": "When I assume my guardian form, my HP & max HP increase by twice my ranger level\n   When I leave the form, my max HP reverts back, and any excess HP I have is lost"
+          "description": "When I assume my guardian form, my HP & max HP increase by twice my ranger level\nWhen I leave the form, my max HP reverts back, and any excess HP I have is lost"
         },
         {
           "id": "subclass:rangerua-primeval-guardian-conclave-ua:feature:subclassfeature11",
@@ -12032,7 +12143,7 @@
           "key": "subclassfeature15",
           "name": "Guardian Aura",
           "minLevel": 15,
-          "description": "While I'm in my guardian form, I heal allies that start their turn within 30 ft of me\n   They heal half my ranger level if they are below half HP and not undead or constructs"
+          "description": "While I'm in my guardian form, I heal allies that start their turn within 30 ft of me\nThey heal half my ranger level if they are below half HP and not undead or constructs"
         }
       ]
     },
@@ -12097,14 +12208,14 @@
           "key": "subclassfeature1.1",
           "name": "Shield of the Faithful",
           "minLevel": 1,
-          "description": "As a reaction, when someone within 5 ft of me is attacked, I impose disadv. on the roll\n   To do this, I must be able to see both the attacker and the target"
+          "description": "As a reaction, when someone within 5 ft of me is attacked, I impose disadv. on the roll\nTo do this, I must be able to see both the attacker and the target"
         },
         {
           "id": "subclass:cleric-protection-domain-ua:feature:subclassfeature2",
           "key": "subclassfeature2",
           "name": "Channel Divinity: Radiant Defense",
           "minLevel": 2,
-          "description": "As an action, I channel blessed energy into an ally that I can see within 30 ft of me\n   The first time the ally is hit within the next minute, the attacker takes radiant damage"
+          "description": "As an action, I channel blessed energy into an ally that I can see within 30 ft of me\nThe first time the ally is hit within the next minute, the attacker takes radiant damage"
         },
         {
           "id": "subclass:cleric-protection-domain-ua:feature:subclassfeature6",
@@ -12125,7 +12236,7 @@
           "key": "subclassfeature17",
           "name": "Indomitable Defense",
           "minLevel": 17,
-          "description": "I gain resistance to two of: bludgeoning, necrotic, piercing, radiant, or slashing damage\n   Whenever I finish a short or long rest, I can change the damage types chosen\n   As an action, I can transfer both resistances to one creature I touch\n   As a bonus action, I can transfer the resistances back to myself\n   Otherwise, the creature keeps this resistance until the end of my next short or long rest",
+          "description": "I gain resistance to two of: bludgeoning, necrotic, piercing, radiant, or slashing damage\nWhenever I finish a short or long rest, I can change the damage types chosen\nAs an action, I can transfer both resistances to one creature I touch\nAs a bonus action, I can transfer the resistances back to myself\nOtherwise, the creature keeps this resistance until the end of my next short or long rest",
           "usages": 1,
           "recovery": "short rest"
         }
@@ -12165,14 +12276,14 @@
           "key": "subclassfeature3.1",
           "name": "Psionic Power: Protective Field",
           "minLevel": 3,
-          "description": "[1 psionic energy die]As a reaction when I or a creature I can see within 30 ft takes damage, I can reduce it\nI reduce the damage by the roll of the one psionic energy die I expend + my Int mod"
+          "description": "As a reaction when I or a creature I can see within 30 ft takes damage, I can reduce it\nI reduce the damage by the roll of the one psionic energy die I expend + my Int mod"
         },
         {
           "id": "subclass:fighter-psi-warrior:feature:subclassfeature3-2",
           "key": "subclassfeature3.2",
           "name": "Psionic Power: Psionic Strike",
           "minLevel": 3,
-          "description": "[1 psionic energy die]Once on each of my turns after I hit a target in 30 ft and damage it with a weapon,\nI can expend a psionic energy die to deal it the die roll + my Int mod in force damage"
+          "description": "Once on each of my turns after I hit a target in 30 ft and damage it with a weapon,\nI can expend a psionic energy die to deal it the die roll + my Int mod in force damage"
         },
         {
           "id": "subclass:fighter-psi-warrior:feature:subclassfeature3-3",
@@ -12197,7 +12308,7 @@
           "key": "subclassfeature7.2",
           "name": "Telekinetic Adept: Telekinetic Thrust",
           "minLevel": 7,
-          "description": "[DC 8 + Prof B. + Int mod]When I deal damage with my Psionic Strike, I can have the target make a Strength save\nIf failed, I knock the target prone or move it up to 10 ft in any direction horizontally"
+          "description": "When I deal damage with my Psionic Strike, I can have the target make a Strength save\nIf failed, I knock the target prone or move it up to 10 ft in any direction horizontally"
         },
         {
           "id": "subclass:fighter-psi-warrior:feature:subclassfeature10",
@@ -12398,21 +12509,21 @@
           "key": "subclassfeature7",
           "name": "Royal Envoy",
           "minLevel": 7,
-          "description": "I gain proficiency with the Persuasion skill and I gain expertise with the Persuasion skill\n   If already proficient, I can choose Animal Handling, Insight, Intimidation, or Performance"
+          "description": "I gain proficiency with the Persuasion skill and I gain expertise with the Persuasion skill\nIf already proficient, I can choose Animal Handling, Insight, Intimidation, or Performance"
         },
         {
           "id": "subclass:fighter-purple-dragon-knight:feature:subclassfeature10",
           "key": "subclassfeature10",
           "name": "Inspiring Surge",
           "minLevel": 10,
-          "description": "When I use my Action Surge, I can inspire an ally within 60 ft that can see or hear me\n   The ally can then use its reaction to make one melee or ranged weapon attack"
+          "description": "When I use my Action Surge, I can inspire an ally within 60 ft that can see or hear me\nThe ally can then use its reaction to make one melee or ranged weapon attack"
         },
         {
           "id": "subclass:fighter-purple-dragon-knight:feature:subclassfeature15",
           "key": "subclassfeature15",
           "name": "Bulwark",
           "minLevel": 15,
-          "description": "When I use Indomitable to reroll a Int, Wis, or Cha save, I can extend it to an ally\n   The ally can reroll its failed saving throw against the same effect and take the result\n   It only works if not incapacitated and the ally is within 60 ft and can see or hear me"
+          "description": "When I use Indomitable to reroll a Int, Wis, or Cha save, I can extend it to an ally\nThe ally can reroll its failed saving throw against the same effect and take the result\nIt only works if not incapacitated and the ally is within 60 ft and can see or hear me"
         }
       ]
     },
@@ -12655,7 +12766,7 @@
           "key": "subclassfeature3",
           "name": "Fighting Spirit",
           "minLevel": 3,
-          "description": "As a bonus action, I can give myself benefits that last until the end of my next turn\n   I then gain adv. on my attacks and resistance to bludgeoning/piercing/slashing damage",
+          "description": "As a bonus action, I can give myself benefits that last until the end of my next turn\nI then gain adv. on my attacks and resistance to bludgeoning/piercing/slashing damage",
           "usages": 3,
           "recovery": "short rest"
         },
@@ -12664,7 +12775,7 @@
           "key": "subclassfeature7",
           "name": "Elegant Courtier",
           "minLevel": 7,
-          "description": "I can add my Wis modifier to any Cha check to persuade anyone of a high social station\n   I gain proficiency with either one language or the History, Insight, or Persuasion skill"
+          "description": "I can add my Wis modifier to any Cha check to persuade anyone of a high social station\nI gain proficiency with either one language or the History, Insight, or Persuasion skill"
         },
         {
           "id": "subclass:fighter-samurai-ua:feature:subclassfeature10",
@@ -12678,14 +12789,14 @@
           "key": "subclassfeature15",
           "name": "Rapid Strike",
           "minLevel": 15,
-          "description": "If I have adv. on an attack, I can forgo it to make an extra attack as a bonus action\n   This attack has to be with the same weapon against the same target"
+          "description": "If I have adv. on an attack, I can forgo it to make an extra attack as a bonus action\nThis attack has to be with the same weapon against the same target"
         },
         {
           "id": "subclass:fighter-samurai-ua:feature:subclassfeature18",
           "key": "subclassfeature18",
           "name": "Strength Before Death",
           "minLevel": 18,
-          "description": "If I take damage that would reduce me to 0 HP, I can delay that damage\n   I then immediately take a bonus turn, interrupting the current turn\n   I don't take the delayed damage until the bonus turn ends and can affect that damage",
+          "description": "If I take damage that would reduce me to 0 HP, I can delay that damage\nI then immediately take a bonus turn, interrupting the current turn\nI don't take the delayed damage until the bonus turn ends and can affect that damage",
           "usages": 1,
           "recovery": "long rest"
         }
@@ -12723,7 +12834,7 @@
           "key": "subclassfeature2.1",
           "name": "Arcane Ward",
           "minLevel": 2,
-          "description": "Whenever I cast an 1st-level or higher abjuration spell, I make/heal a ward\n   I make it at max HP; When I cast again, it heals two HP per spell level\n   It stays active at 0 HP and doesn't go away until my next long rest\n   If I take damage, the ward takes the damage instead, but excess damage carries over",
+          "description": "Whenever I cast an 1st-level or higher abjuration spell, I make/heal a ward\nI make it at max HP; When I cast again, it heals two HP per spell level\nIt stays active at 0 HP and doesn't go away until my next long rest\nIf I take damage, the ward takes the damage instead, but excess damage carries over",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -12782,14 +12893,14 @@
           "key": "subclassfeature2.1",
           "name": "Minor Conjuration",
           "minLevel": 2,
-          "description": "As an action, I can conjure an object up to 3 ft on each side and no more than 10 lbs\n   It must be of a form of a nonmagical object I have seen and is created within 10 ft\n   The object disappears after 1 hour, if it takes or deals damage, or when I use this again"
+          "description": "As an action, I can conjure an object up to 3 ft on each side and no more than 10 lbs\nIt must be of a form of a nonmagical object I have seen and is created within 10 ft\nThe object disappears after 1 hour, if it takes or deals damage, or when I use this again"
         },
         {
           "id": "subclass:wizard-conjuration:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Benign Transposition",
           "minLevel": 6,
-          "description": "As an action, I can teleport to a place within 30 ft that I can see\n   Instead, I can swap places with a willing Small/Medium creature in 30 ft that I can see\n   I can do this again after a long rest or casting a 1st-level or higher conjuration spell",
+          "description": "As an action, I can teleport to a place within 30 ft that I can see\nInstead, I can swap places with a willing Small/Medium creature in 30 ft that I can see\nI can do this again after a long rest or casting a 1st-level or higher conjuration spell",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -12855,7 +12966,7 @@
           "key": "subclassfeature10",
           "name": "The Third Eye",
           "minLevel": 10,
-          "description": "As an action, I gain one of the following until my next short or long rest:\n   Darkvision 60ft, see the Ethereal Plane 60ft, read any language, or see invisibility 10ft",
+          "description": "As an action, I gain one of the following until my next short or long rest:\nDarkvision 60ft, see the Ethereal Plane 60ft, read any language, or see invisibility 10ft",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -12900,7 +13011,7 @@
           "key": "subclassfeature2.1",
           "name": "Hypnotic Gaze",
           "minLevel": 2,
-          "description": "As an action, a seen enemy within 5 ft must make a Wis save or be charmed\n   This doesn't work if it can't see/hear me; It's also incapacitated and reduced to 0 speed\n   This lasts until the end of my next turn, but I can use an action to extend the duration\n   It also ends if it takes damage, can't see or hear me, or is more than 5 ft from me\n   On success or once it ends, I can't use this on it again until after a long rest",
+          "description": "As an action, a seen enemy within 5 ft must make a Wis save or be charmed\nThis doesn't work if it can't see/hear me; It's also incapacitated and reduced to 0 speed\nThis lasts until the end of my next turn, but I can use an action to extend the duration\nIt also ends if it takes damage, can't see or hear me, or is more than 5 ft from me\nOn success or once it ends, I can't use this on it again until after a long rest",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -12909,21 +13020,21 @@
           "key": "subclassfeature6",
           "name": "Instinctive Charm",
           "minLevel": 6,
-          "description": "As a reaction, when someone I can see in 30 ft attacks me, it must make a Wis save\n   If failed, it must instead attack the closest creature within range (not me or self)\n   On a success, the target is immune to this until after my long rest; This is a charm effect"
+          "description": "As a reaction, when someone I can see in 30 ft attacks me, it must make a Wis save\nIf failed, it must instead attack the closest creature within range (not me or self)\nOn a success, the target is immune to this until after my long rest; This is a charm effect"
         },
         {
           "id": "subclass:wizard-enchantment:feature:subclassfeature10",
           "key": "subclassfeature10",
           "name": "Split Enchantment",
           "minLevel": 10,
-          "description": "When I cast an enchantment spell with only one target, I can target a second in range\n   This does not apply to cantrips"
+          "description": "When I cast an enchantment spell with only one target, I can target a second in range\nThis does not apply to cantrips"
         },
         {
           "id": "subclass:wizard-enchantment:feature:subclassfeature14",
           "key": "subclassfeature14",
           "name": "Alter Memories",
           "minLevel": 14,
-          "description": "When I cast an enchantment spell that charms, I can have one target be unaware of it\n   Also, once before that spell ends, I can have that target forget time while affected\n   It must make an Intelligence save or lose up to 1 + Charisma modifier hours of memory"
+          "description": "When I cast an enchantment spell that charms, I can have one target be unaware of it\nAlso, once before that spell ends, I can have that target forget time while affected\nIt must make an Intelligence save or lose up to 1 + Charisma modifier hours of memory"
         }
       ]
     },
@@ -12959,7 +13070,7 @@
           "key": "subclassfeature2.1",
           "name": "Improved Minor Illusion",
           "minLevel": 2,
-          "description": "I gain the knowledge of the Minor Illusion cantrip (or another if I already knew it)\n   When I cast it, I can create both a sound and an image with a single casting"
+          "description": "I gain the knowledge of the Minor Illusion cantrip (or another if I already knew it)\nWhen I cast it, I can create both a sound and an image with a single casting"
         },
         {
           "id": "subclass:wizard-illusion:feature:subclassfeature6",
@@ -12982,7 +13093,7 @@
           "key": "subclassfeature14",
           "name": "Illusory Reality",
           "minLevel": 14,
-          "description": "As a bonus action, after I cast a 1st-level or higher illusion spell, I can make it real\n   One inanimate, nonmagical object that is part of the illusion becomes real for 1 minute\n   The object can't be something that directly harms someone"
+          "description": "As a bonus action, after I cast a 1st-level or higher illusion spell, I can make it real\nOne inanimate, nonmagical object that is part of the illusion becomes real for 1 minute\nThe object can't be something that directly harms someone"
         }
       ]
     },
@@ -13134,7 +13245,7 @@
           "key": "subclassfeature2.1",
           "name": "Minor Alchemy",
           "minLevel": 2,
-          "description": "I can transform an object of wood/stone/iron/copper/silver into another of those\n   For each 10 min I spend, I can transform up to 1 cubic foot of the material\n   It reverts back when I lose concentration or after 1 hour"
+          "description": "I can transform an object of wood/stone/iron/copper/silver into another of those\nFor each 10 min I spend, I can transform up to 1 cubic foot of the material\nIt reverts back when I lose concentration or after 1 hour"
         },
         {
           "id": "subclass:wizard-transmutation:feature:subclassfeature2",
@@ -13155,7 +13266,7 @@
           "key": "subclassfeature10",
           "name": "Shapechanger",
           "minLevel": 10,
-          "description": "I add Polymorph to my spellbook; I can cast it on myself without using a spell slot\n   When I do that, I can only transform into a beast with a challenge rating of 1 or lower",
+          "description": "I add Polymorph to my spellbook; I can cast it on myself without using a spell slot\nWhen I do that, I can only transform into a beast with a challenge rating of 1 or lower",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -13164,7 +13275,7 @@
           "key": "subclassfeature14",
           "name": "Master Transmuter",
           "minLevel": 14,
-          "description": "As an action, I can destroy my transmuter's stone and do one of the four following:\n    1) Major Transformation\n      In 10 minutes, I transmute one nonmagical object up to 5 cubic foot into another\n      This new, nonmagical object must be of similar size and mass and equal or less value\n    2) Panacea\n      One touched has all curses, diseases, and poisons removed and is healed to max HP\n    3) Restore Life\n      I cast Raise Dead without using spell slots or needing to have it in my spellbook\n    4) Restore Youth\n      A touched creature's apparent age is reduced by 3d10 years (to a minimum of 13)"
+          "description": "As an action, I can destroy my transmuter's stone and do one of the four following:\n##• Major Transformation##.\n  In 10 minutes, I transmute one nonmagical object up to 5 cubic foot into another\n  This new, nonmagical object must be of similar size and mass and equal or less value\n##• Panacea##.\n  One touched has all curses, diseases, and poisons removed and is healed to max HP\n##• Restore Life##.\n  I cast Raise Dead without using spell slots or needing to have it in my spellbook\n##• Restore Youth##.\n  A touched creature's apparent age is reduced by 3d10 years (to a minimum of 13)"
         }
       ]
     },
@@ -13250,14 +13361,14 @@
           "key": "subclassfeature3",
           "name": "Bonus Proficiencies",
           "minLevel": 3,
-          "description": "I gain proficiency with three skills or two skills and Thieves' Tools; For skills choose from:\n   Acrobatics, Athletics, Investigation, Medicine, Nature, Perception, Stealth, and Survival"
+          "description": "I gain proficiency with three skills or two skills and Thieves' Tools; For skills choose from:\nAcrobatics, Athletics, Investigation, Medicine, Nature, Perception, Stealth, and Survival"
         },
         {
           "id": "subclass:fighter-scout-ua:feature:subclassfeature3-1",
           "key": "subclassfeature3.1",
           "name": "Combat Superiority",
           "minLevel": 3,
-          "description": "I gain a number of superiority dice that I can use to fuel special maneuvers (see below)\n   I can use only one maneuver per attack; I regain all superiority dice after a short rest\n    - Use after rolling an Athletics, Nature, Perception, Stealth, or Survival check\n       I add half the superiority die to the roll (rounding up)\n    - Use after rolling to hit; I add the superiority die to my attack roll\n    - As a reaction when I'm hit while wearing light/medium armor, I add the die to AC\n       If the attack still hits, I only take half damage from it",
+          "description": "I gain a number of superiority dice that I can use to fuel special maneuvers (see below)\nI can use only one maneuver per attack; I regain all superiority dice after a short rest\n• Use after rolling an Athletics, Nature, Perception, Stealth, or Survival check\n   I add half the superiority die to the roll (rounding up)\n• Use after rolling to hit; I add the superiority die to my attack roll\n• As a reaction when I'm hit while wearing light/medium armor, I add the die to AC\n   If the attack still hits, I only take half damage from it",
           "usages": [
             0,
             0,
@@ -13350,14 +13461,14 @@
           "key": "subclassfeature13",
           "name": "Ambush Master",
           "minLevel": 13,
-          "description": "As a bonus action in the first combat round with a surprised foe, I can lead the ambush\n   If I do so, allies who can see me gets +5 to their initiative roll, up to my initiative value\n   Also, each ally gains +10 ft to its speed that lasts until the end their next turn"
+          "description": "As a bonus action in the first combat round with a surprised foe, I can lead the ambush\nIf I do so, allies who can see me gets +5 to their initiative roll, up to my initiative value\nAlso, each ally gains +10 ft to its speed that lasts until the end their next turn"
         },
         {
           "id": "subclass:rogue-scout-ua:feature:subclassfeature17",
           "key": "subclassfeature17",
           "name": "Sudden Strike",
           "minLevel": 17,
-          "description": "With the Attack action, I can make one additional attack as a bonus action\n   This attack can benefit from my Sneak Attack even if I already used it this turn\n   However, I still can't use Sneak Attack on a single target more than once per turn"
+          "description": "With the Attack action, I can make one additional attack as a bonus action\nThis attack can benefit from my Sneak Attack even if I already used it this turn\nHowever, I still can't use Sneak Attack on a single target more than once per turn"
         }
       ]
     },
@@ -13483,35 +13594,35 @@
           "key": "subclassfeature1",
           "name": "Eyes of the Dark",
           "minLevel": 1,
-          "description": "I have 60 ft darkvision and can cast Darkness by spending 1 sorcery point\n   I can see through any darkness spell I cast using this ability"
+          "description": "I have 60 ft darkvision and can cast Darkness by spending 1 sorcery point\nI can see through any darkness spell I cast using this ability"
         },
         {
           "id": "subclass:sorcerer-shadow-sorcerer-ua:feature:subclassfeature1-1",
           "key": "subclassfeature1.1",
           "name": "Strength of the Grave",
           "minLevel": 1,
-          "description": "When damage reduces me to 0 HP, that isn't radiant damage or a critical hit,\n   I can make a Constitution save (DC 5 + damage taken) to drop to 1 HP instead"
+          "description": "When damage reduces me to 0 HP, that isn't radiant damage or a critical hit,\nI can make a Constitution save (DC 5 + damage taken) to drop to 1 HP instead"
         },
         {
           "id": "subclass:sorcerer-shadow-sorcerer-ua:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Hound of Ill Omen",
           "minLevel": 6,
-          "description": "As a bonus action, I target a creature I can see and summon a hound within 30 ft of it\n   The hound has all the stats of a medium sized dire wolf with the following exceptions:\n    - At the start of its turn, it automatically knows where the target is\n    - It can only move towards and make (opportunity) attack against the target\n    - It can move through other creatures and objects as if they were difficult terrain\n    - It takes 5 force damage if it ends its turn inside an object\n   The target has disadvantage on saves vs. my spells while the hound is within 5 ft of it"
+          "description": "As a bonus action, I target a creature I can see and summon a hound within 30 ft of it\nThe hound has all the stats of a medium sized dire wolf with the following exceptions:\n• At the start of its turn, it automatically knows where the target is\n• It can only move towards and make (opportunity) attack against the target\n• It can move through other creatures and objects as if they were difficult terrain\n• It takes 5 force damage if it ends its turn inside an object\nThe target has disadvantage on saves vs. my spells while the hound is within 5 ft of it"
         },
         {
           "id": "subclass:sorcerer-shadow-sorcerer-ua:feature:subclassfeature14",
           "key": "subclassfeature14",
           "name": "Shadow Walk",
           "minLevel": 14,
-          "description": "As a bonus action when I'm in dim light or darkness, I can teleport up to 120 ft\n   The destination has to be unoccupied, within line of sight, and in dim light or darkness"
+          "description": "As a bonus action when I'm in dim light or darkness, I can teleport up to 120 ft\nThe destination has to be unoccupied, within line of sight, and in dim light or darkness"
         },
         {
           "id": "subclass:sorcerer-shadow-sorcerer-ua:feature:subclassfeature18",
           "key": "subclassfeature18",
           "name": "Shadow Form",
           "minLevel": 18,
-          "description": "As a bonus action, I transform into a shadow form for 1 minute\n   While transformed, I have resistance to all damage types except force damage\n   Also, I can move through other creatures and objects as if they were difficult terrain\n   I take 5 force damage if I end my turn inside an object"
+          "description": "As a bonus action, I transform into a shadow form for 1 minute\nWhile transformed, I have resistance to all damage types except force damage\nAlso, I can move through other creatures and objects as if they were difficult terrain\nI take 5 force damage if I end my turn inside an object"
         }
       ]
     },
@@ -13606,7 +13717,7 @@
           "key": "subclassfeature3",
           "name": "Steady Aim",
           "minLevel": 3,
-          "description": "As a bonus action, I can carefully aim my ranged weapon on a target I can see in range\n   Until the end of my turn, my attacks with this weapon on that target get to:\n   Ignore half and three-quarter cover; Add 2 + half fighter level damage per hit",
+          "description": "As a bonus action, I can carefully aim my ranged weapon on a target I can see in range\nUntil the end of my turn, my attacks with this weapon on that target get to:\nIgnore half and three-quarter cover; Add 2 + half fighter level damage per hit",
           "usages": 3,
           "recovery": "short rest"
         },
@@ -13615,21 +13726,21 @@
           "key": "subclassfeature7",
           "name": "Careful Eyes",
           "minLevel": 7,
-          "description": "As a bonus action, I can take the Search action\n   I gain proficiency with one skill, Perception, Investigation, or Survival"
+          "description": "As a bonus action, I can take the Search action\nI gain proficiency with one skill, Perception, Investigation, or Survival"
         },
         {
           "id": "subclass:fighter-sharpshooter-ua:feature:subclassfeature10",
           "key": "subclassfeature10",
           "name": "Close-Quarters Shooting",
           "minLevel": 10,
-          "description": "I don't have disadvantage when making a ranged attack while within 5 ft of a hostile\n   A hostile within 5 ft that I hit with a ranged attack on my turn, can't take reactions\n   This lasts until the end of my turn"
+          "description": "I don't have disadvantage when making a ranged attack while within 5 ft of a hostile\nA hostile within 5 ft that I hit with a ranged attack on my turn, can't take reactions\nThis lasts until the end of my turn"
         },
         {
           "id": "subclass:fighter-sharpshooter-ua:feature:subclassfeature15",
           "key": "subclassfeature15",
           "name": "Rapid Strike",
           "minLevel": 15,
-          "description": "If I have adv. on an attack, I can forgo it to make an extra attack as a bonus action\n   This attack has to be with the same weapon against the same target"
+          "description": "If I have adv. on an attack, I can forgo it to make an extra attack as a bonus action\nThis attack has to be with the same weapon against the same target"
         },
         {
           "id": "subclass:fighter-sharpshooter-ua:feature:subclassfeature18",
@@ -13681,7 +13792,7 @@
           "key": "subclassfeature9",
           "name": "Soul Blades",
           "minLevel": 9,
-          "description": "My psi-suffused soul grants me more psionic powers, see the 3rd page's \"Notes\" section"
+          "description": "My psi-suffused soul grants me more psionic powers, see the 3rd page \"Notes\" section"
         },
         {
           "id": "subclass:rogue-soulknife:feature:subclassfeature13",
@@ -14156,7 +14267,7 @@
           "key": "subclassfeature14",
           "name": "Chained Device",
           "minLevel": 14,
-          "description": "I can use a held/worn tablet computer to concentrate on a spell I cast instead of me\n   If the device is separated from me, turned off, or broken, the effect is lost",
+          "description": "I can use a held/worn tablet computer to concentrate on a spell I cast instead of me\nIf the device is separated from me, turned off, or broken, the effect is lost",
           "usages": 1,
           "recovery": "long rest"
         }
@@ -14194,7 +14305,7 @@
           "key": "subclassfeature1.1",
           "name": "Wrath of the Storm",
           "minLevel": 1,
-          "description": "As a reaction, when a creature I can see within 5 ft hits me, I can thunderously rebuke\n   It takes 2d8 lightning or thunder damage (my choice) that a Dex save can halve",
+          "description": "As a reaction, when a creature I can see within 5 ft hits me, I can thunderously rebuke\nIt takes 2d8 lightning or thunder damage (my choice) that a Dex save can halve",
           "usages": "Wisdom modifier per ",
           "recovery": "long rest"
         },
@@ -14253,7 +14364,7 @@
           "key": "subclassfeature1",
           "name": "Fey Presence",
           "minLevel": 1,
-          "description": "As an action, all creatures in a 10-ft cube around me must make a Wisdom save\n   If failed, they're all charmed or frightened (my choice) until the end of my next turn",
+          "description": "As an action, all creatures in a 10-ft cube around me must make a Wisdom save\nIf failed, they're all charmed or frightened (my choice) until the end of my next turn",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -14262,7 +14373,7 @@
           "key": "subclassfeature6",
           "name": "Misty Escape",
           "minLevel": 6,
-          "description": "As a reaction, when I take damage, I can turn invisible and teleport up to 60 ft\n   I stay invisible until the start of my next turn or until I attack or cast a spell",
+          "description": "As a reaction, when I take damage, I can turn invisible and teleport up to 60 ft\nI stay invisible until the start of my next turn or until I attack or cast a spell",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -14271,14 +14382,14 @@
           "key": "subclassfeature10",
           "name": "Beguiling Defenses",
           "minLevel": 10,
-          "description": "As a reaction, when a creature tries to charm me, I can turn the charm back on it\n   It must make a Wis save or be charmed by me for 1 minute or until taking damage\n   I am immune to being charmed"
+          "description": "As a reaction, when a creature tries to charm me, I can turn the charm back on it\nIt must make a Wis save or be charmed by me for 1 minute or until taking damage\nI am immune to being charmed"
         },
         {
           "id": "subclass:warlock-the-archfey:feature:subclassfeature14",
           "key": "subclassfeature14",
           "name": "Dark Delirium",
           "minLevel": 14,
-          "description": "As an action, a creature within 60 ft must make a Wis save or be charmed/frightened\n   This lasts for 1 minute or until my concentration is broken or it takes damage\n   During this time, it can't see or hear anything but the illusion, me, and itself",
+          "description": "As an action, a creature within 60 ft must make a Wis save or be charmed/frightened\nThis lasts for 1 minute or until my concentration is broken or it takes damage\nDuring this time, it can't see or hear anything but the illusion, me, and itself",
           "usages": 1,
           "recovery": "short rest"
         }
@@ -14588,7 +14699,7 @@
           "key": "subclassfeature14",
           "name": "Limited Wish",
           "minLevel": 14,
-          "description": "[1× per 1d4 long rests]As an action, I can cast a 6th-level or lower spell with a casting time time of one action\nThis can be any spell; It doesn't require any costly components, it simply takes effect"
+          "description": "As an action, I can cast a 6th-level or lower spell with a casting time time of one action\nThis can be any spell; It doesn't require any costly components, it simply takes effect"
         }
       ]
     },
@@ -14687,7 +14798,7 @@
           "key": "subclassfeature6",
           "name": "Entropic Ward",
           "minLevel": 6,
-          "description": "As a reaction, when I'm attacked, I can impose disadvantage to that attack roll\n   If it misses me, I have adv. on my next attack vs. the attacker during my next turn",
+          "description": "As a reaction, when I'm attacked, I can impose disadvantage to that attack roll\nIf it misses me, I have adv. on my next attack vs. the attacker during my next turn",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -14696,14 +14807,14 @@
           "key": "subclassfeature10",
           "name": "Thought Shield",
           "minLevel": 10,
-          "description": "No one can read my mind unless I allow it; I have resistance to psychic damage\n   When I take psychic damage, the dealer of the psychic damage takes the same amount"
+          "description": "No one can read my mind unless I allow it; I have resistance to psychic damage\nWhen I take psychic damage, the dealer of the psychic damage takes the same amount"
         },
         {
           "id": "subclass:warlock-the-great-old-one:feature:subclassfeature14",
           "key": "subclassfeature14",
           "name": "Create Thrall",
           "minLevel": 14,
-          "description": "As an action, I can charm an incapacitated humanoid by touch\n   While it is charmed, I can communicate with it telepathically if it is on the same plane\n   This lasts until the charm is removed (can be by Remove Curse) or I use this again"
+          "description": "As an action, I can charm an incapacitated humanoid by touch\nWhile it is charmed, I can communicate with it telepathically if it is on the same plane\nThis lasts until the charm is removed (can be by Remove Curse) or I use this again"
         }
       ]
     },
@@ -15117,7 +15228,7 @@
           "key": "subclassfeature1",
           "name": "Shielding Aurora",
           "minLevel": 1,
-          "description": "As a bonus action, I create a whirling aurora of brilliant energy around me\n   It lasts until the end of my next turn and grants me resistance to all damage\n   Any hostile ending its turn in 10 ft of me get Warlock level + Cha mod radiant damage",
+          "description": "As a bonus action, I create a whirling aurora of brilliant energy around me\nIt lasts until the end of my next turn and grants me resistance to all damage\nAny hostile ending its turn in 10 ft of me get Warlock level + Cha mod radiant damage",
           "usages": 1,
           "recovery": "short rest"
         },
@@ -15126,7 +15237,7 @@
           "key": "subclassfeature6",
           "name": "Astral Refuge",
           "minLevel": 6,
-          "description": "As an action, I can step into an astral refuge, coming back at the end of the turn\n   While in the astral refuge, I can take two actions to cast spells targeting just me"
+          "description": "As an action, I can step into an astral refuge, coming back at the end of the turn\nWhile in the astral refuge, I can take two actions to cast spells targeting just me"
         },
         {
           "id": "subclass:warlock-the-seeker-ua:feature:subclassfeature10",
@@ -15140,7 +15251,7 @@
           "key": "subclassfeature14",
           "name": "Astral Sequestration",
           "minLevel": 14,
-          "description": "With a 5 minutes ritual, I can shift myself and ten willing creatures to the Astral Plane\n   While sequestered an Astral Plane, we gain the full benefits of a short rest\n   After this rest, we return to the same space as before, without any time having passed",
+          "description": "With a 5 minutes ritual, I can shift myself and ten willing creatures to the Astral Plane\nWhile sequestered an Astral Plane, we gain the full benefits of a short rest\nAfter this rest, we return to the same space as before, without any time having passed",
           "usages": 1,
           "recovery": "long rest"
         }
@@ -15279,14 +15390,14 @@
           "key": "subclassfeature1",
           "name": "Among the Dead",
           "minLevel": 1,
-          "description": "I learn the Spare the Dying cantrip and gain advantage on saving throws vs. diseases\n   If an undead targets me directly with an attack or spell, it must make a Wisdom save\n   On a fail, it must choose a new target or forfeit its attack or harmful spell\n   On a success or if I attack or cast a harmful spell on it, it is immune for 24 hours"
+          "description": "I learn the Spare the Dying cantrip and gain advantage on saving throws vs. diseases\nIf an undead targets me directly with an attack or spell, it must make a Wisdom save\nOn a fail, it must choose a new target or forfeit its attack or harmful spell\nOn a success or if I attack or cast a harmful spell on it, it is immune for 24 hours"
         },
         {
           "id": "subclass:warlock-the-undying:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Defy Death",
           "minLevel": 6,
-          "description": "I regain 1d8 + my Constitution modifier in HP when I succeed on a Death saving throw\n   I also regain this amount whenever I use Spare the Dying to stabilize a creature",
+          "description": "I regain 1d8 + my Constitution modifier in HP when I succeed on a Death saving throw\nI also regain this amount whenever I use Spare the Dying to stabilize a creature",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -15295,7 +15406,7 @@
           "key": "subclassfeature10",
           "name": "Undying Nature",
           "minLevel": 10,
-          "description": "I can hold my breath indefinitely; I don't require food, water, or sleep (I still need rest)\n   I age more slowly, only 1 year for every 10 years that pass; I can't be magically aged"
+          "description": "I can hold my breath indefinitely; I don't require food, water, or sleep (I still need rest)\nI age more slowly, only 1 year for every 10 years that pass; I can't be magically aged"
         },
         {
           "id": "subclass:warlock-the-undying:feature:subclassfeature14",
@@ -15333,14 +15444,14 @@
           "key": "subclassfeature1",
           "name": "Radiant Soul",
           "minLevel": 1,
-          "description": "I add my Cha modifier to cantrips/spells I cast that deal fire or radiant damage\n   I have resistance to radiant damage and know the Light and Sacred Flame cantrips"
+          "description": "I add my Cha modifier to cantrips/spells I cast that deal fire or radiant damage\nI have resistance to radiant damage and know the Light and Sacred Flame cantrips"
         },
         {
           "id": "subclass:warlock-the-undying-light-ua:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Searing Vengeance",
           "minLevel": 6,
-          "description": "When I would make a death saving throw, I can instead spring back to my feet\n   I immediately stand up and recover HP equal to half my current HP maximum\n   Also, all hostiles within 30 ft of me take 10 + Charisma modifier in radiant damage\n   Damaged creatures are blinded until the end of my next turn",
+          "description": "When I would make a death saving throw, I can instead spring back to my feet\nI immediately stand up and recover HP equal to half my current HP maximum\nAlso, all hostiles within 30 ft of me take 10 + Charisma modifier in radiant damage\nDamaged creatures are blinded until the end of my next turn",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -15349,14 +15460,14 @@
           "key": "subclassfeature10",
           "name": "Radiant Resilience",
           "minLevel": 10,
-          "description": "When I finish a short or long rest, I and up to five allies gain temporary hit points\n   I get my warlock level + Cha mod, while my allies get half my warlock level + Cha mod"
+          "description": "When I finish a short or long rest, I and up to five allies gain temporary hit points\nI get my warlock level + Cha mod, while my allies get half my warlock level + Cha mod"
         },
         {
           "id": "subclass:warlock-the-undying-light-ua:feature:subclassfeature14",
           "key": "subclassfeature14",
           "name": "Healing Light",
           "minLevel": 14,
-          "description": "As a bonus action, I touch a creature and heal it by expending dice from my pool\n   I subtract the number of d6's used from my pool; I can expend up to 5d6 at a time\n   The target heals HP equal to the roll of the dice; I regain expended uses with a long rest",
+          "description": "As a bonus action, I touch a creature and heal it by expending dice from my pool\nI subtract the number of d6's used from my pool; I can expend up to 5d6 at a time\nThe target heals HP equal to the roll of the dice; I regain expended uses with a long rest",
           "usages": "15d6 per ",
           "recovery": "long rest"
         }
@@ -15508,21 +15619,21 @@
           "key": "subclassfeature2",
           "name": "Infuse Potions",
           "minLevel": 2,
-          "description": "I can produce magic potions if I spend 10 minutes and expend a spell slot\n   I can not regain the spell slot until the potion is consumed or a week has passed"
+          "description": "I can produce magic potions if I spend 10 minutes and expend a spell slot\nI can not regain the spell slot until the potion is consumed or a week has passed"
         },
         {
           "id": "subclass:wizard-artificer-ua:feature:subclassfeature2-1",
           "key": "subclassfeature2.1",
           "name": "Infuse Scrolls",
           "minLevel": 2,
-          "description": "I can produce a scroll after a short rest if I spend 10 minutes and my Arcane Recovery\n   I subtract the spell's level from the levels worth of slots I regain using Arcane Recovery\n   This reduction applies till the scroll is used and I finish a long rest"
+          "description": "I can produce a scroll after a short rest if I spend 10 minutes and my Arcane Recovery\nI subtract the spell's level from the levels worth of slots I regain using Arcane Recovery\nThis reduction applies till the scroll is used and I finish a long rest"
         },
         {
           "id": "subclass:wizard-artificer-ua:feature:subclassfeature6",
           "key": "subclassfeature6",
           "name": "Infuse Weapons and Armor",
           "minLevel": 6,
-          "description": "I can spend 10 minutes to produce a magic weapon, armor, a shield, or ammunition\n   The item retains its magic for 8 hours and the spell slot I expend is:\n   2nd: +1 ammunition (20 pieces), 3rd: +1 weapon or +1 shield, 4th: +1 armor,\n   5th: +2 weapon or +2 ammunition (20 pieces), 6th: +3 armor."
+          "description": "I can spend 10 minutes to produce a magic weapon, armor, a shield, or ammunition\nThe item retains its magic for 8 hours and the spell slot I expend is:\n2nd: +1 ammunition (20 pieces), 3rd: +1 weapon or +1 shield, 4th: +1 armor,\n5th: +2 weapon or +2 ammunition (20 pieces), 6th: +3 armor."
         },
         {
           "id": "subclass:wizard-artificer-ua:feature:subclassfeature10",
@@ -15536,7 +15647,7 @@
           "key": "subclassfeature14",
           "name": "Master Artificer",
           "minLevel": 14,
-          "description": "I can produce a variety of magic items from Tables A and B from the DMG\n   It takes 1 week for such an item and I cannot do it again for a month",
+          "description": "I can produce a variety of magic items from Tables A and B from the DMG\nIt takes 1 week for such an item and I cannot do it again for a month",
           "usages": 1,
           "recovery": "Month"
         }
@@ -15567,7 +15678,7 @@
           "key": "subclassfeature1",
           "name": "Blessing of the Trickster",
           "minLevel": 1,
-          "description": "As an action, a willing creature I touch (not me) has adv. on Dex (Stealth) checks\n   This lasts for 1 hour or until I use it again"
+          "description": "As an action, a willing creature I touch (not me) has adv. on Dex (Stealth) checks\nThis lasts for 1 hour or until I use it again"
         },
         {
           "id": "subclass:cleric-trickery-domain:feature:subclassfeature2",
@@ -16113,7 +16224,7 @@
           "key": "subclassfeature6",
           "name": "Noxious Aura",
           "minLevel": 6,
-          "description": "[1 ki point]As a bonus action, I can spend 1 ki point to gain a 5-ft radius toxic aura for 1 minute\nWhile active, ranged attacks have disadv. vs. me; It ends if I'm incapacitated or dismiss it\nOthers who start their turn in it must make a Con save or be poisoned and take damage\nThey take my Wis mod in poison damage (min 0); Poisoned lasts until my next turn ends"
+          "description": "As a bonus action, I can spend 1 ki point to gain a 5-ft radius toxic aura for 1 minute\nWhile active, ranged attacks have disadv. vs. me; It ends if I'm incapacitated or dismiss it\nOthers who start their turn in it must make a Con save or be poisoned and take damage\nThey take my Wis mod in poison damage (min 0); Poisoned lasts until my next turn ends"
         },
         {
           "id": "subclass:monk-way-of-mercy-ua:feature:subclassfeature11",
@@ -16156,7 +16267,7 @@
           "key": "subclassfeature6",
           "name": "Shadow Step",
           "minLevel": 6,
-          "description": "As a bonus action, I can teleport from and into dim light or darkness within 60 ft\n   After I do this, I have adv. on the next melee attack I make before the end of my turn"
+          "description": "As a bonus action, I can teleport from and into dim light or darkness within 60 ft\nAfter I do this, I have adv. on the next melee attack I make before the end of my turn"
         },
         {
           "id": "subclass:monk-way-of-shadow:feature:subclassfeature11",
@@ -16255,7 +16366,7 @@
           "key": "subclassfeature6",
           "name": "Wings Unfurled",
           "minLevel": 6,
-          "description": "[Prof B. / long rest or 1 ki]When I use Step of the Wind, I can gain a flying speed equal to my walking speed\nI can do this Prof Bonus per long rest, or by using 2 ki points to use Step of the Wind"
+          "description": "When I use Step of the Wind, I can gain a flying speed equal to my walking speed\nI can do this Prof Bonus per long rest, or by using 2 ki points to use Step of the Wind"
         },
         {
           "id": "subclass:monk-ascendant-dragon-ua:feature:subclassfeature17",
@@ -16500,7 +16611,7 @@
           "key": "subclassfeature3",
           "name": "Disciple of the Elements",
           "minLevel": 3,
-          "description": "I know Elemental Attunement and additional Elemental Disciplines, depending on level\n   Use the \"Choose Feature\" button above to add Elemental Disciplines to the third page\n   From 5th level onward, I can use additional ki points to increase their spell slot level\n   I can trade known Elemental Disciplines for others when I gain new ones"
+          "description": "I know Elemental Attunement and additional Elemental Disciplines, depending on level\nUse the \"Choose Feature\" button above to add Elemental Disciplines to the third page\nFrom 5th level onward, I can use additional ki points to increase their spell slot level\nI can trade known Elemental Disciplines for others when I gain new ones"
         }
       ]
     },
@@ -16529,7 +16640,7 @@
           "key": "subclassfeature3",
           "name": "Path of the Kensei",
           "minLevel": 3,
-          "description": "[3 martial weapons proficiencies]\n   Martial weapons I am proficient with count as kensei weapons for me\n   With these, I can use Dex instead of Str and use the Martial Arts damage die\n   As a bonus action, my kensei weapon deal +1d4 bludg. damage for an Attack action"
+          "description": "Martial weapons I am proficient with count as kensei weapons for me\nWith these, I can use Dex instead of Str and use the Martial Arts damage die\nAs a bonus action, my kensei weapon deal +1d4 bludg. damage for an Attack action"
         },
         {
           "id": "subclass:monk-way-of-the-kensei-ua:feature:ki-empowered-strikes",
@@ -16631,7 +16742,7 @@
           "key": "subclassfeature6",
           "name": "Hour of Reaping",
           "minLevel": 6,
-          "description": "As an action, all creatures within 30 feet of me must make a Wisdom saving throw\n   On a failed save the creature is frightened until the end of my next turn"
+          "description": "As an action, all creatures within 30 feet of me must make a Wisdom saving throw\nOn a failed save the creature is frightened until the end of my next turn"
         },
         {
           "id": "subclass:monk-way-of-the-long-death:feature:subclassfeature11",
@@ -16711,7 +16822,7 @@
           "key": "subclassfeature3.1",
           "name": "Healing Hands",
           "minLevel": 3,
-          "description": "As an action, I use points to heal living creature; or 5 points to cure one poison/disease\n   With Flurry of Blows, I can replace one unarmed strike with a use of this feature",
+          "description": "As an action, I use points to heal living creature; or 5 points to cure one poison/disease\nWith Flurry of Blows, I can replace one unarmed strike with a use of this feature",
           "usages": [
             0,
             0,
@@ -16788,7 +16899,7 @@
           "key": "subclassfeature1.1",
           "name": "Tides of Chaos",
           "minLevel": 1,
-          "description": "I can gain advantage on either one attack roll, ability check, or saving throw\n   After I cast a 1st-level or higher sorcerer spell, the DM can impose a Wild Magic Surge\n   After I roll on the Wild Magic Surge table, I regain my use of Tides of Chaos",
+          "description": "I can gain advantage on either one attack roll, ability check, or saving throw\nAfter I cast a 1st-level or higher sorcerer spell, the DM can impose a Wild Magic Surge\nAfter I roll on the Wild Magic Surge table, I regain my use of Tides of Chaos",
           "usages": 1,
           "recovery": "long rest"
         },
@@ -16797,7 +16908,7 @@
           "key": "subclassfeature1",
           "name": "Wild Magic Surge",
           "minLevel": 1,
-          "description": "Wild Magic Surges can happen 5% of the time that I cast a sorcerer spell\nThis doesn't happen with cantrips and I only take this chance if the DM tells me to\nMetamagic can't affect spells cast because of the surge, but they require no concentration\nSee the \"Notes\" page for the table"
+          "description": "Wild Magic Surges can happen 5% of the time that I cast a sorcerer spell\nThis doesn't happen with cantrips and I only take this chance if the DM tells me to\nMetamagic can't affect spells cast because of the surge, but they require no concentration\n\"See the \"Notes\" page for the table\""
         },
         {
           "id": "subclass:sorcerer-wild-magic:feature:subclassfeature6",
@@ -16818,7 +16929,7 @@
           "key": "subclassfeature18",
           "name": "Spell Bombardment",
           "minLevel": 18,
-          "description": "Once per turn, when I roll spell damage, I can take one damage die that rolled max\n   I can then roll this die again and add it to the spell's damage"
+          "description": "Once per turn, when I roll spell damage, I can take one damage die that rolled max\nI can then roll this die again and add it to the spell's damage"
         }
       ]
     }
@@ -26470,7 +26581,7 @@
         "rawSourceRef": "boon of energy resistance",
         "dataStatus": "partial"
       },
-      "description": "I gain **Resistance** to two non-physical damage types, which I can change after a Long Rest. **Energy Redirection**. As a reaction when I take these types of damage, I can have a creature I can see within 60 ft make a Dex save DC 8 + Con mod + Prof Bonus, or take 2d12+Con mod damage of the same type.",
+      "description": "I gain ***Resistance*** to two non-physical damage types, which I can change after a Long Rest. ***Energy Redirection***. As a reaction when I take these types of damage, I can have a creature I can see within 60 ft make a Dex save DC 8 + Con mod + Prof Bonus, or take 2d12+Con mod damage of the same type.",
       "prerequisite": "Level 19+"
     },
     {
@@ -26546,7 +26657,7 @@
         "rawSourceRef": "boon of speed",
         "dataStatus": "partial"
       },
-      "description": "**Escape Artist**. As a Bonus Action, I can take the Disengage action, which also ends the Grappled condition on me.\n**Quickness**. My Speed increases by 30 ft.",
+      "description": "***Escape Artist***. As a Bonus Action, I can take the Disengage action, which also ends the Grappled condition on me.\n***Quickness***. My Speed increases by 30 ft.",
       "prerequisite": "Level 19+"
     },
     {
@@ -38583,7 +38694,7 @@
       },
       "type": "wondrous item",
       "weight": 3,
-      "description": "I can use this leather-bound book as a spellbook and it allows me to regain 1 extra spell slot level when I use Arcane Recovery (not included in the automation). While holding it, I can use it as a spellcasting focus for my wizard spells and gain a bonus to spell attack rolls and the saving throw DCs of my wizard spells."
+      "description": "I can use this leather-bound book as a spellbook and it allows me to regain 1 extra spell slot level when I use Arcane Recovery (included in Limited Features). While holding it, I can use it as a spellcasting focus for my wizard spells and gain a bonus to spell attack rolls and the saving throw DCs of my wizard spells."
     },
     {
       "id": "equipment:magic-item-arcane-propulsion-arm",

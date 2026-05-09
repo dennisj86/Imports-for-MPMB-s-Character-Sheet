@@ -172,7 +172,13 @@ export function CharacterSheetPage() {
 
         <Panel title="Rest Controls">
           <RestControls
+            constitutionModifier={playStateView.runtime.constitutionModifier}
+            currentHp={playState.currentHp}
+            hitDicePools={playStateView.hitDiceCounters}
+            lastHitDieResult={playStateView.lastHitDieResult}
+            maxHp={playStateView.runtime.maxHp}
             onLongRest={playStateView.applyLongRest}
+            onSpendHitDie={playStateView.spendHitDie}
             onShortRest={playStateView.applyShortRest}
             plan={playStateView.runtime.restPlan}
           />

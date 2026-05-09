@@ -16,11 +16,13 @@ import {
   ensureCharacterPlayState,
   recordDeathSave,
   replaceTempHp,
+  resolveHitDiceCounters,
   resolveResourceCounters,
   resolveRestRecoveryPlan,
   restoreResource,
   restoreSpellSlot,
   setTempHp,
+  spendHitDie,
   spendResource,
   spendSpellSlot,
   STANDARD_CONDITION_DEFINITIONS,
@@ -33,6 +35,19 @@ import type { CharacterActionResourceState } from "../domain/actionResources";
 function createRuntime(maxHp = 20): PlayStateRuntimeContext {
   return {
     maxHp,
+    constitutionModifier: 2,
+    hitDicePools: [
+      {
+        id: "hit-dice:test-class:d10",
+        die: 10,
+        sourceClassId: "test-class",
+        sourceClassName: "Test Class",
+        max: 4,
+        remaining: 4,
+        spent: 0,
+        label: "Test Class d10",
+      },
+    ],
     resourceMaxByKey: {
       "resource:test": 3,
       "resource:long": 2,
@@ -190,6 +205,15 @@ function createActionResourcesWithSameLabel(): CharacterActionResourceState {
   return state;
 }
 
+function rngFrom(values: number[]): () => number {
+  let index = 0;
+  return () => {
+    const value = values[index] ?? 0;
+    index += 1;
+    return value;
+  };
+}
+
 function createBaselinePlayState(maxHp = 20) {
   const draft = createCharacterDraft("play-test", "Play Test");
   draft.playState.currentHp = maxHp;
@@ -224,7 +248,79 @@ describe("play state v1", () => {
     expect(playState.schemaVersion).toBe(1);
     expect(playState.currentHp).toBe(engine.derivedStats.hitPoints.max);
     expect(playState.updatedAt).toBe("2026-05-08T00:00:00.000Z");
+    expect(playState.hitDice.pools[0]).toMatchObject({
+      die: engine.classDef?.hitDie,
+      max: engine.progression.currentLevel,
+      remaining: engine.progression.currentLevel,
+      spent: 0,
+    });
+    expect(resolveHitDiceCounters(playState)[0]?.remaining).toBe(engine.progression.currentLevel);
     expect(Object.keys(playState.spentResources).length).toBeGreaterThanOrEqual(0);
+  });
+
+  it("initializes and normalizes hit dice pools from runtime source data", () => {
+    const playState = createBaselinePlayState(20);
+    const multiPool = ensureCharacterPlayState(
+      {
+        ...playState,
+        hitDice: { pools: [], updatedAt: "2026-05-08T00:00:00.000Z" },
+      },
+      "play-test",
+      {
+        maxHp: 20,
+        hitDicePools: [
+          {
+            id: "hit-dice:fighter:d10",
+            die: 10,
+            sourceClassId: "fighter",
+            sourceClassName: "Fighter",
+            max: 2,
+            remaining: 2,
+            spent: 0,
+            label: "Fighter d10",
+          },
+          {
+            id: "hit-dice:cleric:d8",
+            die: 8,
+            sourceClassId: "cleric",
+            sourceClassName: "Cleric",
+            max: 3,
+            remaining: 3,
+            spent: 0,
+            label: "Cleric d8",
+          },
+        ],
+      },
+    );
+    expect(multiPool.hitDice.pools.map((pool) => pool.id)).toEqual(["hit-dice:fighter:d10", "hit-dice:cleric:d8"]);
+
+    const inconsistent = ensureCharacterPlayState(
+      {
+        ...playState,
+        hitDice: {
+          pools: [
+            {
+              id: "hit-dice:test-class:d10",
+              die: 10,
+              sourceClassId: "test-class",
+              sourceClassName: "Test Class",
+              max: 1,
+              remaining: 99,
+              spent: 1,
+              label: "Test Class d10",
+            },
+          ],
+        },
+      },
+      "play-test",
+      {
+        maxHp: 20,
+        hitDicePools: createRuntime(20).hitDicePools,
+      },
+    );
+    expect(inconsistent.hitDice.pools[0]?.max).toBe(4);
+    expect(inconsistent.hitDice.pools[0]?.spent).toBe(1);
+    expect(inconsistent.hitDice.pools[0]?.remaining).toBe(3);
   });
 
   it("applies damage to temp hp before current hp", () => {
@@ -241,6 +337,82 @@ describe("play state v1", () => {
     playState.currentHp = 19;
     const next = applyHealing(playState, 5, runtime, "2026-05-08T00:02:00.000Z");
     expect(next.currentHp).toBe(20);
+  });
+
+  it("spends hit dice for short-rest healing with constitution modifier and HP clamp", () => {
+    const runtime = createRuntime(20);
+    const playState = createBaselinePlayState(20);
+    playState.currentHp = 10;
+    const next = spendHitDie(playState, runtime, "hit-dice:test-class:d10", {
+      rng: rngFrom([0.4]),
+      now: "2026-05-08T00:02:30.000Z",
+    });
+    expect(next.currentHp).toBe(17);
+    expect(next.hitDice.pools[0]?.remaining).toBe(3);
+    expect(next.hitDice.pools[0]?.spent).toBe(1);
+    expect(next.playEvents.at(-1)?.type).toBe("hit-die-spent");
+    expect(next.playEvents.at(-1)?.payload.result).toMatchObject({
+      rawRoll: 5,
+      constitutionModifier: 2,
+      healingTotal: 7,
+      appliedHealing: 7,
+    });
+
+    const clamped = spendHitDie({ ...playState, currentHp: 18 }, runtime, "hit-dice:test-class:d10", {
+      rng: rngFrom([0.99]),
+      now: "2026-05-08T00:02:45.000Z",
+    });
+    expect(clamped.currentHp).toBe(20);
+    expect(clamped.playEvents.at(-1)?.payload.result).toMatchObject({
+      healingTotal: 12,
+      appliedHealing: 2,
+    });
+  });
+
+  it("blocks hit die spending when depleted or already at full HP", () => {
+    const runtime = createRuntime(20);
+    const playState = createBaselinePlayState(20);
+    playState.currentHp = 8;
+    playState.hitDice = {
+      pools: [
+        {
+          ...runtime.hitDicePools[0],
+          remaining: 0,
+          spent: 4,
+        },
+      ],
+    };
+    const depleted = spendHitDie(playState, runtime, "hit-dice:test-class:d10", {
+      rng: rngFrom([0.4]),
+      now: "2026-05-08T00:02:50.000Z",
+    });
+    expect(depleted.currentHp).toBe(8);
+    expect(depleted.playEvents.at(-1)?.type).toBe("hit-die-spend-blocked");
+    expect(depleted.playEvents.at(-1)?.payload.reason).toBe("depleted");
+
+    const full = spendHitDie(createBaselinePlayState(20), runtime, "hit-dice:test-class:d10", {
+      rng: rngFrom([0.4]),
+      now: "2026-05-08T00:02:55.000Z",
+    });
+    expect(full.playEvents.at(-1)?.type).toBe("hit-die-spend-blocked");
+    expect(full.playEvents.at(-1)?.payload.reason).toBe("hp-full");
+  });
+
+  it("spends multiple hit dice sequentially", () => {
+    const runtime = createRuntime(20);
+    const playState = createBaselinePlayState(20);
+    playState.currentHp = 1;
+    const first = spendHitDie(playState, runtime, "hit-dice:test-class:d10", {
+      rng: rngFrom([0]),
+      now: "2026-05-08T00:02:56.000Z",
+    });
+    const second = spendHitDie(first, runtime, "hit-dice:test-class:d10", {
+      rng: rngFrom([0]),
+      now: "2026-05-08T00:02:57.000Z",
+    });
+    expect(second.currentHp).toBe(7);
+    expect(second.hitDice.pools[0]?.remaining).toBe(2);
+    expect(second.hitDice.pools[0]?.spent).toBe(2);
   });
 
   it("keeps temp hp on set below current and allows explicit replacement", () => {
@@ -439,6 +611,66 @@ describe("play state v1", () => {
     expect(draft.classSelection.classId).toBe(baselineClassId);
   });
 
+  it("summarizes hit dice healing on short rest and recovers hit dice on long rest", () => {
+    const runtime = createRuntime(20);
+    const playState = createBaselinePlayState(20);
+    playState.currentHp = 5;
+    const healed = spendHitDie(playState, runtime, "hit-dice:test-class:d10", {
+      rng: rngFrom([0.4]),
+      now: "2026-05-08T00:18:10.000Z",
+    });
+    const afterShort = applyShortRest(healed, runtime, "2026-05-08T00:18:20.000Z");
+    expect(afterShort.playEvents.at(-1)?.payload.hitDiceAvailable).toBe(3);
+    expect(afterShort.playEvents.at(-1)?.payload.hitDiceSpentDuringRest).toBe(1);
+    expect(afterShort.playEvents.at(-1)?.payload.hitDiceAppliedHealing).toBe(7);
+
+    const afterLong = applyLongRest(afterShort, runtime, "2026-05-08T00:18:30.000Z");
+    expect(afterLong.hitDice.pools[0]?.remaining).toBe(4);
+    expect(afterLong.hitDice.pools[0]?.spent).toBe(0);
+    expect(afterLong.playEvents.map((event) => event.type)).toContain("hit-dice-recovered");
+    expect(afterLong.playEvents.find((event) => event.type === "rest-long")?.payload.hitDiceRecovered).toBe(1);
+  });
+
+  it("recovers long-rest hit dice deterministically across multiple pools", () => {
+    const runtime = {
+      ...createRuntime(20),
+      hitDicePools: [
+        {
+          id: "hit-dice:fighter:d10",
+          die: 10 as const,
+          sourceClassId: "fighter",
+          sourceClassName: "Fighter",
+          max: 4,
+          remaining: 4,
+          spent: 0,
+          label: "Fighter d10",
+        },
+        {
+          id: "hit-dice:cleric:d8",
+          die: 8 as const,
+          sourceClassId: "cleric",
+          sourceClassName: "Cleric",
+          max: 2,
+          remaining: 2,
+          spent: 0,
+          label: "Cleric d8",
+        },
+      ],
+    };
+    const playState = createBaselinePlayState(20);
+    playState.currentHp = 3;
+    playState.hitDice = {
+      pools: [
+        { ...runtime.hitDicePools[0], remaining: 3, spent: 1 },
+        { ...runtime.hitDicePools[1], remaining: 0, spent: 2 },
+      ],
+    };
+    const afterLong = applyLongRest(playState, runtime, "2026-05-08T00:18:40.000Z");
+    expect(afterLong.hitDice.pools.find((pool) => pool.id === "hit-dice:cleric:d8")?.spent).toBe(0);
+    expect(afterLong.hitDice.pools.find((pool) => pool.id === "hit-dice:fighter:d10")?.spent).toBe(0);
+    expect(afterLong.playEvents.find((event) => event.type === "rest-long")?.payload.hitDiceRecovered).toBe(3);
+  });
+
   it("keeps same-label resources from different sources isolated by key", () => {
     const actionResources = createActionResourcesWithSameLabel();
     const playState = createBaselinePlayState(20);
@@ -486,12 +718,32 @@ describe("play state v1", () => {
     const character = createCharacterDraft("persist-play", "Persist Play");
     character.playState.currentHp = 7;
     character.playState.tempHp = 3;
+    character.playState.hitDice = {
+      pools: [
+        {
+          id: "hit-dice:persist:d8",
+          die: 8,
+          sourceClassId: "persist",
+          sourceClassName: "Persist Class",
+          max: 3,
+          remaining: 1,
+          spent: 2,
+          label: "Persist Class d8",
+        },
+      ],
+      updatedAt: "2026-05-08T00:21:00.000Z",
+    };
     character.playState.activeConditions = [{ id: "condition:poisoned", name: "Poisoned", addedAt: "2026-05-08T00:21:00.000Z" }];
     const payload = serializeCharacters([character]);
     const loaded = deserializeCharacters(payload);
     expect(loaded[0]?.playState.schemaVersion).toBe(1);
     expect(loaded[0]?.playState.currentHp).toBe(7);
     expect(loaded[0]?.playState.tempHp).toBe(3);
+    expect(loaded[0]?.playState.hitDice.pools[0]).toMatchObject({
+      id: "hit-dice:persist:d8",
+      remaining: 1,
+      spent: 2,
+    });
     expect(loaded[0]?.playState.activeConditions[0]?.id).toBe("condition:poisoned");
   });
 
@@ -524,6 +776,44 @@ describe("play state v1", () => {
     }
     expect(loaded.playState.schemaVersion).toBe(1);
     expect(loaded.playState.characterId).toBe("legacy-play");
+    expect(loaded.playState.hitDice.pools).toEqual([]);
+  });
+
+  it("loads old v2 drafts without hit dice and normalizes corrupted hit dice fields", () => {
+    const character = createCharacterDraft("persist-hit-dice-legacy", "Persist Hit Dice Legacy");
+    const raw = JSON.parse(serializeCharacters([character]));
+    delete raw.characters[0].playState.hitDice;
+    const [loadedWithoutHitDice] = deserializeCharacters(JSON.stringify(raw));
+    expect(loadedWithoutHitDice?.playState.hitDice.pools).toEqual([]);
+
+    raw.characters[0].playState.hitDice = {
+      pools: [
+        {
+          id: "hit-dice:bad:d10",
+          die: "d10",
+          max: 2,
+          remaining: 99,
+          spent: -1,
+          label: "Bad d10",
+        },
+      ],
+    };
+    const [loadedCorrupt] = deserializeCharacters(JSON.stringify(raw));
+    const normalized = ensureCharacterPlayState(loadedCorrupt?.playState, "persist-hit-dice-legacy", {
+      maxHp: 1,
+      hitDicePools: [
+        {
+          id: "hit-dice:bad:d10",
+          die: 10,
+          max: 2,
+          remaining: 2,
+          spent: 0,
+          label: "Bad d10",
+        },
+      ],
+    });
+    expect(normalized.hitDice.pools[0]?.remaining).toBe(2);
+    expect(normalized.hitDice.pools[0]?.spent).toBe(0);
   });
 
   it("normalizes persisted freeform conditions during load", () => {
@@ -540,6 +830,9 @@ describe("play state v1", () => {
     const builderSource = readFileSync("src/pages/CharacterBuilderPage.tsx", "utf8");
     const contentSource = readFileSync("src/pages/ContentBrowserPage.tsx", "utf8");
     const playHookSource = readFileSync("src/features/character/hooks/useCharacterPlayState.ts", "utf8");
+    const restControlsSource = readFileSync("src/features/character/components/sheet/RestControls.tsx", "utf8");
+    const hitDicePanelSource = readFileSync("src/features/character/components/sheet/HitDiceRestPanel.tsx", "utf8");
+    const playStateServiceSource = readFileSync("src/services/playState/playStateService.ts", "utf8");
     expect(sheetSource).toContain("useCharacterEngine");
     expect(sheetSource).toContain("useCharacterPlayState");
     expect(sheetSource).not.toContain("../services/data/adapter");
@@ -548,5 +841,9 @@ describe("play state v1", () => {
     expect(`${sheetSource}\n${builderSource}\n${contentSource}`).not.toMatch(/\b(eval|removeeval|changeeval|calcChanges)\b/);
     expect(sheetSource).not.toContain("reduceCharacterPlayState");
     expect(playHookSource).toContain("../../../services/playState");
+    expect(`${restControlsSource}\n${hitDicePanelSource}`).not.toContain("rollDiceExpression");
+    expect(`${restControlsSource}\n${hitDicePanelSource}`).not.toContain("Math.random");
+    expect(playStateServiceSource).toContain("rollDiceExpression");
+    expect(`${restControlsSource}\n${hitDicePanelSource}\n${playStateServiceSource}`).not.toMatch(/Nach Beenden einer (kurzen|langen) Rast/);
   });
 });

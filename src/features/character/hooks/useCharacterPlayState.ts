@@ -13,8 +13,10 @@ import {
   createPlayStateFromEngine,
   endConcentration,
   ensureCharacterPlayState,
+  getLatestHitDieSpendResult,
   recordDeathSave,
   replaceTempHp,
+  resolveHitDiceCounters,
   resolveResourceCounters,
   resolveSpellSlotCounters,
   restoreResource,
@@ -23,11 +25,14 @@ import {
   setCurrentHp,
   setTempHp,
   shouldBootstrapPlayStateFromEngine,
+  spendHitDie,
   spendResource,
   spendSpellSlot,
   startConcentration,
   toggleCondition,
   type CastSpellOptions,
+  type HitDieSpendResult,
+  type PlayHitDicePoolCounter,
   type PlayResourceCounter,
   type PlaySpellSlotCounter,
   type PlayStateRuntimeContext,
@@ -40,6 +45,8 @@ export interface CharacterPlayStateViewState {
   runtime: PlayStateRuntimeContext;
   resourceCounters: PlayResourceCounter[];
   spellSlotCounters: PlaySpellSlotCounter[];
+  hitDiceCounters: PlayHitDicePoolCounter[];
+  lastHitDieResult?: HitDieSpendResult;
   applyDamage: (amount: number) => void;
   applyHealing: (amount: number) => void;
   setCurrentHp: (amount: number) => void;
@@ -50,6 +57,7 @@ export interface CharacterPlayStateViewState {
   restoreResource: (resourceKey: string, amount?: number, label?: string) => void;
   spendSpellSlot: (slotKey: string, amount?: number) => void;
   restoreSpellSlot: (slotKey: string, amount?: number) => void;
+  spendHitDie: (poolId: string) => void;
   roll: (request: RollRequest, options?: { spendResourceKey?: string; resourceLabel?: string }) => void;
   castSpell: (spellId: string, options?: CastSpellOptions) => void;
   toggleCondition: (conditionIdOrName: string, source?: string, notes?: string) => void;
@@ -70,7 +78,7 @@ export function useCharacterPlayState(
     if (!draft || !engine || !runtime) {
       return;
     }
-    const ensured = ensureCharacterPlayState(draft.playState, draft.id, { maxHp: runtime.maxHp });
+    const ensured = ensureCharacterPlayState(draft.playState, draft.id, { maxHp: runtime.maxHp, hitDicePools: runtime.hitDicePools });
     if (ensured !== draft.playState) {
       updateCharacter(draft.id, (current) => ({
         ...current,
@@ -90,7 +98,7 @@ export function useCharacterPlayState(
     if (!draft || !runtime) {
       return undefined;
     }
-    return ensureCharacterPlayState(draft.playState, draft.id, { maxHp: runtime.maxHp });
+    return ensureCharacterPlayState(draft.playState, draft.id, { maxHp: runtime.maxHp, hitDicePools: runtime.hitDicePools });
   }, [draft, runtime]);
 
   const resourceCounters = useMemo(() => {
@@ -107,13 +115,27 @@ export function useCharacterPlayState(
     return resolveSpellSlotCounters(playState, engine.actionResources);
   }, [playState, engine]);
 
+  const hitDiceCounters = useMemo(() => {
+    if (!playState) {
+      return [];
+    }
+    return resolveHitDiceCounters(playState);
+  }, [playState]);
+
+  const lastHitDieResult = useMemo(() => {
+    if (!playState) {
+      return undefined;
+    }
+    return getLatestHitDieSpendResult(playState.playEvents);
+  }, [playState]);
+
   const commit = useCallback(
     (mutate: (playStateValue: CharacterPlayState) => CharacterPlayState) => {
       if (!draft || !runtime) {
         return;
       }
       updateCharacter(draft.id, (current) => {
-        const currentPlayState = ensureCharacterPlayState(current.playState, current.id, { maxHp: runtime.maxHp });
+        const currentPlayState = ensureCharacterPlayState(current.playState, current.id, { maxHp: runtime.maxHp, hitDicePools: runtime.hitDicePools });
         return {
           ...current,
           playState: mutate(currentPlayState),
@@ -181,6 +203,13 @@ export function useCharacterPlayState(
     commit((current) => restoreSpellSlot(current, runtime, slotKey, amount));
   }, [commit, runtime]);
 
+  const spendHitDieAction = useCallback((poolId: string) => {
+    if (!runtime) {
+      return;
+    }
+    commit((current) => spendHitDie(current, runtime, poolId));
+  }, [commit, runtime]);
+
   const rollAction = useCallback((request: RollRequest, options: { spendResourceKey?: string; resourceLabel?: string } = {}) => {
     if (!runtime) {
       return;
@@ -236,6 +265,8 @@ export function useCharacterPlayState(
     runtime,
     resourceCounters,
     spellSlotCounters,
+    hitDiceCounters,
+    lastHitDieResult,
     applyDamage: applyDamageAction,
     applyHealing: applyHealingAction,
     setCurrentHp: setCurrentHpAction,
@@ -246,6 +277,7 @@ export function useCharacterPlayState(
     restoreResource: restoreResourceAction,
     spendSpellSlot: spendSpellSlotAction,
     restoreSpellSlot: restoreSpellSlotAction,
+    spendHitDie: spendHitDieAction,
     roll: rollAction,
     castSpell: castSpellAction,
     toggleCondition: toggleConditionAction,

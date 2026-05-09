@@ -232,6 +232,19 @@ function createEngine(): CharacterEngineState {
 function createRuntime(): PlayStateRuntimeContext {
   return {
     maxHp: 12,
+    constitutionModifier: 1,
+    hitDicePools: [
+      {
+        id: "hit-dice:roll-class:d8",
+        die: 8,
+        sourceClassId: "roll-class",
+        sourceClassName: "Roll Class",
+        max: 1,
+        remaining: 1,
+        spent: 0,
+        label: "Roll Class d8",
+      },
+    ],
     resourceMaxByKey: { "resource:feature:second-wind": 1 },
     resourceRechargeByKey: { "resource:feature:second-wind": "short-rest" },
     resourceNameByKey: { "resource:feature:second-wind": "Second Wind" },

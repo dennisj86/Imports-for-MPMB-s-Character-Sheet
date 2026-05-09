@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-05-08T13:20:59.587Z",
+  "generatedAt": "2026-05-08T13:48:30.670Z",
   "local": {
     "classes": 15,
-    "subclasses": 230,
+    "subclasses": 232,
     "species": 312,
     "backgrounds": 132,
     "feats": 227,
@@ -13,7 +13,7 @@
   },
   "merged": {
     "classes": 75,
-    "subclasses": 307,
+    "subclasses": 309,
     "species": 404,
     "backgrounds": 145,
     "feats": 261,
@@ -176,7 +176,7 @@
       },
       {
         "key": "minSubclasses",
-        "actual": 230,
+        "actual": 232,
         "expected": ">= 230",
         "pass": true
       },

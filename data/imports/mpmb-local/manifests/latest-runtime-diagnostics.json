@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-08T13:20:59.587Z",
+  "generatedAt": "2026-05-08T13:48:30.670Z",
   "stringCapitalizeType": "function",
   "parseErrorCount": 0,
   "parseErrors": [],
@@ -290,7 +290,7 @@
   "registryEntryCounts": {
     "SourceList": 126,
     "ClassList": 15,
-    "ClassSubList": 230,
+    "ClassSubList": 232,
     "RaceList": 209,
     "RaceSubList": 103,
     "BackgroundList": 132,
@@ -321,7 +321,7 @@
       "category": "core-seed",
       "unknownGlobalsCountDelta": 38,
       "registryFallbackCountDelta": 0,
-      "shimCallCountDelta": 4
+      "shimCallCountDelta": 6
     },
     {
       "file": "WotC material/pub_20140715_LMoP.js",
@@ -1911,7 +1911,7 @@
   "shimCallsTop": [
     {
       "name": "AddSubClass",
-      "count": 233
+      "count": 235
     },
     {
       "name": "RequiredSheetVersion",
@@ -1952,7 +1952,7 @@
     "WotC 2024/pub_20240917_PHB.js": [
       {
         "name": "AddSubClass",
-        "count": 3
+        "count": 5
       },
       {
         "name": "RequiredSheetVersion",
