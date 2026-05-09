@@ -1,10 +1,12 @@
 import type { CharacterEngineState } from "../../../../services/characterEngine";
+import type { InventoryViewModel } from "../../viewModels/inventoryViewModel";
 
 interface DiagnosticsPanelProps {
   engine: CharacterEngineState;
+  inventory?: InventoryViewModel;
 }
 
-export function DiagnosticsPanel({ engine }: DiagnosticsPanelProps) {
+export function DiagnosticsPanel({ engine, inventory }: DiagnosticsPanelProps) {
   return (
     <div className="space-y-3 text-sm">
       <div className="grid gap-2 sm:grid-cols-3">
@@ -47,6 +49,24 @@ export function DiagnosticsPanel({ engine }: DiagnosticsPanelProps) {
           <p className="mb-1 font-medium">Data Limitations</p>
           {engine.derivedStats.notes.map((note) => (
             <p key={note}>{note}</p>
+          ))}
+        </div>
+      ) : null}
+
+      {inventory ? (
+        <div className="rounded border border-slate-200 p-2 text-xs text-slate-700">
+          <p className="mb-1 font-medium">Equipment / AC Diagnostics</p>
+          <p>
+            AC path: {inventory.armorClass.calculation}; total {inventory.armorClass.total}; dex mode {inventory.armorClass.dexMode}; dex used{" "}
+            {inventory.armorClass.dexApplied}.
+          </p>
+          {inventory.armorClass.warnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+          {[...inventory.armor, ...inventory.shields, ...inventory.weapons, ...inventory.other, ...inventory.unresolvedItems].map((item) => (
+            <p key={item.instanceId}>
+              {item.name}: {item.diagnostics.join(" ")}
+            </p>
           ))}
         </div>
       ) : null}

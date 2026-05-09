@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { inputClassName } from "../../../components/ui/FormField";
 import type { EquipmentDefinition } from "../../../domain/content";
 import type { InventoryState } from "../../../domain/character";
+import { setInventoryItemEquipped } from "../../../services/equipment";
 
 type InventoryEditorProps = {
   catalog: EquipmentDefinition[];
@@ -82,12 +83,8 @@ export function InventoryEditor({ catalog, inventory, onChange }: InventoryEdito
                 <input
                   type="checkbox"
                   checked={Boolean(item.equipped)}
-                  onChange={(event) =>
-                    onChange({
-                      items: inventory.items.map((entry) =>
-                        entry.id === item.id ? { ...entry, equipped: event.target.checked } : entry,
-                      ),
-                    })
+                onChange={(event) =>
+                    onChange(setInventoryItemEquipped(inventory, catalog, item.instanceId ?? item.id, event.target.checked).inventory)
                   }
                 />
                 Equipped

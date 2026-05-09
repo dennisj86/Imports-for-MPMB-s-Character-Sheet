@@ -225,7 +225,8 @@ describe("sheet ux / information architecture v1", () => {
 
     const view = buildProgressionViewModel(draft, engine);
     expect(view.hpGainMethods).toEqual(["fixed/default", "manual", "rolled", "max"]);
-    expect(view.missingCapabilities.some((entry) => entry.id === "hp-gain-method")).toBe(true);
+    expect(view.hpGainChoices).toHaveLength(3);
+    expect(view.missingCapabilities.some((entry) => entry.id === "hp-gain-method")).toBe(false);
     expect(view.missingCapabilities.some((entry) => entry.id === "asi-feat-choice")).toBe(true);
   });
 });

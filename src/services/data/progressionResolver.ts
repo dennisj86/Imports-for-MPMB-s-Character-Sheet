@@ -258,9 +258,17 @@ export function getAsiOrFeatChoices(
     const id = buildAsiOrFeatChoiceId(canonical, asiLevel, index);
     const selectedOption = findChoice(draft, id);
     const normalizedOption = selectedOption === "feat" ? "feat" : selectedOption === "ability-score-improvement" ? "ability-score-improvement" : undefined;
+    const asiState = draft.levelUp?.abilityScoreIncreases?.[id];
+    const selectedFeatId = findChoice(draft, `feat-choice:asi:${id}`);
     const notes: string[] = [];
     if (!mappedLevels.includes(asiLevel) && parsedLevels.includes(asiLevel)) {
       notes.push("ASI/Feat level inferred from class feature text.");
+    }
+    if (normalizedOption === "ability-score-improvement" && asiState?.status !== "complete") {
+      notes.push("Ability Score Improvement allocation is not complete.");
+    }
+    if (normalizedOption === "feat" && !selectedFeatId) {
+      notes.push("Feat option selected, but no exact feat is selected yet.");
     }
     return {
       id,
@@ -268,7 +276,12 @@ export function getAsiOrFeatChoices(
       source: "class",
       options: [...ASI_OR_FEAT_OPTIONS],
       selectedOption: normalizedOption,
-      satisfied: normalizedOption !== undefined,
+      satisfied:
+        normalizedOption === "ability-score-improvement"
+          ? asiState?.status === "complete"
+          : normalizedOption === "feat"
+            ? Boolean(selectedFeatId)
+            : false,
       notes,
     };
   });

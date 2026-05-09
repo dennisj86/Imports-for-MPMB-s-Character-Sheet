@@ -9,6 +9,7 @@ import {
   getSubclassesForClass,
   regenerateContentForSelectedSources,
 } from "../services/data/adapter";
+import { setAbilityScoreIncreaseChoice, setAsiOrFeatOption } from "../services/levelUp";
 
 function includesText(value: string | undefined, search: string): boolean {
   return (value ?? "").toLowerCase().includes(search.toLowerCase());
@@ -130,8 +131,13 @@ describe("progression resolver", () => {
       return;
     }
 
-    draft.featureChoices = [{ featureId: asiChoice.id, optionId: "feat" }];
-    const after = getCharacterProgression(draft, { provider: "mpmb", rulesMode: "2014" });
+    const completedDraft = setAbilityScoreIncreaseChoice(
+      setAsiOrFeatOption(draft, asiChoice.id, "ability-score-improvement"),
+      asiChoice.id,
+      asiChoice.level,
+      { str: 2 },
+    );
+    const after = getCharacterProgression(completedDraft, { provider: "mpmb", rulesMode: "2014" });
     const resolvedChoice = after.asiOrFeatChoices.find((entry) => entry.id === asiChoice.id);
     expect(resolvedChoice?.satisfied).toBe(true);
     expect(after.pendingChoices.some((entry) => entry.id === asiChoice.id)).toBe(false);

@@ -1,7 +1,7 @@
 import type { CharacterDraft } from "../../../domain/character";
 import type { CharacterPlayState } from "../../../domain/playState";
 import type { CharacterEngineState } from "../../../services/characterEngine";
-import { resolveArmorClassFromEquipment, type ArmorClassBreakdown } from "../../../services/equipment";
+import { normalizeInventoryState, resolveArmorClassFromEquipment, type ArmorClassBreakdown } from "../../../services/equipment";
 import type { PlayHitDicePoolCounter } from "../../../services/playState";
 
 export interface CoreStatCard {
@@ -61,7 +61,7 @@ export function buildCombatViewModel(input: {
   const characterLine = `${className}${subclassName ? ` (${subclassName})` : ""} · Level ${draft.classSelection.level}`;
   const originLine = [engine.speciesDef?.name, engine.backgroundDef?.name].filter(Boolean).join(" · ") || "Origin pending";
   const armorClass = resolveArmorClassFromEquipment({
-    inventoryItems: draft.inventory.items,
+    inventoryItems: normalizeInventoryState(draft.inventory, engine.equipmentCatalog).items,
     equipmentCatalog: engine.equipmentCatalog,
     dexModifier: derived.abilityScores.dex.modifier,
   });

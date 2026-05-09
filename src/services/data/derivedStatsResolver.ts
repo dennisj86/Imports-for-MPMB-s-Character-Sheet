@@ -17,6 +17,7 @@ import type {
 } from "../../domain/derivedStats";
 import type { ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../../domain/content";
 import { resolveArmorClassFromEquipment } from "../equipment";
+import { hpGainKey, resolveLevelUpAbilityScoreBonuses } from "../levelUp";
 
 type AbilityScoresWithModifiers = Record<AbilityKey, DerivedAbilityScore>;
 
@@ -165,13 +166,23 @@ function combineStatuses(statuses: DerivedDataStatus[]): DerivedDataStatus {
 
 export function computeAbilityModifiers(draft: CharacterDraft, appliedRules: AppliedCharacterRules): AbilityScoresWithModifiers {
   const output = {} as AbilityScoresWithModifiers;
+  const levelUpBonuses = resolveLevelUpAbilityScoreBonuses(draft);
   for (const ability of ABILITIES) {
     const baseScore = draft.abilityScores[ability];
-    const appliedBonus = appliedRules.abilityScoreAdjustments.fixed[ability] ?? 0;
-    const finalScore = baseScore + appliedBonus;
+    const rulesBonus = appliedRules.abilityScoreAdjustments.fixed[ability] ?? 0;
+    const levelUpBonus = levelUpBonuses[ability] ?? 0;
+    const appliedBonus = rulesBonus + levelUpBonus;
+    const uncappedFinalScore = baseScore + appliedBonus;
+    const finalScore = levelUpBonus > 0 ? Math.min(20, uncappedFinalScore) : uncappedFinalScore;
     const notes: string[] = [];
-    if (appliedBonus !== 0) {
-      notes.push(`Applied rules bonus ${appliedBonus >= 0 ? "+" : ""}${appliedBonus}.`);
+    if (rulesBonus !== 0) {
+      notes.push(`Applied rules bonus ${rulesBonus >= 0 ? "+" : ""}${rulesBonus}.`);
+    }
+    if (levelUpBonus !== 0) {
+      notes.push(`Applied level-up ASI bonus ${levelUpBonus >= 0 ? "+" : ""}${levelUpBonus}.`);
+    }
+    if (finalScore !== uncappedFinalScore) {
+      notes.push("Level-up ASI capped this ability at 20.");
     }
     output[ability] = {
       ability,
@@ -308,6 +319,7 @@ export function computeHitPointsMaxBase(
   level: number,
   classDef: ClassDefinition | undefined,
   conModifier: number,
+  draft?: CharacterDraft,
 ): DerivedHitPointsResult {
   if (!classDef?.hitDie) {
     return {
@@ -332,18 +344,45 @@ export function computeHitPointsMaxBase(
   }
 
   const fixedGain = Math.floor(hitDie / 2) + 1;
-  const perLevel = Math.max(1, fixedGain + conModifier);
-  const max = level1 + (level - 1) * perLevel;
-  const notes: string[] = ["Using fixed-average HP progression for levels above 1."];
-  if (fixedGain + conModifier < 1) {
-    notes.push("Per-level HP gain clamped to minimum 1.");
+  const notes: string[] = [];
+  let max = level1;
+  const parts: string[] = [`L1 ${hitDie} + CON`];
+  let hasExplicitLevelUpState = false;
+  let hasIncompleteManualState = false;
+  for (let currentLevel = 2; currentLevel <= level; currentLevel += 1) {
+    const state = draft?.levelUp?.hpGainByLevel?.[hpGainKey(currentLevel)];
+    const method = state?.method ?? "fixed/default";
+    hasExplicitLevelUpState ||= Boolean(state);
+    let dieGain = fixedGain;
+    if (method === "max") {
+      dieGain = hitDie;
+    } else if (method === "rolled" || method === "manual") {
+      if (state?.value !== undefined) {
+        dieGain = Math.max(1, Math.min(hitDie, Math.floor(state.value)));
+      } else {
+        hasIncompleteManualState = true;
+        dieGain = fixedGain;
+      }
+    }
+    const gain = Math.max(1, dieGain + conModifier);
+    max += gain;
+    parts.push(`L${currentLevel} ${method} ${dieGain} + CON`);
+    if (dieGain + conModifier < 1) {
+      notes.push(`Level ${currentLevel} HP gain clamped to minimum 1.`);
+    }
+    if ((method === "manual" || method === "rolled") && state?.value === undefined) {
+      notes.push(`Level ${currentLevel} ${method} HP value is missing; fixed/default is used until a value is entered.`);
+    }
+  }
+  if (!hasExplicitLevelUpState) {
+    notes.push("Using fixed/default HP progression for levels above 1.");
   }
   return {
     max,
-    formula: `L1 (${hitDie} + CON) + (L-1) * (${fixedGain} + CON, min 1)`,
-    mode: "fixed-average",
+    formula: parts.join(" + "),
+    mode: hasExplicitLevelUpState ? "manual" : "fixed-average",
     notes,
-    dataStatus: "complete",
+    dataStatus: hasIncompleteManualState ? "pending" : "complete",
   };
 }
 
@@ -505,7 +544,7 @@ export function resolveDerivedStats(
   const initiative = computeInitiative(abilityScores);
   const speed = computeSpeed(context.speciesDef, appliedRules);
   const armorClass = computeArmorClassBase(draft, context.equipmentCatalog, abilityScores.dex.modifier);
-  const hitPoints = computeHitPointsMaxBase(draft.classSelection.level, context.classDef, abilityScores.con.modifier);
+  const hitPoints = computeHitPointsMaxBase(draft.classSelection.level, context.classDef, abilityScores.con.modifier, draft);
   const spellcasting = computeSpellcastingStats(
     appliedRules,
     context.classDef,

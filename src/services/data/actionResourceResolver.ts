@@ -26,6 +26,7 @@ import type {
 } from "../../domain/content";
 import type { DerivedCharacterStats, DerivedDataStatus } from "../../domain/derivedStats";
 import type { LevelProgressionResult } from "../../domain/progression";
+import { resolveEquipmentDefinitionForInventoryItem } from "../equipment";
 import { ACTION_FEATURE_RULES, type FeatureResourceFallbackRule, type FeatureRule } from "./mappings/actionFeatureRules";
 
 type ResolvedFeature = {
@@ -668,14 +669,13 @@ function collectItemActions(
   draft: CharacterDraft,
   equipmentCatalog: EquipmentDefinition[] = [],
 ): CharacterAction[] {
-  const byId = new Map(equipmentCatalog.map((entry) => [entry.id, entry]));
   const actions: CharacterAction[] = [];
 
   for (const item of draft.inventory.items) {
     if (!item.equipped) {
       continue;
     }
-    const definition = byId.get(item.id);
+    const definition = resolveEquipmentDefinitionForInventoryItem(item, equipmentCatalog);
     if (!definition) {
       continue;
     }

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { FormField, inputClassName } from "../components/ui/FormField";
 import { Panel } from "../components/ui/Panel";
 import type { AppliedCharacterRules } from "../domain/appliedRules";
-import type { CharacterDraft } from "../domain/character";
+import type { AbilityScores, CharacterDraft, HpGainMethod } from "../domain/character";
 import type { DerivedCharacterStats } from "../domain/derivedStats";
 import type { LevelProgressionResult } from "../domain/progression";
 import type { BackgroundDefinition, ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../domain/content";
@@ -15,6 +15,14 @@ import { WizardStepRail } from "../features/character-builder/wizard/components/
 import type { SkillChoiceState, StartingEquipmentChoiceContext, WizardCompletionState, WizardStepId, WizardStepState, WizardStepValidation } from "../domain/builderWizard";
 import { useWizardV2State } from "../features/wizardV2";
 import { applySpellSelectionToDraft, useSpellManagement } from "../features/spellManagement";
+import {
+  ABILITY_KEYS,
+  hpGainKey,
+  setAbilityScoreIncreaseChoice,
+  setAsiOrFeatOption,
+  setHpGainMethod as setLevelUpHpGainMethod,
+  setLevelUpFeatChoice,
+} from "../services/levelUp";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
 
@@ -233,28 +241,40 @@ export function CharacterBuilderPage() {
         ) : null}
 
         {currentStepId === "feats" ? (
-          <FeatChoiceSection
-            contexts={featChoiceContexts}
-            onSelectFeat={(contextId, featId) =>
-              updateCharacter(draft.id, (current) => {
-                const previousContextual = contextualFeatIds(current.featureChoices);
-                const nextFeatureChoices = setFeatureChoice(current.featureChoices, contextId, featId);
-                const nextContextual = contextualFeatIds(nextFeatureChoices);
-                const nonContextual = current.featIds.filter((entry) => !previousContextual.has(entry));
-                return {
+          <div className="space-y-4">
+            <LevelUpChoicesStep
+              draft={draft}
+              progression={progression}
+              updateCharacter={updateCharacter}
+            />
+            <FeatChoiceSection
+              contexts={featChoiceContexts}
+              onSelectFeat={(contextId, featId) =>
+                updateCharacter(draft.id, (current) => {
+                  const asiChoiceId = contextId.startsWith("feat-choice:asi:") ? contextId.slice("feat-choice:asi:".length) : undefined;
+                  const asiChoice = asiChoiceId ? progression.asiOrFeatChoices.find((entry) => entry.id === asiChoiceId) : undefined;
+                  if (asiChoiceId && asiChoice) {
+                    return setLevelUpFeatChoice(current, asiChoiceId, asiChoice.level, featId);
+                  }
+                  const previousContextual = contextualFeatIds(current.featureChoices);
+                  const nextFeatureChoices = setFeatureChoice(current.featureChoices, contextId, featId);
+                  const nextContextual = contextualFeatIds(nextFeatureChoices);
+                  const nonContextual = current.featIds.filter((entry) => !previousContextual.has(entry));
+                  return {
+                    ...current,
+                    featureChoices: nextFeatureChoices,
+                    featIds: Array.from(new Set([...nonContextual, ...nextContextual])),
+                  };
+                })
+              }
+              onSelectSubchoice={(subchoiceId, optionId) =>
+                updateCharacter(draft.id, (current) => ({
                   ...current,
-                  featureChoices: nextFeatureChoices,
-                  featIds: Array.from(new Set([...nonContextual, ...nextContextual])),
-                };
-              })
-            }
-            onSelectSubchoice={(subchoiceId, optionId) =>
-              updateCharacter(draft.id, (current) => ({
-                ...current,
-                featureChoices: setFeatureChoice(current.featureChoices, subchoiceId, optionId),
-              }))
-            }
-          />
+                  featureChoices: setFeatureChoice(current.featureChoices, subchoiceId, optionId),
+                }))
+              }
+            />
+          </div>
         ) : null}
 
         {currentStepId === "skills" ? (
@@ -801,6 +821,167 @@ function AbilitiesStep({
   );
 }
 
+function LevelUpChoicesStep({
+  draft,
+  progression,
+  updateCharacter,
+}: {
+  draft: CharacterDraft;
+  progression: LevelProgressionResult;
+  updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
+}) {
+  const hpLevels = Array.from({ length: Math.max(0, draft.classSelection.level - 1) }, (_, index) => index + 2);
+  const abilityPairs: Array<[keyof AbilityScores, keyof AbilityScores]> = [];
+  for (let leftIndex = 0; leftIndex < ABILITY_KEYS.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < ABILITY_KEYS.length; rightIndex += 1) {
+      abilityPairs.push([ABILITY_KEYS[leftIndex], ABILITY_KEYS[rightIndex]]);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <section className="rounded border border-slate-200 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Level-Up HP Gain</h3>
+            <p className="text-xs text-slate-600">Controls max HP progression. This is separate from Hit Dice used during rests.</p>
+          </div>
+          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{hpLevels.length} level(s)</span>
+        </div>
+        {hpLevels.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">No level-up HP choices are needed at level 1.</p>
+        ) : (
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {hpLevels.map((level) => {
+              const state = draft.levelUp?.hpGainByLevel?.[hpGainKey(level)];
+              const method = state?.method ?? "fixed/default";
+              return (
+                <div key={level} className="rounded border border-slate-200 p-2">
+                  <p className="text-xs font-medium text-slate-700">Level {level}</p>
+                  <div className="mt-1 grid gap-2 sm:grid-cols-[minmax(0,1fr),96px]">
+                    <select
+                      className={inputClassName()}
+                      value={method}
+                      onChange={(event) => {
+                        const nextMethod = event.target.value as HpGainMethod;
+                        updateCharacter(draft.id, (current) => setLevelUpHpGainMethod(current, level, nextMethod, state?.value));
+                      }}
+                    >
+                      <option value="fixed/default">fixed/default</option>
+                      <option value="max">max</option>
+                      <option value="rolled">rolled</option>
+                      <option value="manual">manual</option>
+                    </select>
+                    <input
+                      className={inputClassName()}
+                      disabled={method !== "rolled" && method !== "manual"}
+                      min={1}
+                      type="number"
+                      value={state?.value ?? ""}
+                      placeholder="Value"
+                      onChange={(event) => {
+                        const value = Number(event.target.value);
+                        updateCharacter(draft.id, (current) =>
+                          setLevelUpHpGainMethod(current, level, method, Number.isFinite(value) && value > 0 ? value : undefined),
+                        );
+                      }}
+                    />
+                  </div>
+                  {(method === "rolled" || method === "manual") && state?.value === undefined ? (
+                    <p className="mt-1 text-xs text-amber-700">Enter a value before this HP choice is complete.</p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded border border-slate-200 p-3">
+        <h3 className="text-sm font-semibold text-slate-900">ASI / Feat Choices</h3>
+        <p className="text-xs text-slate-600">Choose ASI or Feat for each level-up opportunity, then complete the selected path.</p>
+        {progression.asiOrFeatChoices.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">No structured ASI/Feat choices are exposed for the current level.</p>
+        ) : (
+          <div className="mt-3 space-y-3">
+            {progression.asiOrFeatChoices.map((choice) => {
+              const asiState = draft.levelUp?.abilityScoreIncreases?.[choice.id];
+              const statusLabel = choice.satisfied ? "complete" : "pending";
+              return (
+                <div key={choice.id} className="rounded border border-slate-200 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium">Level {choice.level}</p>
+                      <p className="text-xs text-slate-600">{choice.notes.join(" ") || "Select one level-up benefit."}</p>
+                    </div>
+                    <span className={`rounded px-2 py-0.5 text-xs ${choice.satisfied ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {choice.options.map((option) => (
+                      <button
+                        key={option}
+                        className={`rounded px-3 py-1.5 text-xs ${
+                          choice.selectedOption === option ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-800"
+                        }`}
+                        onClick={() => updateCharacter(draft.id, (current) => setAsiOrFeatOption(current, choice.id, option))}
+                        type="button"
+                      >
+                        {option === "ability-score-improvement" ? "Ability Score Improvement" : "Feat"}
+                      </button>
+                    ))}
+                  </div>
+                  {choice.selectedOption === "ability-score-improvement" ? (
+                    <div className="mt-3 space-y-2 rounded border border-slate-200 bg-slate-50 p-2">
+                      <p className="text-xs font-medium text-slate-700">
+                        Allocation {asiState ? formatAbilityIncreases(asiState.increases) : "pending"}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {ABILITY_KEYS.map((ability) => (
+                          <button
+                            key={`${choice.id}-plus2-${ability}`}
+                            className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
+                            onClick={() => updateCharacter(draft.id, (current) => setAbilityScoreIncreaseChoice(current, choice.id, choice.level, { [ability]: 2 }))}
+                            type="button"
+                          >
+                            +2 {ability.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {abilityPairs.map(([left, right]) => (
+                          <button
+                            key={`${choice.id}-split-${left}-${right}`}
+                            className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
+                            onClick={() =>
+                              updateCharacter(draft.id, (current) =>
+                                setAbilityScoreIncreaseChoice(current, choice.id, choice.level, { [left]: 1, [right]: 1 }),
+                              )
+                            }
+                            type="button"
+                          >
+                            +1 {left.toUpperCase()} / +1 {right.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {choice.selectedOption === "feat" ? (
+                    <p className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+                      Select the exact feat in the feat card below. Feat subchoices stay visible there if the feat exposes structured subchoices.
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function SkillsStep({
   draft,
   skillChoiceStates,
@@ -1156,6 +1337,16 @@ function setFeatureChoice(
 
 function getFeatureChoiceValue(existing: Array<{ featureId: string; optionId: string }>, featureId: string): string | undefined {
   return existing.find((entry) => entry.featureId === featureId)?.optionId;
+}
+
+function formatAbilityIncreases(increases: Partial<Record<keyof AbilityScores, number>>): string {
+  const parts = ABILITY_KEYS
+    .map((ability) => {
+      const value = increases[ability] ?? 0;
+      return value > 0 ? `+${value} ${ability.toUpperCase()}` : undefined;
+    })
+    .filter((entry): entry is string => Boolean(entry));
+  return parts.length ? parts.join(", ") : "pending";
 }
 
 function clampLevel(value: number): number {

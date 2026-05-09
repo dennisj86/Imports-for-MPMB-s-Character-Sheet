@@ -42,6 +42,13 @@ export function createCharacterDraft(id: string, name: string): CharacterDraft {
     inventory: {
       items: [],
     },
+    levelUp: {
+      hpGainByLevel: {},
+      abilityScoreIncreases: {},
+      featChoices: {},
+      weaponMasteryChoices: {},
+      fightingStyleChoices: {},
+    },
     playState: createDefaultCharacterPlayState(id, {
       maxHp: 1,
       now: timestamp,

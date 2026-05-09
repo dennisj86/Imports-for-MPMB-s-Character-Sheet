@@ -1,5 +1,5 @@
 import { toSlug } from "../../lib/slug";
-import type { InventoryItem } from "../../domain/character";
+import type { EquipmentSlot, InventoryItem } from "../../domain/character";
 import type { EquipmentDefinition } from "../../domain/content";
 import type { DerivedDataStatus } from "../../domain/derivedStats";
 
@@ -11,6 +11,8 @@ export interface ArmorClassBreakdown {
   calculation: ArmorCalculationMode;
   armorName?: string;
   armorBase: number;
+  dexModifier: number;
+  dexMode: ArmorDexMode;
   dexApplied: number;
   shieldName?: string;
   shieldBonus: number;
@@ -35,7 +37,7 @@ const ARMOR_BASE_BY_KEY: Record<string, { base: number; dexMode: ArmorDexMode }>
   plate: { base: 18, dexMode: "none" },
 };
 
-function normalizeToken(value: string | undefined): string {
+export function normalizeEquipmentToken(value: string | undefined): string {
   return toSlug(value ?? "")
     .replace(/^srd-2024-/, "")
     .replace(/^srd-2014-/, "")
@@ -71,8 +73,55 @@ function parseArmorFromDescription(description: string | undefined): { base: num
   return undefined;
 }
 
-function resolveArmorProfile(item: EquipmentDefinition): { base: number; dexMode: ArmorDexMode } | undefined {
-  const byKey = ARMOR_BASE_BY_KEY[normalizeToken(item.key)] ?? ARMOR_BASE_BY_KEY[normalizeToken(item.name)];
+type EquipmentLike = Pick<EquipmentDefinition, "id" | "key" | "category" | "name" | "type" | "description">;
+
+function parseDefinitionIdFromInventoryId(id: string): string | undefined {
+  const marker = ":catalog:";
+  const markerIndex = id.indexOf(marker);
+  if (markerIndex === -1) {
+    return undefined;
+  }
+  return id.slice(markerIndex + marker.length);
+}
+
+export function getInventoryItemDefinitionId(item: InventoryItem): string {
+  return item.itemDefinitionId ?? parseDefinitionIdFromInventoryId(item.id) ?? item.id;
+}
+
+function findCatalogMatchByName(catalog: EquipmentDefinition[], item: InventoryItem): EquipmentDefinition | undefined {
+  const needle = normalizeEquipmentToken(item.name);
+  if (!needle) {
+    return undefined;
+  }
+  return catalog.find((entry) => normalizeEquipmentToken(entry.name) === needle || normalizeEquipmentToken(entry.key) === needle);
+}
+
+export function resolveEquipmentDefinitionForInventoryItem(
+  item: InventoryItem,
+  equipmentCatalog: EquipmentDefinition[] | undefined,
+): EquipmentDefinition | undefined {
+  const catalog = equipmentCatalog ?? [];
+  const byId = new Map(catalog.map((entry) => [entry.id, entry]));
+  return byId.get(getInventoryItemDefinitionId(item)) ?? byId.get(item.id) ?? findCatalogMatchByName(catalog, item);
+}
+
+function asEquipmentLike(item: InventoryItem, definition?: EquipmentDefinition): EquipmentLike {
+  return {
+    id: definition?.id ?? getInventoryItemDefinitionId(item),
+    key: definition?.key ?? item.name,
+    category: definition?.category ?? (item.category as EquipmentDefinition["category"] | undefined) ?? "gear",
+    name: definition?.name ?? item.name,
+    type: definition?.type ?? item.type ?? item.equipmentSlot,
+    description: definition?.description,
+  };
+}
+
+function resolveArmorProfile(item: EquipmentLike): { base: number; dexMode: ArmorDexMode } | undefined {
+  const token = normalizeEquipmentToken(`${item.key} ${item.name}`);
+  const byKey =
+    ARMOR_BASE_BY_KEY[normalizeEquipmentToken(item.key)] ??
+    ARMOR_BASE_BY_KEY[normalizeEquipmentToken(item.name)] ??
+    Object.entries(ARMOR_BASE_BY_KEY).find(([key]) => token.includes(key))?.[1];
   if (byKey) {
     return byKey;
   }
@@ -82,37 +131,86 @@ function resolveArmorProfile(item: EquipmentDefinition): { base: number; dexMode
     return fromDescription;
   }
 
-  const typeToken = normalizeToken(item.type);
-  if (typeToken === "light") {
+  const typeToken = normalizeEquipmentToken(item.type);
+  if (typeToken === "light" || typeToken.includes("light-armor")) {
     return { base: 11, dexMode: "full" };
   }
-  if (typeToken === "medium") {
+  if (typeToken === "medium" || typeToken.includes("medium-armor")) {
     return { base: 13, dexMode: "max2" };
   }
-  if (typeToken === "heavy") {
+  if (typeToken === "heavy" || typeToken.includes("heavy-armor")) {
     return { base: 16, dexMode: "none" };
   }
   return undefined;
 }
 
-export function isShieldDefinition(item: EquipmentDefinition): boolean {
-  const token = normalizeToken(`${item.type ?? ""} ${item.key} ${item.name}`);
-  return token.includes("shield");
+export function isShieldDefinition(item: EquipmentLike): boolean {
+  const nameToken = normalizeEquipmentToken(item.name);
+  const keyToken = normalizeEquipmentToken(item.key);
+  const typeToken = normalizeEquipmentToken(item.type);
+  if (typeToken.includes("shield")) {
+    return true;
+  }
+  if (item.category === "armor" && (nameToken.includes("shield") || keyToken.includes("shield"))) {
+    return true;
+  }
+  return nameToken === "shield" || keyToken === "shield" || nameToken.startsWith("shield-of-") || keyToken.startsWith("shield-of-");
 }
 
-function parseShieldBonus(item: EquipmentDefinition): number {
-  const text = String(item.description ?? "");
-  const byPhrase = text.match(/(?:increases|bonus|ac|armor class|rüstungsklasse).*?([0-9]+)/i);
-  if (byPhrase) {
-    const value = Number(byPhrase[1]);
-    if (Number.isFinite(value) && value > 0 && value <= 5) {
-      return value;
+function isArmorDefinition(item: EquipmentLike): boolean {
+  if (item.category === "armor") {
+    return true;
+  }
+  const token = normalizeEquipmentToken(`${item.type ?? ""} ${item.key} ${item.name}`);
+  return Boolean(resolveArmorProfile(item)) || token.includes("armor");
+}
+
+export function inferEquipmentSlot(item: InventoryItem, definition?: EquipmentDefinition): EquipmentSlot {
+  const like = asEquipmentLike(item, definition);
+  const token = normalizeEquipmentToken(`${like.type ?? ""} ${like.key} ${like.name} ${like.description ?? ""}`);
+  if (isShieldDefinition(like)) {
+    return "shield";
+  }
+  if (isArmorDefinition(like)) {
+    return "armor";
+  }
+  if (like.category === "weapon") {
+    if (token.includes("two-handed")) {
+      return "twoHanded";
     }
+    if (token.includes("ammunition") || token.includes("ranged")) {
+      return "ranged";
+    }
+    return "mainHand";
+  }
+  if (token.includes("focus")) {
+    return "focus";
+  }
+  return "other";
+}
+
+function parseShieldBonus(item: EquipmentLike): number {
+  const text = `${item.name}\n${item.description ?? ""}`;
+  const magicName = text.match(/\+([1-3])\s+shield/i);
+  if (magicName) {
+    return 2 + Number(magicName[1]);
+  }
+  const additionalBonus = text.match(/\+([1-3])\s+(?:bonus\s+)?to\s+(?:ac|armor class|rüstungsklasse)/i);
+  if (additionalBonus) {
+    return 2 + Number(additionalBonus[1]);
+  }
+  const explicitShieldIncrease = text.match(/(?:increases|increase|raises|raise).*?(?:ac|armor class|rüstungsklasse)\s+by\s+([1-5])/i);
+  if (explicitShieldIncrease) {
+    return Number(explicitShieldIncrease[1]);
+  }
+  const numberOnly = text.trim().match(/^([1-5])$/);
+  if (numberOnly) {
+    return Number(numberOnly[1]);
   }
   return 2;
 }
 
-function parseSimpleAcBonus(item: EquipmentDefinition): number | undefined {
+function parseSimpleAcBonus(item: EquipmentLike): number | undefined {
   const text = `${item.name}\n${item.description ?? ""}`;
   const match = text.match(/\+([1-3])\s+(?:bonus\s+)?(?:to\s+)?(?:ac|armor class|rüstungsklasse)/i);
   if (!match) {
@@ -139,24 +237,25 @@ export function resolveArmorClassFromEquipment(input: {
 }): ArmorClassBreakdown {
   const warnings: string[] = [];
   const equippedItems = input.inventoryItems.filter((entry) => entry.equipped);
-  const byId = new Map((input.equipmentCatalog ?? []).map((entry) => [entry.id, entry]));
-  const equippedDefinitions = equippedItems
-    .map((inventory) => ({ inventory, definition: byId.get(inventory.id) }))
-    .filter((entry): entry is { inventory: InventoryItem; definition: EquipmentDefinition } => Boolean(entry.definition));
-  const unresolvedCount = equippedItems.length - equippedDefinitions.length;
-  if (unresolvedCount > 0) {
-    warnings.push(`${unresolvedCount} equipped item(s) could not be resolved from the active equipment catalog.`);
-  }
+  const equippedDefinitions = equippedItems.map((inventory) => {
+    const definition = resolveEquipmentDefinitionForInventoryItem(inventory, input.equipmentCatalog);
+    const like = asEquipmentLike(inventory, definition);
+    if (!definition) {
+      warnings.push(`${inventory.name} could not be resolved from the active equipment catalog; using name/type fallback.`);
+    }
+    return { inventory, definition, like };
+  });
 
   const armorDefinitions = equippedDefinitions
-    .map((entry) => entry.definition)
-    .filter((entry) => entry.category === "armor" && !isShieldDefinition(entry));
+    .map((entry) => entry.like)
+    .filter((entry) => isArmorDefinition(entry) && !isShieldDefinition(entry));
   const shieldDefinitions = equippedDefinitions
-    .map((entry) => entry.definition)
-    .filter((entry) => entry.category === "armor" && isShieldDefinition(entry));
+    .map((entry) => entry.like)
+    .filter((entry) => isShieldDefinition(entry));
 
   let armorName: string | undefined;
   let armorBase = 10;
+  let dexMode: ArmorDexMode = "full";
   let dexApplied = input.dexModifier;
   let armorTotal = 10 + input.dexModifier;
 
@@ -171,6 +270,7 @@ export function resolveArmorClassFromEquipment(input: {
     if (candidateTotal > armorTotal || !armorName) {
       armorName = armor.name;
       armorBase = profile.base;
+      dexMode = profile.dexMode;
       dexApplied = candidateDex;
       armorTotal = candidateTotal;
     }
@@ -179,8 +279,8 @@ export function resolveArmorClassFromEquipment(input: {
   const shield = shieldDefinitions[0];
   const shieldBonus = shield ? parseShieldBonus(shield) : 0;
   const bonusItems = equippedDefinitions
-    .map((entry) => ({ item: entry.definition, bonus: parseSimpleAcBonus(entry.definition) }))
-    .filter((entry): entry is { item: EquipmentDefinition; bonus: number } => entry.bonus !== undefined && !isShieldDefinition(entry.item));
+    .map((entry) => ({ item: entry.like, bonus: parseSimpleAcBonus(entry.like) }))
+    .filter((entry): entry is { item: EquipmentLike; bonus: number } => entry.bonus !== undefined && !isShieldDefinition(entry.item));
   const bonus = bonusItems.reduce((sum, entry) => sum + entry.bonus, 0);
   const bonusSources = bonusItems.map((entry) => `${entry.item.name} +${entry.bonus}`);
   const total = armorTotal + shieldBonus + bonus;
@@ -197,6 +297,8 @@ export function resolveArmorClassFromEquipment(input: {
     calculation,
     armorName,
     armorBase,
+    dexModifier: input.dexModifier,
+    dexMode,
     dexApplied,
     shieldName: shield?.name,
     shieldBonus,

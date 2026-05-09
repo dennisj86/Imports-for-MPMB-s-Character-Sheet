@@ -2,9 +2,21 @@ import type { InventoryItemViewModel, InventoryViewModel } from "../../viewModel
 
 interface InventoryPanelProps {
   viewModel: InventoryViewModel;
+  onEquipItem: (itemInstanceId: string, slot?: InventoryItemViewModel["equipmentSlot"]) => void;
+  onUnequipItem: (itemInstanceId: string) => void;
 }
 
-function ItemList({ title, items }: { title: string; items: InventoryItemViewModel[] }) {
+function ItemList({
+  title,
+  items,
+  onEquipItem,
+  onUnequipItem,
+}: {
+  title: string;
+  items: InventoryItemViewModel[];
+  onEquipItem: InventoryPanelProps["onEquipItem"];
+  onUnequipItem: InventoryPanelProps["onUnequipItem"];
+}) {
   return (
     <section className="space-y-2">
       <h3 className="text-xs font-medium uppercase text-slate-500">{title}</h3>
@@ -23,9 +35,25 @@ function ItemList({ title, items }: { title: string; items: InventoryItemViewMod
                     {item.quantity !== 1 ? ` · x${item.quantity}` : ""}
                   </p>
                 </div>
-                {item.equipped ? <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">Equipped</span> : null}
+                <div className="flex flex-wrap gap-1">
+                  {item.equipped ? <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">Equipped</span> : null}
+                  {item.equipmentSlot ? <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{item.equipmentSlot}</span> : null}
+                </div>
               </div>
               {item.relevantStats.length ? <p className="mt-2 text-xs text-slate-700">{item.relevantStats.join(" · ")}</p> : null}
+              {item.canEquip ? (
+                <div className="mt-3 flex gap-2">
+                  {item.equipped ? (
+                    <button className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800" onClick={() => onUnequipItem(item.instanceId)} type="button">
+                      Unequip
+                    </button>
+                  ) : (
+                    <button className="rounded bg-slate-700 px-2 py-1 text-xs text-white" onClick={() => onEquipItem(item.instanceId, item.equipmentSlot)} type="button">
+                      Equip
+                    </button>
+                  )}
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -34,7 +62,7 @@ function ItemList({ title, items }: { title: string; items: InventoryItemViewMod
   );
 }
 
-export function InventoryPanel({ viewModel }: InventoryPanelProps) {
+export function InventoryPanel({ viewModel, onEquipItem, onUnequipItem }: InventoryPanelProps) {
   const ac = viewModel.armorClass;
   return (
     <div className="space-y-4">
@@ -50,11 +78,13 @@ export function InventoryPanel({ viewModel }: InventoryPanelProps) {
         {ac.bonusSources.length ? <p className="text-xs text-slate-600">Bonus sources: {ac.bonusSources.join(", ")}</p> : null}
       </div>
 
-      <ItemList title="Armor" items={viewModel.armor} />
-      <ItemList title="Shields" items={viewModel.shields} />
-      <ItemList title="Weapons" items={viewModel.weapons} />
-      <ItemList title="Other Items" items={viewModel.other} />
-      {viewModel.unresolvedItems.length ? <ItemList title="Unresolved Items" items={viewModel.unresolvedItems} /> : null}
+      <ItemList title="Armor" items={viewModel.armor} onEquipItem={onEquipItem} onUnequipItem={onUnequipItem} />
+      <ItemList title="Shields" items={viewModel.shields} onEquipItem={onEquipItem} onUnequipItem={onUnequipItem} />
+      <ItemList title="Weapons" items={viewModel.weapons} onEquipItem={onEquipItem} onUnequipItem={onUnequipItem} />
+      <ItemList title="Other Items" items={viewModel.other} onEquipItem={onEquipItem} onUnequipItem={onUnequipItem} />
+      {viewModel.unresolvedItems.length ? (
+        <ItemList title="Unresolved Items" items={viewModel.unresolvedItems} onEquipItem={onEquipItem} onUnequipItem={onUnequipItem} />
+      ) : null}
     </div>
   );
 }

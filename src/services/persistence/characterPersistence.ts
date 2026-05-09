@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { CharacterDraft } from "../../domain/character";
 import { createDefaultCharacterPlayState, type CharacterHitDiceState, type HitDieSize } from "../../domain/playState";
+import { normalizeInventoryState } from "../equipment";
+import { normalizeLevelUpState } from "../levelUp";
 import { ensureCharacterPlayState } from "../playState";
 
 const abilityScoresSchema = z.object({
@@ -145,6 +147,73 @@ const playStateSchema = z.object({
   updatedAt: z.string(),
 });
 
+const equipmentSlotSchema = z.enum(["armor", "shield", "mainHand", "offHand", "twoHanded", "ranged", "focus", "other"]);
+
+const inventoryItemSchema = z.object({
+  instanceId: z.string().optional(),
+  id: z.string(),
+  itemDefinitionId: z.string().optional(),
+  name: z.string(),
+  quantity: z.number().int().min(1),
+  equipped: z.boolean().optional(),
+  equipmentSlot: equipmentSlotSchema.optional(),
+  category: z.string().optional(),
+  type: z.string().optional(),
+});
+
+const levelUpStateSchema = z.object({
+  hpGainByLevel: z.record(
+    z.object({
+      level: z.number().int().min(1).max(20),
+      method: z.enum(["fixed/default", "manual", "rolled", "max"]),
+      value: z.number().int().min(1).optional(),
+    }),
+  ).optional(),
+  abilityScoreIncreases: z.record(
+    z.object({
+      choiceId: z.string(),
+      level: z.number().int().min(1).max(20),
+      source: z.enum(["class", "subclass", "feat", "species", "background", "rule"]).default("class"),
+      mode: z.enum(["+2", "+1/+1"]),
+      increases: z.record(z.number().int().min(1).max(2)),
+      status: z.enum(["pending", "complete", "unsupported", "needs-builder"]),
+      updatedAt: z.string().optional(),
+    }),
+  ).optional(),
+  featChoices: z.record(
+    z.object({
+      choiceId: z.string(),
+      contextId: z.string(),
+      level: z.number().int().min(1).max(20),
+      source: z.enum(["class", "subclass", "feat", "species", "background", "rule"]).default("class"),
+      featId: z.string().optional(),
+      status: z.enum(["pending", "complete", "unsupported", "needs-builder"]),
+      updatedAt: z.string().optional(),
+    }),
+  ).optional(),
+  weaponMasteryChoices: z.record(
+    z.object({
+      choiceId: z.string(),
+      level: z.number().int().min(1).max(20),
+      source: z.enum(["class", "subclass", "feat", "species", "background", "rule"]).default("class"),
+      weaponId: z.string().optional(),
+      masteryId: z.string().optional(),
+      status: z.enum(["pending", "complete", "unsupported", "needs-builder"]),
+      updatedAt: z.string().optional(),
+    }),
+  ).optional(),
+  fightingStyleChoices: z.record(
+    z.object({
+      choiceId: z.string(),
+      level: z.number().int().min(1).max(20),
+      source: z.enum(["class", "subclass", "feat", "species", "background", "rule"]).default("class"),
+      styleId: z.string().optional(),
+      status: z.enum(["pending", "complete", "unsupported", "needs-builder"]),
+      updatedAt: z.string().optional(),
+    }),
+  ).optional(),
+}).optional();
+
 const characterDraftV2Schema = z.object({
   id: z.string(),
   version: z.literal(2),
@@ -178,15 +247,9 @@ const characterDraftV2Schema = z.object({
     }),
   ),
   inventory: z.object({
-    items: z.array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        quantity: z.number().int().min(1),
-        equipped: z.boolean().optional(),
-      }),
-    ),
+    items: z.array(inventoryItemSchema),
   }),
+  levelUp: levelUpStateSchema,
   playState: playStateSchema.optional(),
 });
 
@@ -221,14 +284,7 @@ const characterDraftV1Schema = z.object({
     }),
   ),
   inventory: z.object({
-    items: z.array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        quantity: z.number().int().min(1),
-        equipped: z.boolean().optional(),
-      }),
-    ),
+    items: z.array(inventoryItemSchema),
   }),
 });
 
@@ -258,6 +314,8 @@ function migrateV1ToV2(value: CharacterDraftV1): CharacterDraft {
     version: 2,
     provider: "mpmb",
     rulesMode: "2024",
+    inventory: normalizeInventoryState(value.inventory),
+    levelUp: normalizeLevelUpState(undefined),
     playState: fallbackPlayState,
   };
 }
@@ -265,6 +323,8 @@ function migrateV1ToV2(value: CharacterDraftV1): CharacterDraft {
 function ensurePersistedPlayState(entry: CharacterDraftV2Persisted | CharacterDraft): CharacterDraft {
   return {
     ...entry,
+    inventory: normalizeInventoryState(entry.inventory),
+    levelUp: normalizeLevelUpState(entry.levelUp),
     playState: ensureCharacterPlayState(entry.playState, entry.id, {
       maxHp: 1,
       now: entry.updatedAt,

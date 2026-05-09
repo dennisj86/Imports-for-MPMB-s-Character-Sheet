@@ -24,6 +24,8 @@ import {
   type SheetTabId,
 } from "../features/character/viewModels";
 import type { DerivedCharacterStats } from "../domain/derivedStats";
+import { equipItem, setHpGainMethod, unequipItem } from "../services/equipment";
+import { setAsiOrFeatOption } from "../services/levelUp";
 import { buildCharacterRollView, getLatestRollResult } from "../services/rolls";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
@@ -137,6 +139,23 @@ export function CharacterSheetPage() {
   const inventory = buildInventoryViewModel(draft, engine);
   const featureGroups = buildFeatureGroupsViewModel(engine);
   const progression = buildProgressionViewModel(draft, engine);
+  const equipInventoryItem = (itemInstanceId: string, slot?: Parameters<typeof equipItem>[3]) => {
+    updateCharacter(draft.id, (current) => equipItem(current, engine.equipmentCatalog, itemInstanceId, slot).draft);
+  };
+  const unequipInventoryItem = (itemInstanceId: string) => {
+    updateCharacter(draft.id, (current) => unequipItem(current, engine.equipmentCatalog, itemInstanceId).draft);
+  };
+  const chooseHpGainMethod = (method: Parameters<typeof setHpGainMethod>[2]) => {
+    updateCharacter(draft.id, (current) => setHpGainMethod(current, current.classSelection.level, method));
+  };
+  const chooseHpGainMethodForLevel = (level: number, method: Parameters<typeof setHpGainMethod>[2], value?: number) => {
+    updateCharacter(draft.id, (current) => setHpGainMethod(current, level, method, value));
+  };
+  const chooseAsiOrFeatOption = (choiceId: string, optionId: string) => {
+    updateCharacter(draft.id, (current) =>
+      setAsiOrFeatOption(current, choiceId, optionId === "feat" ? "feat" : optionId === "ability-score-improvement" ? "ability-score-improvement" : undefined),
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -284,7 +303,7 @@ export function CharacterSheetPage() {
 
       {activeTab === "inventory" ? (
         <Panel title="Inventory & Equipment">
-          <InventoryPanel viewModel={inventory} />
+          <InventoryPanel onEquipItem={equipInventoryItem} onUnequipItem={unequipInventoryItem} viewModel={inventory} />
         </Panel>
       ) : null}
 
@@ -300,7 +319,9 @@ export function CharacterSheetPage() {
             <div className="space-y-3 text-sm">
               <p>
                 Level {progression.currentLevel} · {progression.className}
+                {progression.subclassName ? ` (${progression.subclassName})` : ""}
               </p>
+              <p className="text-xs text-slate-600">{progression.pendingChoiceCount} open level-up choice(s)</p>
               {progression.pendingChoices.length ? (
                 <ul className="space-y-2">
                   {progression.pendingChoices.map((choice) => (
@@ -323,16 +344,98 @@ export function CharacterSheetPage() {
             <div className="space-y-3 text-sm">
               <div>
                 <p className="mb-1 font-medium">Max HP Gain Method</p>
-                <div className="flex flex-wrap gap-2">
-                  {progression.hpGainMethods.map((method) => (
-                    <span key={method} className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700">
-                      {method}
-                    </span>
-                  ))}
-                </div>
+                {progression.hpGainChoices.length === 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {progression.hpGainMethods.map((method) => (
+                      <button
+                        key={method}
+                        className={`rounded border px-2 py-1 text-xs ${
+                          progression.selectedHpGainMethod === method ? "border-indigo-700 bg-indigo-50 text-indigo-800" : "border-slate-200 text-slate-700"
+                        }`}
+                        onClick={() => chooseHpGainMethod(method)}
+                        type="button"
+                      >
+                        {method}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {progression.hpGainChoices.map((choice) => (
+                      <div key={choice.level} className="rounded border border-slate-200 p-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs font-medium">Level {choice.level}</p>
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{choice.status}</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {progression.hpGainMethods.map((method) => (
+                            <button
+                              key={`${choice.level}-${method}`}
+                              className={`rounded border px-2 py-1 text-xs ${
+                                choice.selectedMethod === method ? "border-indigo-700 bg-indigo-50 text-indigo-800" : "border-slate-200 text-slate-700"
+                              }`}
+                              onClick={() => chooseHpGainMethodForLevel(choice.level, method, choice.value)}
+                              type="button"
+                            >
+                              {method}
+                            </button>
+                          ))}
+                          {(choice.selectedMethod === "manual" || choice.selectedMethod === "rolled") ? (
+                            <input
+                              className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
+                              min={1}
+                              type="number"
+                              value={choice.value ?? ""}
+                              placeholder="Value"
+                              onChange={(event) => {
+                                const value = Number(event.target.value);
+                                chooseHpGainMethodForLevel(choice.level, choice.selectedMethod, Number.isFinite(value) && value > 0 ? value : undefined);
+                              }}
+                            />
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-xs text-slate-600">{choice.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <p className="mt-1 text-xs text-slate-600">
                   Level-up max HP choices are separate from Hit-Dice short-rest healing.
                 </p>
+              </div>
+              <div>
+                <p className="mb-1 font-medium">ASI / Feat Choices</p>
+                {progression.asiOrFeatChoices.length === 0 ? (
+                  <p className="text-xs text-slate-600">No structured ASI/Feat choice is exposed for the current level.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {progression.asiOrFeatChoices.map((choice) => (
+                      <li key={choice.id} className="rounded border border-slate-200 p-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="font-medium">Level {choice.level} ASI / Feat</p>
+                            <p className="text-xs text-slate-600">{choice.detail}</p>
+                          </div>
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{choice.status}</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {choice.options.map((option) => (
+                            <button
+                              key={option}
+                              className={`rounded border px-2 py-1 text-xs ${
+                                choice.selectedOption === option ? "border-indigo-700 bg-indigo-50 text-indigo-800" : "border-slate-200 text-slate-700"
+                              }`}
+                              onClick={() => chooseAsiOrFeatOption(choice.id, option)}
+                              type="button"
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <ul className="space-y-2">
                 {progression.missingCapabilities.map((entry) => (
@@ -367,7 +470,7 @@ export function CharacterSheetPage() {
               </button>
             }
           >
-            {showDiagnostics ? <DiagnosticsPanel engine={engine} /> : <p className="text-sm text-slate-600">Diagnostics are hidden for regular play.</p>}
+            {showDiagnostics ? <DiagnosticsPanel engine={engine} inventory={inventory} /> : <p className="text-sm text-slate-600">Diagnostics are hidden for regular play.</p>}
           </Panel>
         </div>
       ) : null}

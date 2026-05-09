@@ -36,11 +36,18 @@ export interface FeatureChoice {
   optionId: string;
 }
 
+export type EquipmentSlot = "armor" | "shield" | "mainHand" | "offHand" | "twoHanded" | "ranged" | "focus" | "other";
+
 export interface InventoryItem {
+  instanceId?: string;
   id: string;
+  itemDefinitionId?: string;
   name: string;
   quantity: number;
   equipped?: boolean;
+  equipmentSlot?: EquipmentSlot;
+  category?: string;
+  type?: string;
 }
 
 export interface InventoryState {
@@ -65,6 +72,64 @@ export interface DerivedSummary {
   };
 }
 
+export type HpGainMethod = "fixed/default" | "manual" | "rolled" | "max";
+export type LevelUpChoiceSource = "class" | "subclass" | "feat" | "species" | "background" | "rule";
+export type LevelUpChoiceStatus = "pending" | "complete" | "unsupported" | "needs-builder";
+export type AbilityScoreIncreaseMode = "+2" | "+1/+1";
+
+export interface LevelUpHpGainState {
+  level: number;
+  method: HpGainMethod;
+  value?: number;
+}
+
+export interface AbilityScoreIncreaseChoiceState {
+  choiceId: string;
+  level: number;
+  source: LevelUpChoiceSource;
+  mode: AbilityScoreIncreaseMode;
+  increases: Partial<Record<keyof AbilityScores, number>>;
+  status: LevelUpChoiceStatus;
+  updatedAt?: string;
+}
+
+export interface FeatChoiceState {
+  choiceId: string;
+  contextId: string;
+  level: number;
+  source: LevelUpChoiceSource;
+  featId?: string;
+  status: LevelUpChoiceStatus;
+  updatedAt?: string;
+}
+
+export interface WeaponMasteryChoiceState {
+  choiceId: string;
+  level: number;
+  source: LevelUpChoiceSource;
+  weaponId?: string;
+  masteryId?: string;
+  status: LevelUpChoiceStatus;
+  updatedAt?: string;
+}
+
+export interface FightingStyleChoiceState {
+  choiceId: string;
+  level: number;
+  source: LevelUpChoiceSource;
+  styleId?: string;
+  status: LevelUpChoiceStatus;
+  updatedAt?: string;
+}
+
+export interface LevelUpState {
+  hpGainByLevel?: Record<string, LevelUpHpGainState>;
+  abilityScoreIncreases?: Record<string, AbilityScoreIncreaseChoiceState>;
+  featChoices?: Record<string, FeatChoiceState>;
+  weaponMasteryChoices?: Record<string, WeaponMasteryChoiceState>;
+  fightingStyleChoices?: Record<string, FightingStyleChoiceState>;
+}
+
 export interface CharacterDraft {
   id: string;
   version: 2;
@@ -82,5 +147,6 @@ export interface CharacterDraft {
   spellSelection: SpellSelection;
   featureChoices: FeatureChoice[];
   inventory: InventoryState;
+  levelUp?: LevelUpState;
   playState: CharacterPlayState;
 }

@@ -936,10 +936,14 @@ function findCatalogMatch(catalog: EquipmentDefinition[], itemName: string): Equ
   if (!needle) {
     return undefined;
   }
-  return (
-    catalog.find((entry) => normalizeItemToken(entry.name) === needle || normalizeItemToken(entry.key) === needle) ??
-    catalog.find((entry) => normalizeItemToken(entry.name).includes(needle) || needle.includes(normalizeItemToken(entry.name)))
-  );
+  const exact = catalog.find((entry) => normalizeItemToken(entry.name) === needle || normalizeItemToken(entry.key) === needle);
+  if (exact) {
+    return exact;
+  }
+  if (!needle.includes(" ")) {
+    return undefined;
+  }
+  return catalog.find((entry) => normalizeItemToken(entry.name).includes(needle) || needle.includes(normalizeItemToken(entry.name)));
 }
 
 export function applyStartingEquipmentChoiceToInventory(
@@ -965,12 +969,17 @@ export function applyStartingEquipmentChoiceToInventory(
     if (matched) {
       return {
         id: `starting:${contextId}:catalog:${matched.id}`,
+        instanceId: `starting:${contextId}:catalog:${matched.id}`,
+        itemDefinitionId: matched.id,
         name: matched.name,
         quantity,
+        category: matched.category,
+        type: matched.type,
       };
     }
     return {
       id: `starting:${contextId}:custom:${index}`,
+      instanceId: `starting:${contextId}:custom:${index}`,
       name: itemName,
       quantity,
     };
@@ -979,6 +988,7 @@ export function applyStartingEquipmentChoiceToInventory(
   if (option.gpAmount && option.gpAmount > 0) {
     additions.push({
       id: `currency:gp:${contextId}`,
+      instanceId: `currency:gp:${contextId}`,
       name: "Gold Pieces (GP)",
       quantity: option.gpAmount,
     });
@@ -1092,6 +1102,11 @@ export function validateBuilderStep(
   }
 
   if (stepId === "feats") {
+    for (const choice of progression.asiOrFeatChoices) {
+      if (!choice.satisfied) {
+        errors.push(`Level ${choice.level} ASI/Feat choice is incomplete.`);
+      }
+    }
     for (const context of featContexts) {
       if (!context.satisfied) {
         errors.push(`${context.title}: select a legal feat.`);
@@ -1141,6 +1156,9 @@ export function validateBuilderStep(
     }
     if (featContexts.some((entry) => !entry.satisfied)) {
       errors.push("Feat choices are incomplete.");
+    }
+    if (progression.asiOrFeatChoices.some((entry) => !entry.satisfied)) {
+      errors.push("ASI/Feat level-up choices are incomplete.");
     }
     if (spellContexts.some((entry) => entry.requiredCount > 0 && !entry.satisfied)) {
       errors.push("Spell choices are incomplete.");

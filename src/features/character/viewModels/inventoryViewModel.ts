@@ -1,16 +1,28 @@
-import type { CharacterDraft } from "../../../domain/character";
+import type { CharacterDraft, EquipmentSlot } from "../../../domain/character";
 import type { EquipmentDefinition } from "../../../domain/content";
 import type { CharacterEngineState } from "../../../services/characterEngine";
-import { isShieldDefinition, resolveArmorClassFromEquipment, type ArmorClassBreakdown } from "../../../services/equipment";
+import {
+  inferEquipmentSlot,
+  isShieldDefinition,
+  normalizeInventoryState,
+  resolveArmorClassFromEquipment,
+  resolveEquipmentDefinitionForInventoryItem,
+  type ArmorClassBreakdown,
+} from "../../../services/equipment";
 
 export interface InventoryItemViewModel {
+  instanceId: string;
   id: string;
+  itemDefinitionId: string;
   name: string;
   quantity: number;
   equipped: boolean;
   category: string;
   type?: string;
+  equipmentSlot?: EquipmentSlot;
+  canEquip: boolean;
   relevantStats: string[];
+  diagnostics: string[];
 }
 
 export interface InventoryViewModel {
@@ -22,9 +34,9 @@ export interface InventoryViewModel {
   unresolvedItems: InventoryItemViewModel[];
 }
 
-function itemStats(definition: EquipmentDefinition | undefined): string[] {
+function itemStats(definition: EquipmentDefinition | undefined, slot?: EquipmentSlot): string[] {
   if (!definition) {
-    return [];
+    return slot ? [slot] : [];
   }
   const stats: string[] = [];
   if (definition.type) {
@@ -43,36 +55,54 @@ function itemStats(definition: EquipmentDefinition | undefined): string[] {
 function toItemView(
   inventoryItem: CharacterDraft["inventory"]["items"][number],
   definition: EquipmentDefinition | undefined,
+  fallbackSlot: EquipmentSlot,
 ): InventoryItemViewModel {
+  const category = definition?.category ?? inventoryItem.category ?? (fallbackSlot === "armor" || fallbackSlot === "shield" ? "armor" : "unresolved");
+  const diagnostics = definition
+    ? [`Definition ${definition.id} matched as ${category}${fallbackSlot ? `/${fallbackSlot}` : ""}.`]
+    : [`No catalog definition matched for ${inventoryItem.name}; using inventory fallback fields.`];
   return {
+    instanceId: inventoryItem.instanceId ?? inventoryItem.id,
     id: inventoryItem.id,
+    itemDefinitionId: inventoryItem.itemDefinitionId ?? inventoryItem.id,
     name: definition?.name ?? inventoryItem.name,
     quantity: inventoryItem.quantity,
     equipped: Boolean(inventoryItem.equipped),
-    category: definition?.category ?? "unresolved",
-    type: definition?.type,
-    relevantStats: itemStats(definition),
+    category,
+    type: definition?.type ?? inventoryItem.type,
+    equipmentSlot: inventoryItem.equipmentSlot ?? fallbackSlot,
+    canEquip: category === "armor" || category === "weapon" || fallbackSlot === "armor" || fallbackSlot === "shield",
+    relevantStats: itemStats(definition, fallbackSlot),
+    diagnostics,
   };
 }
 
 export function buildInventoryViewModel(draft: CharacterDraft, engine: CharacterEngineState): InventoryViewModel {
-  const byId = new Map(engine.equipmentCatalog.map((entry) => [entry.id, entry]));
+  const normalizedInventory = normalizeInventoryState(draft.inventory, engine.equipmentCatalog);
   const armorClass = resolveArmorClassFromEquipment({
-    inventoryItems: draft.inventory.items,
+    inventoryItems: normalizedInventory.items,
     equipmentCatalog: engine.equipmentCatalog,
     dexModifier: engine.derivedStats.abilityScores.dex.modifier,
   });
-  const items = draft.inventory.items.map((item) => ({ item: toItemView(item, byId.get(item.id)), definition: byId.get(item.id) }));
+  const items = normalizedInventory.items.map((item) => {
+    const definition = resolveEquipmentDefinitionForInventoryItem(item, engine.equipmentCatalog);
+    const fallbackSlot = inferEquipmentSlot(item, definition);
+    return {
+      item: toItemView(item, definition, fallbackSlot),
+      definition,
+      slot: fallbackSlot,
+    };
+  });
 
   return {
     armorClass,
     armor: items
-      .filter((entry) => entry.definition?.category === "armor" && !isShieldDefinition(entry.definition))
+      .filter((entry) => (entry.definition?.category === "armor" || entry.slot === "armor") && !(entry.definition && isShieldDefinition(entry.definition)) && entry.slot !== "shield")
       .map((entry) => entry.item),
     shields: items
-      .filter((entry) => entry.definition?.category === "armor" && isShieldDefinition(entry.definition))
+      .filter((entry) => entry.slot === "shield" || Boolean(entry.definition && isShieldDefinition(entry.definition)))
       .map((entry) => entry.item),
-    weapons: items.filter((entry) => entry.definition?.category === "weapon").map((entry) => entry.item),
+    weapons: items.filter((entry) => entry.definition?.category === "weapon" || entry.item.category === "weapon").map((entry) => entry.item),
     other: items
       .filter((entry) => entry.definition && entry.definition.category !== "armor" && entry.definition.category !== "weapon")
       .map((entry) => entry.item),
