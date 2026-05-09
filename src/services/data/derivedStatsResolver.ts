@@ -16,6 +16,7 @@ import type {
   SkillKey,
 } from "../../domain/derivedStats";
 import type { ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../../domain/content";
+import { resolveArmorClassFromEquipment } from "../equipment";
 
 type AbilityScoresWithModifiers = Record<AbilityKey, DerivedAbilityScore>;
 
@@ -59,21 +60,6 @@ const SPELLCASTING_ABILITY_BY_CLASS: Record<string, AbilityKey> = {
   sorcerer: "cha",
   warlock: "cha",
   wizard: "int",
-};
-
-const ARMOR_BASE_BY_KEY: Record<string, { base: number; dexMode: "full" | "max2" | "none" }> = {
-  padded: { base: 11, dexMode: "full" },
-  leather: { base: 11, dexMode: "full" },
-  "studded-leather": { base: 12, dexMode: "full" },
-  hide: { base: 12, dexMode: "max2" },
-  "chain-shirt": { base: 13, dexMode: "max2" },
-  "scale-mail": { base: 14, dexMode: "max2" },
-  breastplate: { base: 14, dexMode: "max2" },
-  "half-plate": { base: 15, dexMode: "max2" },
-  "ring-mail": { base: 14, dexMode: "none" },
-  "chain-mail": { base: 16, dexMode: "none" },
-  splint: { base: 17, dexMode: "none" },
-  plate: { base: 18, dexMode: "none" },
 };
 
 function abilityModifier(score: number): number {
@@ -162,72 +148,6 @@ function parseMovementFromTraits(traits: string[]): Omit<DerivedMovementResult, 
   }
 
   return result;
-}
-
-function parseArmorFromDescription(description: string | undefined): { base: number; dexMode: "full" | "max2" | "none" } | undefined {
-  const text = String(description ?? "");
-  if (!text.trim()) {
-    return undefined;
-  }
-
-  const plusDexMax = text.match(/([0-9]{1,2})\s*\+\s*dex[^0-9]*max[^0-9]*([0-9])/i);
-  if (plusDexMax) {
-    return { base: Number(plusDexMax[1]), dexMode: "max2" };
-  }
-
-  const plusDex = text.match(/([0-9]{1,2})\s*\+\s*dex/i);
-  if (plusDex) {
-    return { base: Number(plusDex[1]), dexMode: "full" };
-  }
-
-  const strictNumberLine = text.match(/(?:^|\n)\s*([0-9]{1,2})\s*(?:$|\n)/);
-  if (strictNumberLine) {
-    return { base: Number(strictNumberLine[1]), dexMode: "none" };
-  }
-
-  return undefined;
-}
-
-function resolveArmorProfile(item: EquipmentDefinition): { base: number; dexMode: "full" | "max2" | "none" } | undefined {
-  const fromDescription = parseArmorFromDescription(item.description);
-  if (fromDescription) {
-    return fromDescription;
-  }
-
-  const typeToken = normalizeToken(item.type);
-  if (typeToken === "light") {
-    const base = parseSpeedNumber(item.description) ?? ARMOR_BASE_BY_KEY[normalizeToken(item.key)]?.base ?? 11;
-    return { base, dexMode: "full" };
-  }
-  if (typeToken === "medium") {
-    const base = parseSpeedNumber(item.description) ?? ARMOR_BASE_BY_KEY[normalizeToken(item.key)]?.base ?? 13;
-    return { base, dexMode: "max2" };
-  }
-  if (typeToken === "heavy") {
-    const base = parseSpeedNumber(item.description) ?? ARMOR_BASE_BY_KEY[normalizeToken(item.key)]?.base ?? 16;
-    return { base, dexMode: "none" };
-  }
-
-  const byKey = ARMOR_BASE_BY_KEY[normalizeToken(item.key)] ?? ARMOR_BASE_BY_KEY[normalizeToken(item.name)];
-  return byKey;
-}
-
-function isShield(item: EquipmentDefinition): boolean {
-  const token = normalizeToken(`${item.type ?? ""} ${item.key} ${item.name}`);
-  return token.includes("shield");
-}
-
-function parseShieldBonus(item: EquipmentDefinition): number {
-  const text = String(item.description ?? "");
-  const byPhrase = text.match(/(?:increases|bonus).*?([0-9]+)/i);
-  if (byPhrase) {
-    return Number(byPhrase[1]);
-  }
-  const numberOnly = text.match(/(?:^|\n)\s*([0-9]{1,2})\s*(?:$|\n)/);
-  if (numberOnly) {
-    return Number(numberOnly[1]);
-  }
-  return 2;
 }
 
 function combineStatuses(statuses: DerivedDataStatus[]): DerivedDataStatus {
@@ -368,85 +288,19 @@ export function computeArmorClassBase(
   equipmentCatalog: EquipmentDefinition[] | undefined,
   dexModifier: number,
 ): DerivedArmorClassResult {
-  const notes: string[] = [];
-  const equippedItems = draft.inventory.items.filter((entry) => entry.equipped);
-  if (!equipmentCatalog || equipmentCatalog.length === 0) {
-    return {
-      value: 10 + dexModifier,
-      calculation: "unarmored",
-      dexApplied: dexModifier,
-      notes: ["Equipment catalog unavailable; using unarmored baseline."],
-      dataStatus: "partial",
-    };
-  }
-
-  const byId = new Map(equipmentCatalog.map((entry) => [entry.id, entry]));
-  const equippedDefinitions = equippedItems
-    .map((entry) => ({ inventory: entry, definition: byId.get(entry.id) }))
-    .filter((entry) => entry.definition !== undefined);
-  const unresolvedCount = equippedItems.length - equippedDefinitions.length;
-  if (unresolvedCount > 0) {
-    notes.push(`Could not resolve ${unresolvedCount} equipped item(s) from active equipment catalog.`);
-  }
-
-  const armorCandidates = equippedDefinitions
-    .map((entry) => entry.definition)
-    .filter((entry): entry is EquipmentDefinition => Boolean(entry && entry.category === "armor" && !isShield(entry)));
-  const shieldCandidates = equippedDefinitions
-    .map((entry) => entry.definition)
-    .filter((entry): entry is EquipmentDefinition => Boolean(entry && entry.category === "armor" && isShield(entry)));
-
-  const baseUnarmored = 10 + dexModifier;
-  let chosenArmor: EquipmentDefinition | undefined;
-  let chosenArmorAc = baseUnarmored;
-  let chosenDexApplied = dexModifier;
-  let armorStatus: DerivedDataStatus = "complete";
-
-  if (armorCandidates.length > 0) {
-    let best = Number.NEGATIVE_INFINITY;
-    for (const armor of armorCandidates) {
-      const profile = resolveArmorProfile(armor);
-      if (!profile) {
-        armorStatus = "partial";
-        notes.push(`Armor profile unresolved for '${armor.name}'.`);
-        continue;
-      }
-      const dexContribution = profile.dexMode === "none" ? 0 : profile.dexMode === "max2" ? Math.min(2, dexModifier) : dexModifier;
-      const candidateAc = profile.base + dexContribution;
-      if (candidateAc > best) {
-        best = candidateAc;
-        chosenArmor = armor;
-        chosenArmorAc = candidateAc;
-        chosenDexApplied = dexContribution;
-      }
-    }
-  }
-
-  const shield = shieldCandidates[0];
-  const shieldBonus = shield ? parseShieldBonus(shield) : 0;
-  const value = chosenArmorAc + shieldBonus;
-  const calculation =
-    chosenArmor && shield
-      ? "armor+shield"
-      : chosenArmor
-        ? "armor"
-        : shield
-          ? "unarmored+shield"
-          : "unarmored";
-
-  if (!chosenArmor && armorCandidates.length > 0) {
-    armorStatus = "partial";
-    notes.push("No equipped armor could be fully resolved. Falling back to unarmored baseline.");
-  }
-
+  const breakdown = resolveArmorClassFromEquipment({
+    inventoryItems: draft.inventory.items,
+    equipmentCatalog,
+    dexModifier,
+  });
   return {
-    value,
-    calculation,
-    armorName: chosenArmor?.name,
-    shieldName: shield?.name,
-    dexApplied: chosenArmor ? chosenDexApplied : dexModifier,
-    notes,
-    dataStatus: combineStatuses([armorStatus, unresolvedCount > 0 ? "partial" : "complete"]),
+    value: breakdown.total,
+    calculation: breakdown.calculation,
+    armorName: breakdown.armorName,
+    shieldName: breakdown.shieldName,
+    dexApplied: breakdown.dexApplied,
+    notes: breakdown.warnings,
+    dataStatus: breakdown.dataStatus,
   };
 }
 

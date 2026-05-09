@@ -6,6 +6,7 @@ interface ActionRollPanelProps {
   rollView: CharacterRollView;
   lastRoll?: RollResult;
   resources: PlayResourceCounter[];
+  showSpellRolls?: boolean;
   onRoll: (request: RollRequest, options?: { spendResourceKey?: string; resourceLabel?: string }) => void;
   onSpendResource: (resourceKey: string, amount?: number, label?: string) => void;
 }
@@ -131,9 +132,6 @@ function ActionDescriptorRow({
           {descriptor.damageRequest ? <p className="text-xs text-slate-700">Damage {descriptor.damageRequest.diceExpression}</p> : null}
           {resource ? <p className="text-xs text-slate-600">Resource: {resource.name} ({resource.remaining}/{resource.max})</p> : null}
           {ambiguousResources ? <p className="text-xs text-amber-700">Multiple resources linked; spend manually.</p> : null}
-          {!descriptor.rollRequest && !descriptor.damageRequest && !descriptor.spellSaveDc ? (
-            <p className="text-xs text-amber-700">No structured roll available.</p>
-          ) : null}
         </div>
         <div className="flex flex-wrap gap-1">
           {rollRequest ? (
@@ -172,7 +170,7 @@ function ActionDescriptorRow({
   );
 }
 
-export function ActionRollPanel({ rollView, lastRoll, resources, onRoll, onSpendResource }: ActionRollPanelProps) {
+export function ActionRollPanel({ rollView, lastRoll, resources, showSpellRolls = true, onRoll, onSpendResource }: ActionRollPanelProps) {
   const [rollMode, setRollMode] = useState<RollMode>("normal");
   const resourceById = useMemo(() => new Map(resources.map((resource) => [resource.id, resource])), [resources]);
   const actionableSpells = rollView.spellRolls.filter((entry) => entry.rollRequest || entry.damageRequest || entry.spellSaveDc);
@@ -220,25 +218,27 @@ export function ActionRollPanel({ rollView, lastRoll, resources, onRoll, onSpend
         )}
       </div>
 
-      <div>
-        <p className="mb-2 text-xs font-medium uppercase text-slate-500">Spell Rolls</p>
-        {actionableSpells.length === 0 ? (
-          <p className="text-sm text-slate-500">No selected spells expose structured roll data yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {actionableSpells.map((descriptor) => (
-              <ActionDescriptorRow
-                key={descriptor.id}
-                descriptor={descriptor}
-                onRoll={onRoll}
-                onSpendResource={onSpendResource}
-                resourceById={resourceById}
-                rollMode={rollMode}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
+      {showSpellRolls ? (
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase text-slate-500">Spell Rolls</p>
+          {actionableSpells.length === 0 ? (
+            <p className="text-sm text-slate-500">Spell roll actions appear when a selected spell has an attack, save, or damage context.</p>
+          ) : (
+            <ul className="space-y-2">
+              {actionableSpells.map((descriptor) => (
+                <ActionDescriptorRow
+                  key={descriptor.id}
+                  descriptor={descriptor}
+                  onRoll={onRoll}
+                  onSpendResource={onSpendResource}
+                  resourceById={resourceById}
+                  rollMode={rollMode}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

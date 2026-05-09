@@ -2,11 +2,12 @@ import type { PlayResourceCounter } from "../../../../services/playState";
 
 interface ResourceTrackerProps {
   resources: PlayResourceCounter[];
+  showDiagnostics?: boolean;
   onSpend: (resourceKey: string, amount?: number, label?: string) => void;
   onRestore: (resourceKey: string, amount?: number, label?: string) => void;
 }
 
-export function ResourceTracker({ resources, onSpend, onRestore }: ResourceTrackerProps) {
+export function ResourceTracker({ resources, showDiagnostics = false, onSpend, onRestore }: ResourceTrackerProps) {
   if (resources.length === 0) {
     return <p className="text-sm text-slate-500">No limited-use resources resolved.</p>;
   }
@@ -42,7 +43,7 @@ export function ResourceTracker({ resources, onSpend, onRestore }: ResourceTrack
               </button>
             </div>
           </div>
-          {resource.dataStatus !== "complete" ? (
+          {showDiagnostics && resource.dataStatus !== "complete" ? (
             <p className="mt-1 text-xs text-amber-700">Status: {resource.dataStatus}</p>
           ) : null}
         </li>

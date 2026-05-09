@@ -3,6 +3,7 @@ import type { SpellDefinition } from "../../domain/content";
 import type { AbilityKey, DerivedCharacterStats, SkillKey } from "../../domain/derivedStats";
 import type { CharacterRollView, RollActionDescriptor, RollRequest, RollSourceType } from "../../domain/rolls";
 import type { CharacterEngineState } from "../characterEngine";
+import { classifySpell } from "../spells";
 
 const ABILITY_LABELS: Record<AbilityKey, string> = {
   str: "Strength",
@@ -12,15 +13,6 @@ const ABILITY_LABELS: Record<AbilityKey, string> = {
   wis: "Wisdom",
   cha: "Charisma",
 };
-
-const SAVE_ABILITY_PATTERNS: Array<[AbilityKey, RegExp]> = [
-  ["str", /\b(str|strength)\b[^.]{0,24}\b(saving throw|save)\b/i],
-  ["dex", /\b(dex|dexterity)\b[^.]{0,24}\b(saving throw|save)\b/i],
-  ["con", /\b(con|constitution)\b[^.]{0,24}\b(saving throw|save)\b/i],
-  ["int", /\b(int|intelligence)\b[^.]{0,24}\b(saving throw|save)\b/i],
-  ["wis", /\b(wis|wisdom)\b[^.]{0,24}\b(saving throw|save)\b/i],
-  ["cha", /\b(cha|charisma)\b[^.]{0,24}\b(saving throw|save)\b/i],
-];
 
 function sign(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`;
@@ -126,22 +118,6 @@ function extractDiceExpression(text: string | undefined): string | undefined {
   return match?.[0]?.replace(/\s+/g, "");
 }
 
-function detectSaveAbility(text: string | undefined): AbilityKey | undefined {
-  if (!text) {
-    return undefined;
-  }
-  for (const [ability, pattern] of SAVE_ABILITY_PATTERNS) {
-    if (pattern.test(text)) {
-      return ability;
-    }
-  }
-  return undefined;
-}
-
-function hasSpellAttack(text: string | undefined): boolean {
-  return /\bspell attack\b/i.test(text ?? "");
-}
-
 function weaponAttackModifier(derivedStats: DerivedCharacterStats): number {
   return Math.max(
     derivedStats.abilityScores.str.modifier,
@@ -219,9 +195,10 @@ function buildSpellDescriptor(
   spell: SpellDefinition,
   derivedStats: DerivedCharacterStats,
 ): RollActionDescriptor {
-  const saveAbility = detectSaveAbility(spell.description);
-  const damageExpression = extractDiceExpression(spell.description);
-  const attackModifier = hasSpellAttack(spell.description) ? derivedStats.spellcasting.spellAttackModifier : undefined;
+  const classification = classifySpell(spell);
+  const saveAbility = classification.saveAbility;
+  const damageExpression = classification.damageFormula;
+  const attackModifier = classification.hasSpellAttack ? derivedStats.spellcasting.spellAttackModifier : undefined;
   return {
     id: `spell-roll:${spell.id}`,
     label: spell.name,
@@ -269,6 +246,7 @@ function buildSpellDescriptor(
         ? `Save DC ${derivedStats.spellcasting.spellSaveDC} (${ABILITY_LABELS[saveAbility]}).`
         : undefined,
       damageExpression ? `Damage formula ${damageExpression}.` : undefined,
+      classification.categories.length ? `Tags: ${classification.categories.join(", ")}.` : undefined,
     ].filter((entry): entry is string => Boolean(entry)),
     dataStatus: attackModifier !== undefined || saveAbility || damageExpression ? "partial" : "pending",
   };
@@ -286,4 +264,3 @@ export function buildCharacterRollView(engine: CharacterEngineState): CharacterR
     spellRolls: engine.selectedSpells.map((spell) => buildSpellDescriptor(spell, engine.derivedStats)),
   };
 }
-
