@@ -4,6 +4,7 @@ import type { BackgroundDefinition, ClassDefinition, EquipmentDefinition, FeatDe
 import type { CharacterRuleEngineState, RuleModifier, RuleSourceDescriptor, RuleSourceType } from "../../domain/rules";
 import { resolveEquipmentDefinitionForInventoryItem } from "../equipment";
 import { extractChoicesFromText, resolveRuleChoices } from "./choicePipeline";
+import { applyRuleMappingsToSources } from "./ruleMappingResolver";
 
 export interface RuleDescriptorInput {
   draft: CharacterDraft;
@@ -14,6 +15,7 @@ export interface RuleDescriptorInput {
   selectedFeats?: FeatDefinition[];
   selectedSpells?: SpellDefinition[];
   equipmentCatalog?: EquipmentDefinition[];
+  spellCatalog?: SpellDefinition[];
 }
 
 function descriptorId(sourceType: RuleSourceType, id: string | undefined, index = 0): string {
@@ -74,6 +76,7 @@ function createDescriptor(input: {
     modifiers: [],
     effects: [],
     diagnostics: [],
+    sourceText: input.text,
   };
   source.choices = extractChoicesFromText(source, input.text);
   source.modifiers = parseFlatAcModifier(source, input.text);
@@ -157,7 +160,11 @@ export function resolveRuleSourceDescriptors(input: RuleDescriptorInput): RuleSo
 }
 
 export function resolveCharacterRuleEngine(input: RuleDescriptorInput): CharacterRuleEngineState {
-  const sources = resolveRuleSourceDescriptors(input);
+  const sources = applyRuleMappingsToSources(resolveRuleSourceDescriptors(input), {
+    draft: input.draft,
+    equipmentCatalog: input.equipmentCatalog,
+    spellCatalog: input.spellCatalog,
+  });
   const choices = resolveRuleChoices(sources, input.draft.ruleChoices);
   const modifiers = sources.flatMap((source) => source.modifiers);
   const effects = sources.flatMap((source) => source.effects);

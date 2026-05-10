@@ -85,6 +85,7 @@ export type RuleModifierCondition =
   | "weapon-is-finesse"
   | "weapon-is-two-handed"
   | "weapon-is-one-handed"
+  | "weapon-is-melee-one-handed-no-offhand"
   | "no-offhand-weapon"
   | "spellcasting"
   | "concentration-active"
@@ -120,6 +121,8 @@ export interface RuleSourceDescriptor {
   modifiers: RuleModifier[];
   effects: ActiveEffectDefinition[];
   diagnostics: string[];
+  sourceText?: string;
+  mappingRefs?: string[];
 }
 
 export type ActiveEffectDurationType = "concentration" | "until-rest" | "timed" | "manual" | "one-roll";

@@ -77,6 +77,11 @@ export function DiagnosticsPanel({ engine, inventory }: DiagnosticsPanelProps) {
           Sources {engine.ruleEngine.sources.length}; choices {engine.ruleEngine.choices.length}; modifiers {engine.ruleEngine.modifiers.length}; effects{" "}
           {engine.ruleEngine.effects.length}; status {engine.ruleEngine.dataStatus}.
         </p>
+        {engine.ruleEngine.sources.filter((source) => source.mappingRefs?.length).map((source) => (
+          <p key={source.id}>
+            {source.sourceName}: mappings {source.mappingRefs?.join(", ")}
+          </p>
+        ))}
         {engine.ruleEngine.choices.map((choice) => (
           <p key={choice.id}>
             {choice.choiceType} from {choice.sourceType}: {choice.status}

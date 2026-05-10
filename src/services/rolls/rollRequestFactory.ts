@@ -175,6 +175,7 @@ function buildActionDescriptor(
     sourceType,
     sourceId: action.sourceId,
     sourceSummary: action.source.sourceName,
+    mappingBadges: weaponProfile?.masteryBadges,
     rollRequest,
     damageRequest: (weaponProfile?.damageDice ?? damageExpression)
       ? {
@@ -249,6 +250,7 @@ function buildSpellDescriptor(
       : undefined,
     spellSaveDc: saveAbility ? derivedStats.spellcasting.spellSaveDC : undefined,
     spellSaveAbility: saveAbility,
+    mappingBadges: [],
     resourceIds: [],
     notes: [
       attackModifier === undefined ? "No spell attack roll detected." : `Spell attack ${sign(attackModifier)}.`,

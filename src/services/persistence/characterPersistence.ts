@@ -158,6 +158,7 @@ const ruleModifierSchema = z.object({
     "weapon-is-finesse",
     "weapon-is-two-handed",
     "weapon-is-one-handed",
+    "weapon-is-melee-one-handed-no-offhand",
     "no-offhand-weapon",
     "spellcasting",
     "concentration-active",

@@ -10,6 +10,7 @@ export interface FeatureCardViewModel {
   level?: number;
   actionType?: string;
   usesLabel?: string;
+  ruleChoiceLabels: string[];
   summary: string;
   details?: string;
 }
@@ -62,6 +63,26 @@ function pushUnique(target: FeatureCardViewModel[], seen: Set<string>, feature: 
   target.push(feature);
 }
 
+function ruleChoiceLabelsForSource(engine: CharacterEngineState, sourceId: string | undefined): string[] {
+  if (!sourceId) {
+    return [];
+  }
+  return (engine.ruleEngine?.choices ?? [])
+    .filter((choice) => {
+      const source = engine.ruleEngine?.sources.find((entry) => entry.id === choice.sourceDescriptorId);
+      return source?.sourceId === sourceId;
+    })
+    .map((choice) => {
+      const selectedLabels = choice.options
+        .filter((option) => choice.selectedOptionIds.includes(option.id))
+        .map((option) => option.label);
+      if (selectedLabels.length) {
+        return `${choice.choiceType}: ${selectedLabels.join(", ")}`;
+      }
+      return `${choice.choiceType}: ${choice.status}`;
+    });
+}
+
 export function buildFeatureGroupsViewModel(engine: CharacterEngineState): FeatureGroupViewModel[] {
   const cards: FeatureCardViewModel[] = [];
   const seen = new Set<string>();
@@ -74,6 +95,7 @@ export function buildFeatureGroupsViewModel(engine: CharacterEngineState): Featu
       sourceLabel: engine.classDef?.name ?? "Class",
       level: feature.minLevel,
       actionType: actionTypeFromText(feature.description),
+      ruleChoiceLabels: ruleChoiceLabelsForSource(engine, feature.id),
       summary: summarize(feature.description),
       details: feature.description,
     });
@@ -87,6 +109,7 @@ export function buildFeatureGroupsViewModel(engine: CharacterEngineState): Featu
       sourceLabel: engine.subclassDef?.name ?? "Subclass",
       level: feature.minLevel,
       actionType: actionTypeFromText(feature.description),
+      ruleChoiceLabels: ruleChoiceLabelsForSource(engine, feature.id),
       summary: summarize(feature.description),
       details: feature.description,
     });
@@ -99,6 +122,7 @@ export function buildFeatureGroupsViewModel(engine: CharacterEngineState): Featu
       sourceGroup: "species",
       sourceLabel: engine.speciesDef?.name ?? "Species",
       actionType: actionTypeFromText(trait),
+      ruleChoiceLabels: [],
       summary: summarize(trait),
       details: trait,
     });
@@ -118,6 +142,7 @@ export function buildFeatureGroupsViewModel(engine: CharacterEngineState): Featu
         sourceGroup: "background",
         sourceLabel: "Background",
         summary: summarize(detail),
+        ruleChoiceLabels: ruleChoiceLabelsForSource(engine, engine.backgroundDef?.id),
         details: detail,
       });
     });
@@ -130,6 +155,7 @@ export function buildFeatureGroupsViewModel(engine: CharacterEngineState): Featu
       sourceGroup: "feats",
       sourceLabel: "Feat",
       actionType: actionTypeFromText(feat.description),
+      ruleChoiceLabels: ruleChoiceLabelsForSource(engine, feat.id),
       summary: summarize(feat.description ?? feat.prerequisite),
       details: feat.description,
     });

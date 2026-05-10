@@ -1,6 +1,7 @@
 import type { SpellDefinition } from "../../domain/content";
-import type { ActiveEffectDefinition, ActiveEffectState, RuleModifier } from "../../domain/rules";
+import type { ActiveEffectDefinition, ActiveEffectState, RuleModifier, RuleSourceDescriptor } from "../../domain/rules";
 import type { RollType } from "../../domain/rolls";
+import { resolveRuleMappingContribution } from "./ruleMappingResolver";
 
 function normalizeDice(value: string | undefined): string | undefined {
   return value?.replace(/\s+/g, "");
@@ -23,6 +24,10 @@ function firstBonusDice(text: string): string | undefined {
 }
 
 export function createActiveEffectFromSpell(spell: SpellDefinition): ActiveEffectDefinition | undefined {
+  const mapped = createMappedActiveEffectFromSpell(spell);
+  if (mapped) {
+    return mapped;
+  }
   const text = String(spell.description ?? "");
   const dice = firstBonusDice(text);
   const applicableRollTypes = applicableRollTypesFromText(text);
@@ -54,6 +59,26 @@ export function createActiveEffectFromSpell(spell: SpellDefinition): ActiveEffec
     concentrationLinked: spell.concentration,
     diagnostics: ["Active effect is optional; the user chooses whether to apply it to a roll."],
   };
+}
+
+function createMappedActiveEffectFromSpell(spell: SpellDefinition): ActiveEffectDefinition | undefined {
+  const rulesMode = spell.sourceMeta?.edition === "2014" || spell.sourceMeta?.edition === "2024" ? spell.sourceMeta.edition : "2024";
+  const provider = spell.sourceMeta?.sourceSystem === "open5e" ? "open5e" : "mpmb";
+  const source: RuleSourceDescriptor = {
+    id: `rule-source:spell:${spell.id}`,
+    sourceType: "spell",
+    sourceId: spell.id,
+    sourceName: spell.name,
+    provider,
+    rulesMode,
+    tags: spell.concentration ? ["concentration"] : [],
+    choices: [],
+    modifiers: [],
+    effects: [],
+    diagnostics: [],
+    sourceText: [spell.castingTime, spell.duration, spell.description].filter(Boolean).join("\n"),
+  };
+  return resolveRuleMappingContribution(source).effects[0];
 }
 
 export function instantiateActiveEffect(effect: ActiveEffectDefinition, startedAt = new Date().toISOString()): ActiveEffectState {

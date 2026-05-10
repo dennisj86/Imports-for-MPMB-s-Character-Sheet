@@ -41,6 +41,7 @@ function ItemList({
                 </div>
               </div>
               {item.relevantStats.length ? <p className="mt-2 text-xs text-slate-700">{item.relevantStats.join(" · ")}</p> : null}
+              {item.mappingBadges.length ? <p className="mt-2 text-xs text-slate-600">{item.mappingBadges.join(" · ")}</p> : null}
               {item.canEquip ? (
                 <div className="mt-3 flex gap-2">
                   {item.equipped ? (

@@ -136,6 +136,7 @@ function ActionDescriptorRow({
             </p>
           ) : null}
           {descriptor.damageRequest ? <p className="text-xs text-slate-700">Damage {descriptor.damageRequest.diceExpression}</p> : null}
+          {descriptor.mappingBadges?.length ? <p className="text-xs text-slate-600">{descriptor.mappingBadges.join(" · ")}</p> : null}
           {resource ? <p className="text-xs text-slate-600">Resource: {resource.name} ({resource.remaining}/{resource.max})</p> : null}
           {ambiguousResources ? <p className="text-xs text-amber-700">Multiple resources linked; spend manually.</p> : null}
         </div>

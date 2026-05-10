@@ -102,6 +102,7 @@ export interface RollActionDescriptor {
   damageRequest?: RollRequest;
   spellSaveDc?: number;
   spellSaveAbility?: AbilityKey;
+  mappingBadges?: string[];
   resourceIds: string[];
   notes: string[];
   dataStatus?: string;

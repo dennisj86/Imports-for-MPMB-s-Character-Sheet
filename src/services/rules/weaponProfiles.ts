@@ -22,6 +22,7 @@ export interface WeaponAttackProfile {
   damageType?: string;
   properties: string[];
   range?: string;
+  masteryBadges: string[];
   breakdown: {
     attack: string[];
     damage: string[];
@@ -99,6 +100,31 @@ function usageMode(properties: string[]): WeaponAttackProfile["usageMode"] {
   return "melee";
 }
 
+function normalizeSelectionToken(value: string | undefined): string {
+  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+export function weaponMasteryBadgesForItem(
+  draft: CharacterDraft,
+  item: InventoryItem,
+  definition: EquipmentDefinition | undefined,
+): string[] {
+  const tokens = new Set([
+    definition?.id,
+    definition?.key,
+    definition?.name,
+    item.itemDefinitionId,
+    item.id,
+    item.instanceId,
+    item.name,
+  ].map(normalizeSelectionToken).filter(Boolean));
+  const selected = Object.entries(draft.ruleChoices ?? [])
+    .filter(([choiceId, state]) => choiceId.includes("weapon-mastery") && state.status === "complete")
+    .flatMap(([, state]) => state.selectedOptionIds)
+    .map(normalizeSelectionToken);
+  return selected.some((optionId) => tokens.has(optionId)) ? ["Mastery selected"] : [];
+}
+
 export function buildWeaponAttackProfiles(input: {
   draft: CharacterDraft;
   equipmentCatalog: EquipmentDefinition[];
@@ -137,6 +163,7 @@ export function buildWeaponAttackProfiles(input: {
       const damageModifier = abilityMod + flatDamageModifier;
       const damageDice = extractDamageDice(text);
       const damageType = extractDamageType(text);
+      const masteryBadges = weaponMasteryBadgesForItem(input.draft, item, definition);
       const diagnostics = [
         ...attackAbility.diagnostics,
         ...(damageDice ? [] : ["No structured damage dice found for this weapon."]),
@@ -159,6 +186,7 @@ export function buildWeaponAttackProfiles(input: {
         damageType,
         properties,
         range: extractRange(text),
+        masteryBadges,
         breakdown: {
           attack: [
             `${attackAbility.ability.toUpperCase()} ${abilityMod >= 0 ? `+${abilityMod}` : abilityMod}`,

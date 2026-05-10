@@ -214,6 +214,7 @@ export function resolveCharacterEngineState(
     selectedFeats,
     selectedSpells,
     equipmentCatalog,
+    spellCatalog,
   });
   const derivedStats = resolveDerivedStats(draft, appliedRules, {
     classDef,

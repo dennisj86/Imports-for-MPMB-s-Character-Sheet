@@ -250,6 +250,11 @@ export function computeSkillModifiers(
       profSet.add(normalized);
     }
   }
+  for (const modifier of modifiersForTarget(ruleModifiers, "proficiency")) {
+    if (modifier.skill && modifier.valueType === "set" && modifier.value === true) {
+      profSet.add(modifier.skill);
+    }
+  }
 
   const output = {} as Record<SkillKey, DerivedSkillResult>;
   for (const skill of SKILL_CONFIG) {

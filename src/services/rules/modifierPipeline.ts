@@ -63,6 +63,15 @@ export function evaluateModifierCondition(
       return properties.has("two-handed") || context.weapon?.usageMode === "versatile-two-hand" ? { applied: true } : { applied: false, reason: "Requires two-handed weapon use." };
     case "weapon-is-one-handed":
       return !properties.has("two-handed") && context.weapon?.usageMode !== "versatile-two-hand" ? { applied: true } : { applied: false, reason: "Requires one-handed weapon use." };
+    case "weapon-is-melee-one-handed-no-offhand": {
+      const melee = context.weapon?.usageMode === "melee" || context.weapon?.usageMode === "versatile-one-hand" || properties.has("melee");
+      const oneHanded = !properties.has("two-handed") && context.weapon?.usageMode !== "versatile-two-hand";
+      const noOffhand = !hasEquippedSlot(context.inventoryItems, "offHand");
+      if (!melee) return { applied: false, reason: "Requires melee weapon use." };
+      if (!oneHanded) return { applied: false, reason: "Requires one-handed weapon use." };
+      if (!noOffhand) return { applied: false, reason: "Requires no off-hand weapon." };
+      return { applied: true };
+    }
     case "no-offhand-weapon":
       return !hasEquippedSlot(context.inventoryItems, "offHand") ? { applied: true } : { applied: false, reason: "Requires no off-hand weapon." };
     case "spellcasting":

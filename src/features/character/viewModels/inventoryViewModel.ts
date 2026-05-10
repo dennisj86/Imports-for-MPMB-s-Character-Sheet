@@ -9,6 +9,7 @@ import {
   resolveEquipmentDefinitionForInventoryItem,
   type ArmorClassBreakdown,
 } from "../../../services/equipment";
+import { weaponMasteryBadgesForItem } from "../../../services/rules";
 
 export interface InventoryItemViewModel {
   instanceId: string;
@@ -22,6 +23,7 @@ export interface InventoryItemViewModel {
   equipmentSlot?: EquipmentSlot;
   canEquip: boolean;
   relevantStats: string[];
+  mappingBadges: string[];
   diagnostics: string[];
 }
 
@@ -56,6 +58,7 @@ function toItemView(
   inventoryItem: CharacterDraft["inventory"]["items"][number],
   definition: EquipmentDefinition | undefined,
   fallbackSlot: EquipmentSlot,
+  draft: CharacterDraft,
 ): InventoryItemViewModel {
   const category = definition?.category ?? inventoryItem.category ?? (fallbackSlot === "armor" || fallbackSlot === "shield" ? "armor" : "unresolved");
   const diagnostics = definition
@@ -73,6 +76,7 @@ function toItemView(
     equipmentSlot: inventoryItem.equipmentSlot ?? fallbackSlot,
     canEquip: category === "armor" || category === "weapon" || fallbackSlot === "armor" || fallbackSlot === "shield",
     relevantStats: itemStats(definition, fallbackSlot),
+    mappingBadges: definition?.category === "weapon" || category === "weapon" ? weaponMasteryBadgesForItem(draft, inventoryItem, definition) : [],
     diagnostics,
   };
 }
@@ -89,7 +93,7 @@ export function buildInventoryViewModel(draft: CharacterDraft, engine: Character
     const definition = resolveEquipmentDefinitionForInventoryItem(item, engine.equipmentCatalog);
     const fallbackSlot = inferEquipmentSlot(item, definition);
     return {
-      item: toItemView(item, definition, fallbackSlot),
+      item: toItemView(item, definition, fallbackSlot, draft),
       definition,
       slot: fallbackSlot,
     };

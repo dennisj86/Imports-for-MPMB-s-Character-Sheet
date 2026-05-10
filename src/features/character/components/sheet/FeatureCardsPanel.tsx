@@ -28,6 +28,9 @@ export function FeatureCardsPanel({ groups }: FeatureCardsPanelProps) {
                   <div className="flex flex-wrap gap-1">
                     {feature.actionType ? <span className="rounded bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">{feature.actionType}</span> : null}
                     {feature.usesLabel ? <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{feature.usesLabel}</span> : null}
+                    {feature.ruleChoiceLabels.map((label) => (
+                      <span key={label} className="rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">{label}</span>
+                    ))}
                   </div>
                 </div>
                 <p className="mt-2 text-sm text-slate-700">{feature.summary}</p>
