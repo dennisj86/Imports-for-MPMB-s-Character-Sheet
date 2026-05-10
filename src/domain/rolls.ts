@@ -1,5 +1,6 @@
 import type { CharacterActionActivationType } from "./actionResources";
 import type { AbilityKey, SkillKey } from "./derivedStats";
+import type { ActiveEffectState, RuleModifier } from "./rules";
 
 export type RollType =
   | "ability-check"
@@ -8,6 +9,7 @@ export type RollType =
   | "attack-roll"
   | "spell-attack"
   | "damage-roll"
+  | "death-save"
   | "custom";
 
 export type RollMode = "normal" | "advantage" | "disadvantage";
@@ -25,6 +27,11 @@ export interface RollRequest {
   sourceType?: RollSourceType;
   sourceId?: string;
   modifier: number;
+  baseModifier?: number;
+  permanentModifiers?: RuleModifier[];
+  temporaryModifiers?: RuleModifier[];
+  selectedActiveEffectIds?: string[];
+  bonusDiceExpressions?: string[];
   proficiencyApplied?: boolean;
   diceExpression: string;
   rollMode: RollMode;
@@ -56,6 +63,27 @@ export interface RollResult {
   rollMode: RollMode;
   dice: RollDiceBreakdown;
   modifier: number;
+  baseModifier?: number;
+  permanentModifierBreakdown?: Array<{
+    id: string;
+    sourceName: string;
+    value: number | string | boolean;
+    valueType: string;
+    applied: boolean;
+  }>;
+  temporaryModifierBreakdown?: Array<{
+    id: string;
+    sourceName: string;
+    value: number | string | boolean;
+    valueType: string;
+    applied: boolean;
+  }>;
+  bonusDice?: Array<{
+    expression: string;
+    rolls: number[];
+    total: number;
+    sourceName?: string;
+  }>;
   total: number;
   naturalRoll?: number;
   outcomeLabel?: RollOutcomeLabel;
@@ -85,5 +113,5 @@ export interface CharacterRollView {
   skillChecks: RollRequest[];
   actionRolls: RollActionDescriptor[];
   spellRolls: RollActionDescriptor[];
+  activeEffects?: ActiveEffectState[];
 }
-

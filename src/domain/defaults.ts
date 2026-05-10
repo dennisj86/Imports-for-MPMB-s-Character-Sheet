@@ -49,6 +49,7 @@ export function createCharacterDraft(id: string, name: string): CharacterDraft {
       weaponMasteryChoices: {},
       fightingStyleChoices: {},
     },
+    ruleChoices: {},
     playState: createDefaultCharacterPlayState(id, {
       maxHp: 1,
       now: timestamp,

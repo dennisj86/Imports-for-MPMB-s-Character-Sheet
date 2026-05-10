@@ -17,6 +17,31 @@ function clampInteger(value: number): number {
   return Math.trunc(value);
 }
 
+function flatModifierTotal(modifiers: RollRequest["permanentModifiers"] | RollRequest["temporaryModifiers"]): number {
+  return (modifiers ?? [])
+    .filter((modifier) => modifier.valueType === "flat" && typeof modifier.value === "number")
+    .reduce((sum, modifier) => sum + Number(modifier.value), 0);
+}
+
+function modifierBreakdown(modifiers: RollRequest["permanentModifiers"] | RollRequest["temporaryModifiers"]) {
+  return (modifiers ?? []).map((modifier) => ({
+    id: modifier.id,
+    sourceName: modifier.sourceName,
+    value: modifier.value,
+    valueType: modifier.valueType,
+    applied: modifier.valueType === "flat" || modifier.valueType === "dice",
+  }));
+}
+
+function diceModifierExpressions(modifiers: RollRequest["temporaryModifiers"]): Array<{ expression: string; sourceName?: string }> {
+  return (modifiers ?? [])
+    .filter((modifier) => modifier.valueType === "dice" && typeof modifier.value === "string")
+    .map((modifier) => ({
+      expression: modifier.value as string,
+      sourceName: modifier.sourceName,
+    }));
+}
+
 function rollD20(mode: RollRequest["rollMode"], rng: () => number): { rawRolls: number[]; keptRoll: number; droppedRolls: number[] } {
   const first = rollDiceExpression("1d20", rng).total;
   if (mode === "normal") {
@@ -61,11 +86,27 @@ export function executeRollRequest(
 ): RollResult {
   const rng = options.rng ?? Math.random;
   const timestamp = options.now ?? new Date().toISOString();
-  const modifier = clampInteger(request.modifier);
+  const baseModifier = clampInteger(request.baseModifier ?? request.modifier);
+  const permanentModifierTotal = flatModifierTotal(request.permanentModifiers);
+  const temporaryModifierTotal = flatModifierTotal(request.temporaryModifiers);
+  const bonusDice = [
+    ...diceModifierExpressions(request.temporaryModifiers),
+    ...(request.bonusDiceExpressions ?? []).map((expression) => ({ expression, sourceName: undefined })),
+  ].map((entry) => {
+    const rolled = rollDiceExpression(entry.expression, rng);
+    return {
+      expression: entry.expression,
+      rolls: rolled.terms.flatMap((term) => (term.kind === "dice" ? term.rolls : [])),
+      total: rolled.total,
+      sourceName: entry.sourceName,
+    };
+  });
+  const bonusDiceTotal = bonusDice.reduce((sum, entry) => sum + entry.total, 0);
+  const modifier = baseModifier + permanentModifierTotal + temporaryModifierTotal;
 
   if (isD20Request(request)) {
     const d20 = rollD20(request.rollMode, rng);
-    const total = d20.keptRoll + modifier;
+    const total = d20.keptRoll + modifier + bonusDiceTotal;
     return {
       id: generateRollId(),
       requestId: request.id,
@@ -76,6 +117,10 @@ export function executeRollRequest(
       rollMode: request.rollMode,
       dice: d20,
       modifier,
+      baseModifier,
+      permanentModifierBreakdown: modifierBreakdown(request.permanentModifiers),
+      temporaryModifierBreakdown: modifierBreakdown(request.temporaryModifiers),
+      bonusDice,
       total,
       naturalRoll: d20.keptRoll,
       outcomeLabel: outcomeForRoll(request, d20.keptRoll),
@@ -99,7 +144,11 @@ export function executeRollRequest(
       terms: dice.terms,
     },
     modifier,
-    total: dice.total + modifier,
+    baseModifier,
+    permanentModifierBreakdown: modifierBreakdown(request.permanentModifiers),
+    temporaryModifierBreakdown: modifierBreakdown(request.temporaryModifiers),
+    bonusDice,
+    total: dice.total + modifier + bonusDiceTotal,
     outcomeLabel: "normal",
     sourceSummary: request.metadata?.sourceSummary as string | undefined,
     metadata: request.metadata,
@@ -111,14 +160,22 @@ function formatModifier(modifier: number): string {
 }
 
 export function createRollPlayEvent(result: RollResult): CharacterPlayEvent {
+  const bonusDice = result.bonusDice?.map((entry) => `${entry.expression}=${entry.total}`).join(", ");
+  const permanent = result.permanentModifierBreakdown?.filter((entry) => entry.applied).map((entry) => `${entry.sourceName} ${entry.value}`).join(", ");
+  const temporary = result.temporaryModifierBreakdown?.filter((entry) => entry.applied).map((entry) => `${entry.sourceName} ${entry.value}`).join(", ");
   return createPlayEvent({
     timestamp: result.timestamp,
     type: "roll",
     shortLabel: `${result.label}: ${result.total}`,
     payload: {
       rollResult: result,
-      summary: `${result.diceExpression} ${formatModifier(result.modifier)} = ${result.total}`,
+      summary: [
+        `${result.diceExpression} ${formatModifier(result.modifier)}`,
+        bonusDice ? `bonus ${bonusDice}` : undefined,
+        permanent ? `permanent ${permanent}` : undefined,
+        temporary ? `temporary ${temporary}` : undefined,
+        `= ${result.total}`,
+      ].filter(Boolean).join(" · "),
     },
   });
 }
-

@@ -64,6 +64,7 @@ export function buildCombatViewModel(input: {
     inventoryItems: normalizeInventoryState(draft.inventory, engine.equipmentCatalog).items,
     equipmentCatalog: engine.equipmentCatalog,
     dexModifier: derived.abilityScores.dex.modifier,
+    ruleModifiers: engine.ruleEngine?.modifiers ?? [],
   });
   const hitDice = hitDiceSummary(input.hitDicePools);
 

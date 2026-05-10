@@ -70,6 +70,28 @@ export function DiagnosticsPanel({ engine, inventory }: DiagnosticsPanelProps) {
           ))}
         </div>
       ) : null}
+
+      <div className="rounded border border-slate-200 p-2 text-xs text-slate-700">
+        <p className="mb-1 font-medium">Rule Descriptor Pipeline</p>
+        <p>
+          Sources {engine.ruleEngine.sources.length}; choices {engine.ruleEngine.choices.length}; modifiers {engine.ruleEngine.modifiers.length}; effects{" "}
+          {engine.ruleEngine.effects.length}; status {engine.ruleEngine.dataStatus}.
+        </p>
+        {engine.ruleEngine.choices.map((choice) => (
+          <p key={choice.id}>
+            {choice.choiceType} from {choice.sourceType}: {choice.status}
+            {choice.diagnostics.length ? ` - ${choice.diagnostics.join(" ")}` : ""}
+          </p>
+        ))}
+        {engine.ruleEngine.modifiers.map((modifier) => (
+          <p key={modifier.id}>
+            {modifier.sourceName}: {modifier.target} {modifier.valueType} {String(modifier.value)} ({modifier.condition})
+          </p>
+        ))}
+        {engine.ruleEngine.diagnostics.map((diagnostic) => (
+          <p key={diagnostic}>{diagnostic}</p>
+        ))}
+      </div>
     </div>
   );
 }

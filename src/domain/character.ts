@@ -36,6 +36,13 @@ export interface FeatureChoice {
   optionId: string;
 }
 
+export interface RuleChoiceState {
+  choiceId: string;
+  selectedOptionIds: string[];
+  status: "pending" | "complete" | "unsupported" | "needs-builder";
+  updatedAt?: string;
+}
+
 export type EquipmentSlot = "armor" | "shield" | "mainHand" | "offHand" | "twoHanded" | "ranged" | "focus" | "other";
 
 export interface InventoryItem {
@@ -148,5 +155,6 @@ export interface CharacterDraft {
   featureChoices: FeatureChoice[];
   inventory: InventoryState;
   levelUp?: LevelUpState;
+  ruleChoices?: Record<string, RuleChoiceState>;
   playState: CharacterPlayState;
 }

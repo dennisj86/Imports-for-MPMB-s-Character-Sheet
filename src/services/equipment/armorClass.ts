@@ -2,6 +2,8 @@ import { toSlug } from "../../lib/slug";
 import type { EquipmentSlot, InventoryItem } from "../../domain/character";
 import type { EquipmentDefinition } from "../../domain/content";
 import type { DerivedDataStatus } from "../../domain/derivedStats";
+import type { RuleModifier } from "../../domain/rules";
+import { modifiersForTarget, sumFlatModifiers } from "../rules/modifierPipeline";
 
 export type ArmorDexMode = "full" | "max2" | "none";
 export type ArmorCalculationMode = "unarmored" | "armor" | "armor+shield" | "unarmored+shield";
@@ -18,6 +20,7 @@ export interface ArmorClassBreakdown {
   shieldBonus: number;
   bonus: number;
   bonusSources: string[];
+  modifierSources?: string[];
   warnings: string[];
   dataStatus: DerivedDataStatus;
 }
@@ -234,6 +237,7 @@ export function resolveArmorClassFromEquipment(input: {
   inventoryItems: InventoryItem[];
   equipmentCatalog: EquipmentDefinition[] | undefined;
   dexModifier: number;
+  ruleModifiers?: RuleModifier[];
 }): ArmorClassBreakdown {
   const warnings: string[] = [];
   const equippedItems = input.inventoryItems.filter((entry) => entry.equipped);
@@ -281,8 +285,18 @@ export function resolveArmorClassFromEquipment(input: {
   const bonusItems = equippedDefinitions
     .map((entry) => ({ item: entry.like, bonus: parseSimpleAcBonus(entry.like) }))
     .filter((entry): entry is { item: EquipmentLike; bonus: number } => entry.bonus !== undefined && !isShieldDefinition(entry.item));
-  const bonus = bonusItems.reduce((sum, entry) => sum + entry.bonus, 0);
+  const ruleModifierResult = sumFlatModifiers(modifiersForTarget(input.ruleModifiers ?? [], "armor-class"), {
+    inventoryItems: input.inventoryItems,
+    shieldEquipped: Boolean(shield),
+    wearingArmor: Boolean(armorName),
+    target: "armor-class",
+  });
+  const ruleBonus = ruleModifierResult.total;
+  const bonus = bonusItems.reduce((sum, entry) => sum + entry.bonus, 0) + ruleBonus;
   const bonusSources = bonusItems.map((entry) => `${entry.item.name} +${entry.bonus}`);
+  const modifierSources = ruleModifierResult.applications
+    .filter((entry) => entry.applied && entry.modifier.valueType === "flat")
+    .map((entry) => `${entry.modifier.sourceName} +${entry.modifier.value}`);
   const total = armorTotal + shieldBonus + bonus;
   const calculation: ArmorCalculationMode = armorName
     ? shield
@@ -303,8 +317,12 @@ export function resolveArmorClassFromEquipment(input: {
     shieldName: shield?.name,
     shieldBonus,
     bonus,
-    bonusSources,
-    warnings,
+    bonusSources: [...bonusSources, ...modifierSources],
+    modifierSources,
+    warnings: [
+      ...warnings,
+      ...ruleModifierResult.applications.filter((entry) => !entry.applied && entry.reason).map((entry) => `${entry.modifier.sourceName}: ${entry.reason}`),
+    ],
     dataStatus: warnings.length ? "partial" : "complete",
   };
 }

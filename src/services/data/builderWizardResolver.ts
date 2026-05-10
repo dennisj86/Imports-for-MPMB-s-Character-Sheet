@@ -11,6 +11,7 @@ import type {
   SubclassDefinition,
 } from "../../domain/content";
 import type { DerivedCharacterStats, DerivedDataStatus } from "../../domain/derivedStats";
+import type { CharacterRuleEngineState } from "../../domain/rules";
 import type {
   ClassSkillChoiceState,
   FeatSubchoice,
@@ -37,6 +38,7 @@ type BuilderWizardResolverInput = {
   appliedRules: AppliedCharacterRules;
   progression: LevelProgressionResult;
   derivedStats: DerivedCharacterStats;
+  ruleEngine?: CharacterRuleEngineState;
 };
 
 type FeatPrerequisiteEvaluation = {
@@ -1102,6 +1104,11 @@ export function validateBuilderStep(
   }
 
   if (stepId === "feats") {
+    for (const choice of input.ruleEngine?.choices ?? []) {
+      if (choice.status === "pending" && choice.requiredCount > 0) {
+        errors.push(`${choice.sourceType} choice from ${choice.sourceDescriptorId} is incomplete.`);
+      }
+    }
     for (const choice of progression.asiOrFeatChoices) {
       if (!choice.satisfied) {
         errors.push(`Level ${choice.level} ASI/Feat choice is incomplete.`);
@@ -1159,6 +1166,9 @@ export function validateBuilderStep(
     }
     if (progression.asiOrFeatChoices.some((entry) => !entry.satisfied)) {
       errors.push("ASI/Feat level-up choices are incomplete.");
+    }
+    if ((input.ruleEngine?.choices ?? []).some((entry) => entry.status === "pending" && entry.requiredCount > 0)) {
+      errors.push("Generic rule choices are incomplete.");
     }
     if (spellContexts.some((entry) => entry.requiredCount > 0 && !entry.satisfied)) {
       errors.push("Spell choices are incomplete.");

@@ -1,4 +1,6 @@
 import type { ActiveConditionState, CharacterDeathSaveState, CharacterPlayEvent, CharacterPlayState, ConcentrationState, HitDicePool } from "../../domain/playState";
+import type { ActiveEffectState } from "../../domain/rules";
+import { dismissConcentrationLinkedEffects } from "../rules";
 import { appendPlayEvent } from "./playEventLog";
 
 function clampNonNegative(value: number): number {
@@ -176,6 +178,18 @@ export type PlayStateAction =
   | {
       type: "start-concentration";
       concentration: ConcentrationState;
+      event?: CharacterPlayEvent;
+      timestamp?: string;
+    }
+  | {
+      type: "add-active-effect";
+      effect: ActiveEffectState;
+      event?: CharacterPlayEvent;
+      timestamp?: string;
+    }
+  | {
+      type: "dismiss-active-effect";
+      effectId: string;
       event?: CharacterPlayEvent;
       timestamp?: string;
     }
@@ -396,11 +410,40 @@ export function reduceCharacterPlayState(
     );
   }
 
+  if (action.type === "add-active-effect") {
+    const activeEffects = [
+      ...state.activeEffects.filter((effect) => effect.id !== action.effect.id),
+      action.effect,
+    ];
+    return withEvent(
+      {
+        ...state,
+        activeEffects,
+      },
+      action.event,
+      action.timestamp,
+    );
+  }
+
+  if (action.type === "dismiss-active-effect") {
+    return withEvent(
+      {
+        ...state,
+        activeEffects: state.activeEffects.map((effect) =>
+          effect.id === action.effectId ? { ...effect, status: "dismissed" } : effect,
+        ),
+      },
+      action.event,
+      action.timestamp,
+    );
+  }
+
   if (action.type === "end-concentration") {
     return withEvent(
       {
         ...state,
         concentration: null,
+        activeEffects: dismissConcentrationLinkedEffects(state.activeEffects),
       },
       action.event,
       action.timestamp,
@@ -472,6 +515,7 @@ export function reduceCharacterPlayState(
         tempHp: 0,
         deathSaves: resetDeathSaves(),
         concentration: null,
+        activeEffects: dismissConcentrationLinkedEffects(state.activeEffects),
         spentResources: nextSpentResources,
         spellSlots: nextSlots,
         hitDice: action.hitDicePools

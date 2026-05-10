@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { PlayResourceCounter } from "../../../../services/playState";
 import type { CharacterRollView, RollActionDescriptor, RollMode, RollRequest, RollResult } from "../../../../domain/rolls";
+import { activeEffectsForRollType } from "../../../../services/rules";
 
 interface ActionRollPanelProps {
   rollView: CharacterRollView;
@@ -58,6 +59,11 @@ function LastRollCard({ result }: { result?: RollResult }) {
       <p className="text-sm text-slate-800">
         {modeLabel(result.rollMode)} · {result.diceExpression} {modifierLabel(result.modifier)} = <span className="font-semibold">{result.total}</span>
       </p>
+      {result.bonusDice?.length ? (
+        <p className="text-xs text-slate-600">
+          Bonus: {result.bonusDice.map((entry) => `${entry.expression}=${entry.total}`).join(", ")}
+        </p>
+      ) : null}
       {rawRolls ? <p className="text-xs text-slate-600">Dice: {rawRolls}{result.dice.keptRoll ? ` · kept ${result.dice.keptRoll}` : ""}</p> : null}
       {result.outcomeLabel && result.outcomeLabel !== "normal" ? <p className="text-xs text-amber-700">{result.outcomeLabel}</p> : null}
     </div>
@@ -172,8 +178,20 @@ function ActionDescriptorRow({
 
 export function ActionRollPanel({ rollView, lastRoll, resources, showSpellRolls = true, onRoll, onSpendResource }: ActionRollPanelProps) {
   const [rollMode, setRollMode] = useState<RollMode>("normal");
+  const [selectedEffectIds, setSelectedEffectIds] = useState<string[]>([]);
   const resourceById = useMemo(() => new Map(resources.map((resource) => [resource.id, resource])), [resources]);
   const actionableSpells = rollView.spellRolls.filter((entry) => entry.rollRequest || entry.damageRequest || entry.spellSaveDc);
+  const activeEffects = rollView.activeEffects?.filter((effect) => effect.status === "active") ?? [];
+  const applySelectedEffects = (request: RollRequest): RollRequest => {
+    const applicable = activeEffectsForRollType(activeEffects, request.type).filter((effect) => selectedEffectIds.includes(effect.id));
+    const temporaryModifiers = applicable.flatMap((effect) => effect.modifiers);
+    return {
+      ...request,
+      temporaryModifiers: [...(request.temporaryModifiers ?? []), ...temporaryModifiers],
+      selectedActiveEffectIds: Array.from(new Set([...(request.selectedActiveEffectIds ?? []), ...applicable.map((effect) => effect.id)])),
+    };
+  };
+  const rollWithEffects: ActionRollPanelProps["onRoll"] = (request, options) => onRoll(applySelectedEffects(request), options);
 
   return (
     <div className="space-y-4">
@@ -194,9 +212,31 @@ export function ActionRollPanel({ rollView, lastRoll, resources, showSpellRolls 
 
       <LastRollCard result={lastRoll} />
 
-      <RequestGrid title="Ability Checks" requests={rollView.abilityChecks} rollMode={rollMode} onRoll={onRoll} />
-      <RequestGrid title="Saving Throws" requests={rollView.savingThrows} rollMode={rollMode} onRoll={onRoll} />
-      <RequestGrid title="Skill Checks" requests={rollView.skillChecks} rollMode={rollMode} onRoll={onRoll} />
+      {activeEffects.length > 0 ? (
+        <div className="rounded border border-slate-200 bg-slate-50 p-2">
+          <p className="mb-1 text-xs font-medium uppercase text-slate-500">Optional Active Effects</p>
+          <div className="flex flex-wrap gap-2">
+            {activeEffects.map((effect) => (
+              <label key={effect.id} className="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
+                <input
+                  checked={selectedEffectIds.includes(effect.id)}
+                  onChange={(event) =>
+                    setSelectedEffectIds((current) =>
+                      event.target.checked ? Array.from(new Set([...current, effect.id])) : current.filter((id) => id !== effect.id),
+                    )
+                  }
+                  type="checkbox"
+                />
+                {effect.sourceName}
+              </label>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <RequestGrid title="Ability Checks" requests={rollView.abilityChecks} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
+      <RequestGrid title="Saving Throws" requests={rollView.savingThrows} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
+      <RequestGrid title="Skill Checks" requests={rollView.skillChecks} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
 
       <div>
         <p className="mb-2 text-xs font-medium uppercase text-slate-500">Action Rolls</p>
@@ -208,7 +248,7 @@ export function ActionRollPanel({ rollView, lastRoll, resources, showSpellRolls 
               <ActionDescriptorRow
                 key={descriptor.id}
                 descriptor={descriptor}
-                onRoll={onRoll}
+                onRoll={rollWithEffects}
                 onSpendResource={onSpendResource}
                 resourceById={resourceById}
                 rollMode={rollMode}
@@ -229,7 +269,7 @@ export function ActionRollPanel({ rollView, lastRoll, resources, showSpellRolls 
                 <ActionDescriptorRow
                   key={descriptor.id}
                   descriptor={descriptor}
-                  onRoll={onRoll}
+                  onRoll={rollWithEffects}
                   onSpendResource={onSpendResource}
                   resourceById={resourceById}
                   rollMode={rollMode}

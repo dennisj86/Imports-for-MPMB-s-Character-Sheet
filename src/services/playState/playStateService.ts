@@ -6,6 +6,7 @@ import type { RollRequest, RollResult } from "../../domain/rolls";
 import { rollDiceExpression } from "../../features/dice";
 import type { CharacterEngineState } from "../characterEngine";
 import { createRollPlayEvent, executeRollRequest } from "../rolls";
+import { createActiveEffectFromSpell, instantiateActiveEffect } from "../rules";
 import { findConditionDefinition, normalizeActiveConditionState } from "./conditionDefinitions";
 import {
   deriveHitDicePoolsFromEngine,
@@ -106,6 +107,7 @@ function normalizePlayStateCounters(
     spellSlots: normalizeCounterMap(playState.spellSlots),
     hitDice,
     activeConditions,
+    activeEffects: playState.activeEffects ?? [],
   };
 }
 
@@ -170,6 +172,8 @@ export function ensureCharacterPlayState(
     normalized.deathSaves.stable === playState.deathSaves.stable &&
     normalized.deathSaves.dead === playState.deathSaves.dead &&
     activeConditionsEqual(normalized.activeConditions, playState.activeConditions) &&
+    Array.isArray(playState.activeEffects) &&
+    (playState.activeEffects ?? []).length === normalized.activeEffects.length &&
     hitDiceStatesEqual(normalized.hitDice, originalHitDice) &&
     Object.keys(normalized.spentResources).every((key) => normalized.spentResources[key] === playState.spentResources[key]) &&
     Object.keys(normalized.spellSlots).every((key) => normalized.spellSlots[key] === playState.spellSlots[key]) &&
@@ -735,7 +739,7 @@ function clearableConditionIdsForRest(
 export function castSpell(
   playState: CharacterPlayState,
   runtime: PlayStateRuntimeContext,
-  spell: Pick<SpellDefinition, "id" | "name" | "level" | "ritual" | "concentration">,
+  spell: Pick<SpellDefinition, "id" | "name" | "level" | "ritual" | "concentration" | "description">,
   options: CastSpellOptions = {},
   now?: string,
 ): CharacterPlayState {
@@ -812,7 +816,7 @@ export function castSpell(
         },
       })
     : undefined;
-  return reduceCharacterPlayState(playState, {
+  const afterCast = reduceCharacterPlayState(playState, {
     type: "cast-spell",
     spellId: spell.id,
     spellName: spell.name,
@@ -842,6 +846,26 @@ export function castSpell(
       },
     }),
     extraEvents: concentrationEvent ? [concentrationEvent] : [],
+  });
+  const activeEffect = createActiveEffectFromSpell(spell as SpellDefinition);
+  if (!activeEffect) {
+    return afterCast;
+  }
+  const effectState = instantiateActiveEffect(activeEffect, timestamp);
+  return reduceCharacterPlayState(afterCast, {
+    type: "add-active-effect",
+    effect: effectState,
+    timestamp,
+    event: createPlayEvent({
+      timestamp,
+      type: "active-effect-start",
+      shortLabel: `Effect: ${effectState.sourceName}`,
+      payload: {
+        effectId: effectState.id,
+        sourceName: effectState.sourceName,
+        applicableRollTypes: effectState.applicableRollTypes,
+      },
+    }),
   });
 }
 

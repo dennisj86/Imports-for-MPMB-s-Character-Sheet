@@ -1,8 +1,10 @@
 import type { CharacterAction } from "../../domain/actionResources";
 import type { SpellDefinition } from "../../domain/content";
+import type { ActiveEffectState } from "../../domain/rules";
 import type { AbilityKey, DerivedCharacterStats, SkillKey } from "../../domain/derivedStats";
 import type { CharacterRollView, RollActionDescriptor, RollRequest, RollSourceType } from "../../domain/rolls";
 import type { CharacterEngineState } from "../characterEngine";
+import { buildWeaponAttackProfiles, type WeaponAttackProfile } from "../rules";
 import { classifySpell } from "../spells";
 
 const ABILITY_LABELS: Record<AbilityKey, string> = {
@@ -34,6 +36,8 @@ function createD20Request(input: {
   type: RollRequest["type"];
   label: string;
   modifier: number;
+  baseModifier?: number;
+  permanentModifiers?: RollRequest["permanentModifiers"];
   ability?: AbilityKey;
   skill?: SkillKey;
   sourceType?: RollSourceType;
@@ -50,6 +54,8 @@ function createD20Request(input: {
     sourceType: input.sourceType,
     sourceId: input.sourceId,
     modifier: input.modifier,
+    baseModifier: input.baseModifier,
+    permanentModifiers: input.permanentModifiers,
     proficiencyApplied: input.proficiencyApplied,
     diceExpression: "1d20",
     rollMode: "normal",
@@ -118,13 +124,6 @@ function extractDiceExpression(text: string | undefined): string | undefined {
   return match?.[0]?.replace(/\s+/g, "");
 }
 
-function weaponAttackModifier(derivedStats: DerivedCharacterStats): number {
-  return Math.max(
-    derivedStats.abilityScores.str.modifier,
-    derivedStats.abilityScores.dex.modifier,
-  ) + derivedStats.proficiencyBonus;
-}
-
 function sourceTypeForAction(action: CharacterAction): RollSourceType {
   if (action.id.startsWith("action:item-weapon:")) {
     return "weapon";
@@ -141,10 +140,15 @@ function sourceTypeForAction(action: CharacterAction): RollSourceType {
   return "custom";
 }
 
-function buildActionDescriptor(action: CharacterAction, derivedStats: DerivedCharacterStats): RollActionDescriptor {
+function buildActionDescriptor(
+  action: CharacterAction,
+  derivedStats: DerivedCharacterStats,
+  weaponProfilesBySourceId: Map<string, WeaponAttackProfile>,
+): RollActionDescriptor {
   const sourceType = sourceTypeForAction(action);
   const damageExpression = extractDiceExpression(action.description);
-  const attackModifier = sourceType === "weapon" ? weaponAttackModifier(derivedStats) : undefined;
+  const weaponProfile = sourceType === "weapon" ? weaponProfilesBySourceId.get(action.sourceId ?? "") : undefined;
+  const attackModifier = weaponProfile?.attackBonus ?? (sourceType === "weapon" ? derivedStats.proficiencyBonus : undefined);
   const rollRequest = attackModifier === undefined
     ? undefined
     : createD20Request({
@@ -153,12 +157,15 @@ function buildActionDescriptor(action: CharacterAction, derivedStats: DerivedCha
         label: action.name,
         sourceType,
         sourceId: action.sourceId ?? action.id,
+        ability: weaponProfile?.attackAbility,
         modifier: attackModifier,
+        baseModifier: weaponProfile ? weaponProfile.attackBonus - weaponProfile.appliedAttackModifiers.reduce((sum, modifier) => sum + (typeof modifier.value === "number" ? modifier.value : 0), 0) : attackModifier,
+        permanentModifiers: weaponProfile?.appliedAttackModifiers,
         proficiencyApplied: true,
         metadata: {
           actionId: action.id,
           sourceSummary: action.source.sourceName ?? action.sourceId ?? action.name,
-          note: "Weapon attack baseline uses the better STR/DEX modifier plus proficiency until weapon properties are fully structured.",
+          weaponProfile,
         },
       });
   return {
@@ -169,19 +176,22 @@ function buildActionDescriptor(action: CharacterAction, derivedStats: DerivedCha
     sourceId: action.sourceId,
     sourceSummary: action.source.sourceName,
     rollRequest,
-    damageRequest: damageExpression
+    damageRequest: (weaponProfile?.damageDice ?? damageExpression)
       ? {
           id: `roll:damage:${action.id}`,
           type: "damage-roll",
           label: `${action.name} Damage`,
           sourceType,
           sourceId: action.sourceId ?? action.id,
-          modifier: 0,
-          diceExpression: damageExpression,
+          modifier: weaponProfile?.damageModifier ?? 0,
+          baseModifier: weaponProfile ? weaponProfile.damageModifier - weaponProfile.appliedDamageModifiers.reduce((sum, modifier) => sum + (typeof modifier.value === "number" ? modifier.value : 0), 0) : 0,
+          permanentModifiers: weaponProfile?.appliedDamageModifiers,
+          diceExpression: weaponProfile?.damageDice ?? damageExpression ?? "1d1",
           rollMode: "normal",
           metadata: {
             actionId: action.id,
             sourceSummary: action.source.sourceName ?? action.sourceId ?? action.name,
+            weaponProfile,
           },
         }
       : undefined,
@@ -252,15 +262,31 @@ function buildSpellDescriptor(
   };
 }
 
-export function buildCharacterRollView(engine: CharacterEngineState): CharacterRollView {
+export function buildCharacterRollView(engine: CharacterEngineState, activeEffects: ActiveEffectState[] = []): CharacterRollView {
+  const weaponProfiles = engine.draft
+    ? buildWeaponAttackProfiles({
+        draft: engine.draft,
+        equipmentCatalog: engine.equipmentCatalog ?? [],
+        derivedStats: engine.derivedStats,
+        modifiers: engine.ruleEngine?.modifiers ?? [],
+      })
+    : [];
+  const profileBySourceId = new Map<string, WeaponAttackProfile>();
+  for (const profile of weaponProfiles) {
+    profileBySourceId.set(profile.itemInstanceId, profile);
+    if (profile.itemDefinitionId) {
+      profileBySourceId.set(profile.itemDefinitionId, profile);
+    }
+  }
   const nonSpellActions = allActionLists(engine)
     .filter((action) => action.sourceType !== "spell")
-    .map((action) => buildActionDescriptor(action, engine.derivedStats));
+    .map((action) => buildActionDescriptor(action, engine.derivedStats, profileBySourceId));
   return {
     abilityChecks: buildAbilityCheckRequests(engine.derivedStats),
     savingThrows: buildSavingThrowRequests(engine.derivedStats),
     skillChecks: buildSkillCheckRequests(engine.derivedStats),
     actionRolls: nonSpellActions,
     spellRolls: engine.selectedSpells.map((spell) => buildSpellDescriptor(spell, engine.derivedStats)),
+    activeEffects,
   };
 }

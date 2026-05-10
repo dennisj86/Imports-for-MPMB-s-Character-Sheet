@@ -16,6 +16,7 @@ import type {
 import type { DerivedCharacterStats } from "../../domain/derivedStats";
 import type { WizardCompletionState, WizardStepId, WizardStepValidation } from "../../domain/builderWizard";
 import type { LevelProgressionResult } from "../../domain/progression";
+import type { CharacterRuleEngineState } from "../../domain/rules";
 import { resolveCharacterActionResources } from "../data/actionResourceResolver";
 import { resolveAppliedCharacterRules } from "../data/appliedRulesResolver";
 import {
@@ -30,6 +31,7 @@ import {
 } from "../data/builderWizardResolver";
 import { resolveDerivedStats } from "../data/derivedStatsResolver";
 import { resolveLevelProgression } from "../data/progressionResolver";
+import { resolveCharacterRuleEngine } from "../rules";
 import {
   resolveBackgrounds,
   resolveClasses,
@@ -53,6 +55,7 @@ export interface CharacterEngineResolvedContext {
 }
 
 export interface CharacterEngineState {
+  draft: CharacterDraft;
   context: CharacterEngineResolvedContext;
   classDef?: ClassDefinition;
   subclassDef?: SubclassDefinition;
@@ -64,6 +67,7 @@ export interface CharacterEngineState {
   equipmentCatalog: EquipmentDefinition[];
   selectedFeats: FeatDefinition[];
   selectedSpells: SpellDefinition[];
+  ruleEngine: CharacterRuleEngineState;
   appliedRules: AppliedCharacterRules;
   derivedStats: DerivedCharacterStats;
   progression: LevelProgressionResult;
@@ -82,6 +86,7 @@ export interface CharacterWizardState {
     appliedRules: AppliedCharacterRules;
     progression: LevelProgressionResult;
     derivedStats: DerivedCharacterStats;
+    ruleEngine: CharacterRuleEngineState;
   };
   featContexts: ReturnType<typeof resolveFeatEligibility>;
   spellContexts: ReturnType<typeof resolveSpellEligibility>;
@@ -200,11 +205,22 @@ export function resolveCharacterEngineState(
     selectedSpells,
     levelFeatures,
   });
+  const ruleEngine = resolveCharacterRuleEngine({
+    draft,
+    classDef,
+    subclassDef,
+    speciesDef,
+    backgroundDef,
+    selectedFeats,
+    selectedSpells,
+    equipmentCatalog,
+  });
   const derivedStats = resolveDerivedStats(draft, appliedRules, {
     classDef,
     subclassDef,
     speciesDef,
     equipmentCatalog,
+    ruleModifiers: ruleEngine.modifiers,
   });
   const progression = resolveLevelProgression(draft, appliedRules, derivedStats, {
     classDef,
@@ -223,6 +239,7 @@ export function resolveCharacterEngineState(
   });
 
   return {
+    draft,
     context: resolvedContext,
     classDef,
     subclassDef,
@@ -234,6 +251,7 @@ export function resolveCharacterEngineState(
     equipmentCatalog,
     selectedFeats,
     selectedSpells,
+    ruleEngine,
     appliedRules,
     derivedStats,
     progression,
@@ -258,6 +276,7 @@ export function buildCharacterWizardResolverInput(
     appliedRules: engine.appliedRules,
     progression: engine.progression,
     derivedStats: engine.derivedStats,
+    ruleEngine: engine.ruleEngine,
   };
 }
 

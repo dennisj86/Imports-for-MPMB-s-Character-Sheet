@@ -87,6 +87,104 @@ const hitDiceSchema = z.unknown().optional().transform((value): CharacterHitDice
   };
 });
 
+const ruleSourceTypeSchema = z.enum([
+  "class-feature",
+  "subclass-feature",
+  "species-feature",
+  "background-feature",
+  "feat",
+  "item",
+  "spell",
+  "condition",
+  "custom",
+]);
+
+const ruleModifierSchema = z.object({
+  id: z.string(),
+  sourceDescriptorId: z.string(),
+  sourceName: z.string(),
+  sourceType: ruleSourceTypeSchema,
+  target: z.enum([
+    "armor-class",
+    "initiative",
+    "speed",
+    "hit-point-max",
+    "ability-score",
+    "ability-check",
+    "skill-check",
+    "saving-throw",
+    "weapon-attack",
+    "weapon-damage",
+    "spell-attack",
+    "spell-save-dc",
+    "resource-max",
+    "passive-score",
+    "proficiency",
+    "other",
+  ]),
+  valueType: z.enum(["flat", "dice", "set", "advantage", "disadvantage", "note"]),
+  value: z.union([z.number(), z.string(), z.boolean()]),
+  damageType: z.string().optional(),
+  ability: z.enum(["str", "dex", "con", "int", "wis", "cha"]).optional(),
+  skill: z
+    .enum([
+      "acrobatics",
+      "animal-handling",
+      "arcana",
+      "athletics",
+      "deception",
+      "history",
+      "insight",
+      "intimidation",
+      "investigation",
+      "medicine",
+      "nature",
+      "perception",
+      "performance",
+      "persuasion",
+      "religion",
+      "sleight-of-hand",
+      "stealth",
+      "survival",
+    ])
+    .optional(),
+  condition: z.enum([
+    "always",
+    "wearing-armor",
+    "shield-equipped",
+    "weapon-equipped",
+    "weapon-is-melee",
+    "weapon-is-ranged",
+    "weapon-is-finesse",
+    "weapon-is-two-handed",
+    "weapon-is-one-handed",
+    "no-offhand-weapon",
+    "spellcasting",
+    "concentration-active",
+    "manual",
+  ]),
+  stackingKey: z.string().optional(),
+  priority: z.number().optional(),
+  diagnostics: z.array(z.string()).default([]),
+});
+
+const activeEffectSchema = z.object({
+  id: z.string(),
+  sourceDescriptorId: z.string(),
+  sourceName: z.string(),
+  sourceType: ruleSourceTypeSchema,
+  startedAt: z.string(),
+  durationType: z.enum(["concentration", "until-rest", "timed", "manual", "one-roll"]),
+  targets: z.array(z.enum(["self", "ally", "selected", "global", "unknown"])),
+  applicableRollTypes: z.array(z.enum(["ability-check", "skill-check", "saving-throw", "attack-roll", "spell-attack", "damage-roll", "death-save", "custom"])),
+  modifiers: z.array(ruleModifierSchema),
+  requiresPrompt: z.boolean(),
+  remainingUses: z.number().int().nonnegative().optional(),
+  concentrationLinked: z.boolean(),
+  status: z.enum(["active", "expired", "dismissed"]),
+  diagnostics: z.array(z.string()).default([]),
+});
+
 const playStateSchema = z.object({
   schemaVersion: z.literal(1),
   characterId: z.string(),
@@ -102,6 +200,7 @@ const playStateSchema = z.object({
   spellSlots: z.record(z.number().int().nonnegative()),
   hitDice: hitDiceSchema,
   activeConditions: z.array(activeConditionSchema),
+  activeEffects: z.array(activeEffectSchema).optional().default([]),
   concentration: z
     .object({
       sourceId: z.string().optional(),
@@ -132,6 +231,8 @@ const playStateSchema = z.object({
         "concentration-start",
         "concentration-replace",
         "concentration-end",
+        "active-effect-start",
+        "active-effect-dismiss",
         "resource-spend-blocked",
         "hit-die-spent",
         "hit-die-spend-blocked",
@@ -214,6 +315,15 @@ const levelUpStateSchema = z.object({
   ).optional(),
 }).optional();
 
+const ruleChoiceStateSchema = z.record(
+  z.object({
+    choiceId: z.string(),
+    selectedOptionIds: z.array(z.string()),
+    status: z.enum(["pending", "complete", "unsupported", "needs-builder"]),
+    updatedAt: z.string().optional(),
+  }),
+).optional();
+
 const characterDraftV2Schema = z.object({
   id: z.string(),
   version: z.literal(2),
@@ -250,6 +360,7 @@ const characterDraftV2Schema = z.object({
     items: z.array(inventoryItemSchema),
   }),
   levelUp: levelUpStateSchema,
+  ruleChoices: ruleChoiceStateSchema,
   playState: playStateSchema.optional(),
 });
 
@@ -316,6 +427,7 @@ function migrateV1ToV2(value: CharacterDraftV1): CharacterDraft {
     rulesMode: "2024",
     inventory: normalizeInventoryState(value.inventory),
     levelUp: normalizeLevelUpState(undefined),
+    ruleChoices: {},
     playState: fallbackPlayState,
   };
 }
@@ -325,6 +437,7 @@ function ensurePersistedPlayState(entry: CharacterDraftV2Persisted | CharacterDr
     ...entry,
     inventory: normalizeInventoryState(entry.inventory),
     levelUp: normalizeLevelUpState(entry.levelUp),
+    ruleChoices: entry.ruleChoices ?? {},
     playState: ensureCharacterPlayState(entry.playState, entry.id, {
       maxHp: 1,
       now: entry.updatedAt,

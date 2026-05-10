@@ -19,12 +19,23 @@ function describeEvent(event: CharacterPlayEvent): string | undefined {
   if (event.type === "roll") {
     const result = event.payload.rollResult;
     if (result && typeof result === "object" && "total" in result && "diceExpression" in result) {
-      const rollResult = result as { diceExpression?: string; rollMode?: string; modifier?: number; total?: number; outcomeLabel?: string };
+      const rollResult = result as { diceExpression?: string; rollMode?: string; modifier?: number; total?: number; outcomeLabel?: string; bonusDice?: Array<{ expression?: string; total?: number }> };
       const modifier = typeof rollResult.modifier === "number" ? (rollResult.modifier >= 0 ? `+${rollResult.modifier}` : `${rollResult.modifier}`) : "";
       const outcome = rollResult.outcomeLabel && rollResult.outcomeLabel !== "normal" ? ` · ${rollResult.outcomeLabel}` : "";
-      return `${rollResult.rollMode ?? "normal"} · ${rollResult.diceExpression ?? "roll"} ${modifier} = ${rollResult.total ?? "?"}${outcome}`;
+      const bonus = rollResult.bonusDice?.length
+        ? ` · bonus ${rollResult.bonusDice.map((entry) => `${entry.expression ?? "dice"}=${entry.total ?? "?"}`).join(", ")}`
+        : "";
+      return `${rollResult.rollMode ?? "normal"} · ${rollResult.diceExpression ?? "roll"} ${modifier}${bonus} = ${rollResult.total ?? "?"}${outcome}`;
     }
     return typeof event.payload.summary === "string" ? event.payload.summary : "Roll result.";
+  }
+  if (event.type === "active-effect-start") {
+    return Array.isArray(event.payload.applicableRollTypes)
+      ? `Applies to ${event.payload.applicableRollTypes.join(", ")}.`
+      : "Active effect started.";
+  }
+  if (event.type === "active-effect-dismiss") {
+    return typeof event.payload.reason === "string" ? event.payload.reason : "Active effect dismissed.";
   }
   if (event.type === "resource-spend-blocked") {
     return typeof event.payload.reason === "string" ? `Resource spend blocked: ${event.payload.reason}` : "Resource spend blocked.";

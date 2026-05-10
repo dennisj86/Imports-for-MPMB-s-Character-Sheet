@@ -1,3 +1,5 @@
+import type { ActiveEffectState } from "./rules";
+
 export const PLAY_STATE_SCHEMA_VERSION = 1 as const;
 
 export interface CharacterDeathSaveState {
@@ -60,6 +62,8 @@ export type CharacterPlayEventType =
   | "concentration-start"
   | "concentration-replace"
   | "concentration-end"
+  | "active-effect-start"
+  | "active-effect-dismiss"
   | "resource-spend-blocked"
   | "hit-die-spent"
   | "hit-die-spend-blocked"
@@ -85,6 +89,7 @@ export interface CharacterPlayState {
   spellSlots: Record<string, number>;
   hitDice: CharacterHitDiceState;
   activeConditions: ActiveConditionState[];
+  activeEffects: ActiveEffectState[];
   concentration: ConcentrationState | null;
   playEvents: CharacterPlayEvent[];
   lastRestAt?: string;
@@ -125,6 +130,7 @@ export function createDefaultCharacterPlayState(
       updatedAt: now,
     },
     activeConditions: [],
+    activeEffects: [],
     concentration: null,
     playEvents: [],
     updatedAt: now,

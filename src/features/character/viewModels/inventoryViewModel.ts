@@ -83,6 +83,7 @@ export function buildInventoryViewModel(draft: CharacterDraft, engine: Character
     inventoryItems: normalizedInventory.items,
     equipmentCatalog: engine.equipmentCatalog,
     dexModifier: engine.derivedStats.abilityScores.dex.modifier,
+    ruleModifiers: engine.ruleEngine?.modifiers ?? [],
   });
   const items = normalizedInventory.items.map((item) => {
     const definition = resolveEquipmentDefinitionForInventoryItem(item, engine.equipmentCatalog);

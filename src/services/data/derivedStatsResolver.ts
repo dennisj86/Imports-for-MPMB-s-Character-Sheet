@@ -16,8 +16,10 @@ import type {
   SkillKey,
 } from "../../domain/derivedStats";
 import type { ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../../domain/content";
+import type { RuleModifier } from "../../domain/rules";
 import { resolveArmorClassFromEquipment } from "../equipment";
 import { hpGainKey, resolveLevelUpAbilityScoreBonuses } from "../levelUp";
+import { modifiersForTarget, sumFlatModifiers } from "../rules";
 
 type AbilityScoresWithModifiers = Record<AbilityKey, DerivedAbilityScore>;
 
@@ -26,6 +28,7 @@ type DerivedStatsResolverContext = {
   subclassDef?: SubclassDefinition;
   speciesDef?: SpeciesDefinition;
   equipmentCatalog?: EquipmentDefinition[];
+  ruleModifiers?: RuleModifier[];
 };
 
 const ABILITIES: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -164,14 +167,19 @@ function combineStatuses(statuses: DerivedDataStatus[]): DerivedDataStatus {
   return "complete";
 }
 
-export function computeAbilityModifiers(draft: CharacterDraft, appliedRules: AppliedCharacterRules): AbilityScoresWithModifiers {
+export function computeAbilityModifiers(draft: CharacterDraft, appliedRules: AppliedCharacterRules, ruleModifiers: RuleModifier[] = []): AbilityScoresWithModifiers {
   const output = {} as AbilityScoresWithModifiers;
   const levelUpBonuses = resolveLevelUpAbilityScoreBonuses(draft);
   for (const ability of ABILITIES) {
     const baseScore = draft.abilityScores[ability];
     const rulesBonus = appliedRules.abilityScoreAdjustments.fixed[ability] ?? 0;
     const levelUpBonus = levelUpBonuses[ability] ?? 0;
-    const appliedBonus = rulesBonus + levelUpBonus;
+    const modifierBonus = sumFlatModifiers(modifiersForTarget(ruleModifiers, "ability-score"), {
+      target: "ability-score",
+      ability,
+      inventoryItems: draft.inventory.items,
+    }).total;
+    const appliedBonus = rulesBonus + levelUpBonus + modifierBonus;
     const uncappedFinalScore = baseScore + appliedBonus;
     const finalScore = levelUpBonus > 0 ? Math.min(20, uncappedFinalScore) : uncappedFinalScore;
     const notes: string[] = [];
@@ -180,6 +188,9 @@ export function computeAbilityModifiers(draft: CharacterDraft, appliedRules: App
     }
     if (levelUpBonus !== 0) {
       notes.push(`Applied level-up ASI bonus ${levelUpBonus >= 0 ? "+" : ""}${levelUpBonus}.`);
+    }
+    if (modifierBonus !== 0) {
+      notes.push(`Applied rule modifier bonus ${modifierBonus >= 0 ? "+" : ""}${modifierBonus}.`);
     }
     if (finalScore !== uncappedFinalScore) {
       notes.push("Level-up ASI capped this ability at 20.");
@@ -204,18 +215,23 @@ export function computeSavingThrows(
   appliedRules: AppliedCharacterRules,
   abilityScores: AbilityScoresWithModifiers,
   proficiencyBonus: number,
+  ruleModifiers: RuleModifier[] = [],
 ): Record<AbilityKey, DerivedSaveResult> {
   const proficient = new Set(appliedRules.proficiencies.savingThrows);
   const output = {} as Record<AbilityKey, DerivedSaveResult>;
   for (const ability of ABILITIES) {
     const abilityMod = abilityScores[ability].modifier;
     const hasProf = proficient.has(ability);
+    const modifierBonus = sumFlatModifiers(modifiersForTarget(ruleModifiers, "saving-throw"), {
+      target: "saving-throw",
+      ability,
+    }).total;
     output[ability] = {
       ability,
       proficient: hasProf,
       abilityModifier: abilityMod,
       proficiencyBonus: hasProf ? proficiencyBonus : 0,
-      total: abilityMod + (hasProf ? proficiencyBonus : 0),
+      total: abilityMod + (hasProf ? proficiencyBonus : 0) + modifierBonus,
     };
   }
   return output;
@@ -225,6 +241,7 @@ export function computeSkillModifiers(
   appliedRules: AppliedCharacterRules,
   abilityScores: AbilityScoresWithModifiers,
   proficiencyBonus: number,
+  ruleModifiers: RuleModifier[] = [],
 ): Record<SkillKey, DerivedSkillResult> {
   const profSet = new Set<SkillKey>();
   for (const skillName of appliedRules.proficiencies.skills) {
@@ -238,6 +255,11 @@ export function computeSkillModifiers(
   for (const skill of SKILL_CONFIG) {
     const proficient = profSet.has(skill.key);
     const abilityMod = abilityScores[skill.ability].modifier;
+    const modifierBonus = sumFlatModifiers(modifiersForTarget(ruleModifiers, "skill-check"), {
+      target: "skill-check",
+      ability: skill.ability,
+      skill: skill.key,
+    }).total;
     output[skill.key] = {
       key: skill.key,
       label: skill.label,
@@ -246,7 +268,7 @@ export function computeSkillModifiers(
       expertise: false,
       abilityModifier: abilityMod,
       proficiencyBonus: proficient ? proficiencyBonus : 0,
-      total: abilityMod + (proficient ? proficiencyBonus : 0),
+      total: abilityMod + (proficient ? proficiencyBonus : 0) + modifierBonus,
     };
   }
   return output;
@@ -298,11 +320,13 @@ export function computeArmorClassBase(
   draft: CharacterDraft,
   equipmentCatalog: EquipmentDefinition[] | undefined,
   dexModifier: number,
+  ruleModifiers: RuleModifier[] = [],
 ): DerivedArmorClassResult {
   const breakdown = resolveArmorClassFromEquipment({
     inventoryItems: draft.inventory.items,
     equipmentCatalog,
     dexModifier,
+    ruleModifiers,
   });
   return {
     value: breakdown.total,
@@ -428,6 +452,7 @@ export function computeSpellcastingStats(
   abilityScores: AbilityScoresWithModifiers,
   proficiencyBonus: number,
   level: number,
+  ruleModifiers: RuleModifier[] = [],
 ): DerivedSpellcastingStatsResult {
   const classFeatureSignalAtLevel = Boolean(
     classDef?.features.some((entry) => {
@@ -511,13 +536,23 @@ export function computeSpellcastingStats(
   }
 
   const abilityModifierValue = abilityScores[ability].modifier;
+  const spellAttackBonus = sumFlatModifiers(modifiersForTarget(ruleModifiers, "spell-attack"), {
+    target: "spell-attack",
+    ability,
+    spellcasting: true,
+  }).total;
+  const spellSaveBonus = sumFlatModifiers(modifiersForTarget(ruleModifiers, "spell-save-dc"), {
+    target: "spell-save-dc",
+    ability,
+    spellcasting: true,
+  }).total;
   return {
     available: true,
     ability,
     abilityModifier: abilityModifierValue,
     proficiencyBonus,
-    spellAttackModifier: abilityModifierValue + proficiencyBonus,
-    spellSaveDC: 8 + abilityModifierValue + proficiencyBonus,
+    spellAttackModifier: abilityModifierValue + proficiencyBonus + spellAttackBonus,
+    spellSaveDC: 8 + abilityModifierValue + proficiencyBonus + spellSaveBonus,
     preparationBasis: {
       mode: preparationMode,
       notes: [],
@@ -536,14 +571,15 @@ export function resolveDerivedStats(
   appliedRules: AppliedCharacterRules,
   context: DerivedStatsResolverContext = {},
 ): DerivedCharacterStats {
-  const abilityScores = computeAbilityModifiers(draft, appliedRules);
+  const ruleModifiers = context.ruleModifiers ?? [];
+  const abilityScores = computeAbilityModifiers(draft, appliedRules, ruleModifiers);
   const proficiencyBonus = computeProficiencyBonus(draft.classSelection.level);
-  const savingThrows = computeSavingThrows(appliedRules, abilityScores, proficiencyBonus);
-  const skills = computeSkillModifiers(appliedRules, abilityScores, proficiencyBonus);
+  const savingThrows = computeSavingThrows(appliedRules, abilityScores, proficiencyBonus, ruleModifiers);
+  const skills = computeSkillModifiers(appliedRules, abilityScores, proficiencyBonus, ruleModifiers);
   const passive = computePassiveScores(skills);
   const initiative = computeInitiative(abilityScores);
   const speed = computeSpeed(context.speciesDef, appliedRules);
-  const armorClass = computeArmorClassBase(draft, context.equipmentCatalog, abilityScores.dex.modifier);
+  const armorClass = computeArmorClassBase(draft, context.equipmentCatalog, abilityScores.dex.modifier, ruleModifiers);
   const hitPoints = computeHitPointsMaxBase(draft.classSelection.level, context.classDef, abilityScores.con.modifier, draft);
   const spellcasting = computeSpellcastingStats(
     appliedRules,
@@ -552,6 +588,7 @@ export function resolveDerivedStats(
     abilityScores,
     proficiencyBonus,
     draft.classSelection.level,
+    ruleModifiers,
   );
 
   const pending: DerivedPendingRule[] = [];

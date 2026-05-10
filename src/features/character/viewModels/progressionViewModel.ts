@@ -65,6 +65,22 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
 
   const missingCapabilities: ProgressionChoiceViewModel[] = [];
 
+  for (const choice of engine.ruleEngine?.choices ?? []) {
+    const viewChoice: ProgressionChoiceViewModel = {
+      id: choice.id,
+      label: `${choice.sourceType}: ${choice.choiceType}`,
+      status: choice.status === "complete" ? "complete" : choice.status === "unsupported" ? "unsupported" : "missing",
+      detail:
+        choice.diagnostics.join(" ") ||
+        `${choice.requiredCount} required from ${choice.options.length} option(s). Source ${choice.sourceDescriptorId}.`,
+    };
+    if (choice.status === "unsupported") {
+      missingCapabilities.push(viewChoice);
+    } else if (choice.status !== "complete" && choice.requiredCount > 0) {
+      pendingChoices.push(viewChoice);
+    }
+  }
+
   if (!hasPendingChoice(engine, /feat|asi|ability score/i) && engine.progression.asiOrFeatChoices.length === 0 && draft.classSelection.level >= 4) {
     missingCapabilities.push({
       id: "asi-feat-choice",
@@ -150,6 +166,7 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
     asiOrFeatChoices,
     pendingChoiceCount:
       pendingChoices.filter((choice) => choice.status === "missing").length +
+      missingCapabilities.filter((choice) => choice.status === "unsupported").length +
       asiOrFeatChoices.filter((choice) => choice.status !== "complete").length +
       hpGainChoices.filter((choice) => choice.status !== "complete").length,
   };

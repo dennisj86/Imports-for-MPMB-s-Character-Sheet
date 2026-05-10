@@ -126,7 +126,7 @@ export function CharacterSheetPage() {
 
   const engine = engineView.engine;
   const playState = playStateView.playState;
-  const rollView = buildCharacterRollView(engine);
+  const rollView = buildCharacterRollView(engine, playState.activeEffects);
   const lastRoll = getLatestRollResult(playState.playEvents);
   const combat = buildCombatViewModel({
     draft,

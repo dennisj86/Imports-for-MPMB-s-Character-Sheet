@@ -6,6 +6,7 @@ import type { AppliedCharacterRules } from "../domain/appliedRules";
 import type { AbilityScores, CharacterDraft, HpGainMethod } from "../domain/character";
 import type { DerivedCharacterStats } from "../domain/derivedStats";
 import type { LevelProgressionResult } from "../domain/progression";
+import type { RuleChoice } from "../domain/rules";
 import type { BackgroundDefinition, ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../domain/content";
 import { AbilityScoreEditor } from "../features/character/components/AbilityScoreEditor";
 import { InventoryEditor } from "../features/character/components/InventoryEditor";
@@ -23,6 +24,7 @@ import {
   setHpGainMethod as setLevelUpHpGainMethod,
   setLevelUpFeatChoice,
 } from "../services/levelUp";
+import { setRuleChoiceSelection } from "../services/rules";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
 
@@ -245,6 +247,11 @@ export function CharacterBuilderPage() {
             <LevelUpChoicesStep
               draft={draft}
               progression={progression}
+              updateCharacter={updateCharacter}
+            />
+            <GenericRuleChoicesStep
+              choices={wizardView.engine.ruleEngine.choices}
+              draft={draft}
               updateCharacter={updateCharacter}
             />
             <FeatChoiceSection
@@ -982,6 +989,104 @@ function LevelUpChoicesStep({
   );
 }
 
+function GenericRuleChoicesStep({
+  choices,
+  draft,
+  updateCharacter,
+}: {
+  choices: RuleChoice[];
+  draft: CharacterDraft;
+  updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
+}) {
+  if (choices.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="rounded border border-slate-200 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Generic Rule Choices</h3>
+          <p className="text-xs text-slate-600">Feature-, feat-, item- and spell-driven choices resolved from rule descriptors.</p>
+        </div>
+        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{choices.length} choice(s)</span>
+      </div>
+      <div className="mt-3 space-y-2">
+        {choices.map((choice) => {
+          const selected = new Set(choice.selectedOptionIds);
+          const statusClass =
+            choice.status === "complete"
+              ? "bg-emerald-100 text-emerald-800"
+              : choice.status === "unsupported"
+                ? "bg-slate-200 text-slate-700"
+                : "bg-amber-100 text-amber-800";
+          return (
+            <div key={choice.id} className="rounded border border-slate-200 p-2 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium">{formatChoiceType(choice.choiceType)}</p>
+                  <p className="text-xs text-slate-600">
+                    {choice.sourceType} · required {choice.requiredCount} · {choice.options.length} option(s)
+                  </p>
+                </div>
+                <span className={`rounded px-2 py-0.5 text-xs ${statusClass}`}>{choice.status}</span>
+              </div>
+              {choice.status === "unsupported" ? (
+                <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+                  {choice.diagnostics.length ? choice.diagnostics.map((entry) => <p key={entry}>{entry}</p>) : <p>No deterministic option data is available.</p>}
+                </div>
+              ) : choice.maxCount <= 1 ? (
+                <select
+                  className={`${inputClassName()} mt-2`}
+                  value={choice.selectedOptionIds[0] ?? ""}
+                  onChange={(event) =>
+                    updateCharacter(draft.id, (current) => setRuleChoiceSelection(current, choice, event.target.value ? [event.target.value] : []))
+                  }
+                >
+                  <option value="">Select option</option>
+                  {choice.options.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                  {choice.options.map((option) => {
+                    const checked = selected.has(option.id);
+                    return (
+                      <label key={option.id} className="flex items-center gap-2 rounded border border-slate-200 px-2 py-1 text-xs">
+                        <input
+                          checked={checked}
+                          type="checkbox"
+                          onChange={(event) => {
+                            const next = event.target.checked
+                              ? [...choice.selectedOptionIds, option.id]
+                              : choice.selectedOptionIds.filter((entry) => entry !== option.id);
+                            updateCharacter(draft.id, (current) => setRuleChoiceSelection(current, choice, next));
+                          }}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {choice.diagnostics.length && choice.status !== "unsupported" ? (
+                <div className="mt-2 text-xs text-slate-500">
+                  {choice.diagnostics.map((entry) => (
+                    <p key={entry}>{entry}</p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function SkillsStep({
   draft,
   skillChoiceStates,
@@ -1347,6 +1452,13 @@ function formatAbilityIncreases(increases: Partial<Record<keyof AbilityScores, n
     })
     .filter((entry): entry is string => Boolean(entry));
   return parts.length ? parts.join(", ") : "pending";
+}
+
+function formatChoiceType(value: RuleChoice["choiceType"]): string {
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function clampLevel(value: number): number {
