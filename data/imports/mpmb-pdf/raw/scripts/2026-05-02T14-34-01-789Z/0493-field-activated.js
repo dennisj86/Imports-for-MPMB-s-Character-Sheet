@@ -1,0 +1,1 @@
+applySkillClick('Perf', true);

@@ -1,0 +1,81 @@
+{
+  "importTimestamp": "2026-05-02T20:50:45.727Z",
+  "importPreset": "mpmb-upstream-2024",
+  "edition": "2024",
+  "upstreamRoot": "/home/dennis/IdeaProjects/2024_MPMBs-Character-Record-Sheet",
+  "variableDir": "/home/dennis/IdeaProjects/2024_MPMBs-Character-Record-Sheet/_variables",
+  "files": [
+    {
+      "order": 1,
+      "fileName": "Lists.js",
+      "relativeUpstreamPath": "_variables/Lists.js",
+      "copiedRelativePath": "data/imports/mpmb-upstream-2024/raw/scripts/2026-05-02T20-50-45-727Z/0001-Lists.js",
+      "lineCount": 2276,
+      "sha256": "0cb972cdbc3c76147354e571387e9e5f70076e44b97b1b9a9b4f5fa899ade064"
+    },
+    {
+      "order": 2,
+      "fileName": "ListsSources.js",
+      "relativeUpstreamPath": "_variables/ListsSources.js",
+      "copiedRelativePath": "data/imports/mpmb-upstream-2024/raw/scripts/2026-05-02T20-50-45-727Z/0002-ListsSources.js",
+      "lineCount": 19,
+      "sha256": "c7a2676206bf4226de1004c8294a017e9aef6b93faa538d922c4a8344db7299c"
+    },
+    {
+      "order": 3,
+      "fileName": "ListsClasses.js",
+      "relativeUpstreamPath": "_variables/ListsClasses.js",
+      "copiedRelativePath": "data/imports/mpmb-upstream-2024/raw/scripts/2026-05-02T20-50-45-727Z/0003-ListsClasses.js",
+      "lineCount": 4485,
+      "sha256": "646e852d9aecf5203629dfcfac8d280f2522904e24691476190ada3b5e954e86"
+    },
+    {
+      "order": 4,
+      "fileName": "ListsRaces.js",
+      "relativeUpstreamPath": "_variables/ListsRaces.js",
+      "copiedRelativePath": "data/imports/mpmb-upstream-2024/raw/scripts/2026-05-02T20-50-45-727Z/0004-ListsRaces.js",
+      "lineCount": 854,
+      "sha256": "d39abe73c5168afa1eac9cd36916fdb3d301c2e019d8a662c4ca5025c1d9689e"
+    },
+    {
+      "order": 5,
+      "fileName": "ListsBackgrounds.js",
+      "relativeUpstreamPath": "_variables/ListsBackgrounds.js",
+      "copiedRelativePath": "data/imports/mpmb-upstream-2024/raw/scripts/2026-05-02T20-50-45-727Z/0005-ListsBackgrounds.js",
+      "lineCount": 299,
+      "sha256": "377a59a0d292450da07f88b72f630dca4784f67202572f81e6ee7e520757750f"
+    },
+    {
+      "order": 6,
+      "fileName": "ListsFeats.js",
+      "relativeUpstreamPath": "_variables/ListsFeats.js",
+      "copiedRelativePath": "data/imports/mpmb-upstream-2024/raw/scripts/2026-05-02T20-50-45-727Z/0006-ListsFeats.js",
+      "lineCount": 524,
+      "sha256": "bf1a02a7229a09f4fd0de0381224b4a8ae9aea354f939b32fb465332bb34f252"
+    },
+    {
+      "order": 7,
+      "fileName": "ListsSpells.js",
+      "relativeUpstreamPath": "_variables/ListsSpells.js",
+      "copiedRelativePath": "data/imports/mpmb-upstream-2024/raw/scripts/2026-05-02T20-50-45-727Z/0007-ListsSpells.js",
+      "lineCount": 7168,
+      "sha256": "f8c24b0ed8aa1fb81f27845bedfafe4fa07cdda9e4ee5639a4c90767c756a487"
+    },
+    {
+      "order": 8,
+      "fileName": "ListsGear.js",
+      "relativeUpstreamPath": "_variables/ListsGear.js",
+      "copiedRelativePath": "data/imports/mpmb-upstream-2024/raw/scripts/2026-05-02T20-50-45-727Z/0008-ListsGear.js",
+      "lineCount": 2316,
+      "sha256": "b1abc056ced00018084aed30f7c029e6c97bda678a22c97ddfa16049a2cd9807"
+    },
+    {
+      "order": 9,
+      "fileName": "ListsMagicItems.js",
+      "relativeUpstreamPath": "_variables/ListsMagicItems.js",
+      "copiedRelativePath": "data/imports/mpmb-upstream-2024/raw/scripts/2026-05-02T20-50-45-727Z/0009-ListsMagicItems.js",
+      "lineCount": 6754,
+      "sha256": "fe92eda11016217331c26736435b299a76c8f61c0fbcdfd0e43a24095aeed370"
+    }
+  ]
+}

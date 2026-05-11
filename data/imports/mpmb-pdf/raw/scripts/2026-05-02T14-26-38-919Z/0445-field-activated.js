@@ -1,0 +1,1 @@
+applySkillClick('Dec', true);

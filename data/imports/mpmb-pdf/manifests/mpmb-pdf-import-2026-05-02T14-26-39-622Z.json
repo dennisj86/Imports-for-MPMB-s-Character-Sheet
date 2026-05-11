@@ -1,0 +1,129 @@
+{
+  "importTimestamp": "2026-05-02T14:26:39.622Z",
+  "sourcePdf": "docs/DnD.pdf",
+  "rawManifestRef": "data/imports/mpmb-pdf/raw/manifests/latest-raw-manifest.json",
+  "scriptSectionsExecuted": 18,
+  "executionErrors": 1,
+  "executionLog": [
+    {
+      "order": 1,
+      "header": "Name Dictionary \"AbilityScores\"",
+      "status": "ok"
+    },
+    {
+      "order": 2,
+      "header": "Name Dictionary \"ClassSelection\"",
+      "status": "ok"
+    },
+    {
+      "order": 3,
+      "header": "Name Dictionary \"DomParser\"",
+      "status": "ok"
+    },
+    {
+      "order": 8,
+      "header": "Name Dictionary \"FunctionsImport\"",
+      "status": "ok"
+    },
+    {
+      "order": 9,
+      "header": "Name Dictionary \"FunctionsResources\"",
+      "status": "ok"
+    },
+    {
+      "order": 10,
+      "header": "Name Dictionary \"FunctionsSpells\"",
+      "status": "ok"
+    },
+    {
+      "order": 12,
+      "header": "Name Dictionary \"Lists\"",
+      "status": "error",
+      "message": "Cannot read properties of undefined (reading 'submitName')"
+    },
+    {
+      "order": 13,
+      "header": "Name Dictionary \"ListsBackgrounds\"",
+      "status": "ok"
+    },
+    {
+      "order": 14,
+      "header": "Name Dictionary \"ListsClasses\"",
+      "status": "ok"
+    },
+    {
+      "order": 15,
+      "header": "Name Dictionary \"ListsCompanions\"",
+      "status": "ok"
+    },
+    {
+      "order": 16,
+      "header": "Name Dictionary \"ListsCreatures\"",
+      "status": "ok"
+    },
+    {
+      "order": 17,
+      "header": "Name Dictionary \"ListsFeats\"",
+      "status": "ok"
+    },
+    {
+      "order": 18,
+      "header": "Name Dictionary \"ListsGear\"",
+      "status": "ok"
+    },
+    {
+      "order": 19,
+      "header": "Name Dictionary \"ListsMagicItems\"",
+      "status": "ok"
+    },
+    {
+      "order": 20,
+      "header": "Name Dictionary \"ListsPsionics\"",
+      "status": "ok"
+    },
+    {
+      "order": 21,
+      "header": "Name Dictionary \"ListsRaces\"",
+      "status": "ok"
+    },
+    {
+      "order": 22,
+      "header": "Name Dictionary \"ListsSources\"",
+      "status": "ok"
+    },
+    {
+      "order": 23,
+      "header": "Name Dictionary \"ListsSpells\"",
+      "status": "ok"
+    }
+  ],
+  "capturedRegistryCounts": {
+    "ClassList": 12,
+    "ClassSubList": 12,
+    "RaceList": 9,
+    "RaceSubList": 10,
+    "BackgroundList": 1,
+    "BackgroundFeatureList": 1,
+    "FeatsList": 1,
+    "SpellsList": 319,
+    "MagicItemsList": 239,
+    "WeaponsList": 55,
+    "ArmourList": 14,
+    "GearList": 107,
+    "AmmoList": 16,
+    "SourceList": 5
+  },
+  "normalizedCounts": {
+    "sources": 5,
+    "classes": 12,
+    "subclasses": 12,
+    "species": 19,
+    "backgrounds": 1,
+    "feats": 1,
+    "spells": 319,
+    "equipment": 431
+  },
+  "warnings": [
+    "Name Dictionary \"Lists\": Cannot read properties of undefined (reading 'submitName')"
+  ]
+}

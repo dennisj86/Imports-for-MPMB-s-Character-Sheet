@@ -1,0 +1,3684 @@
+{
+  "generatedAt": "2026-05-11T05:39:28.267Z",
+  "stringCapitalizeType": "function",
+  "parseErrorCount": 0,
+  "parseErrors": [],
+  "loadPlan": {
+    "orderedFiles": [
+      "WotC material/pub_20140818_PHB.js",
+      "WotC 2024/pub_20240917_PHB.js",
+      "docs/Sheet skripte/_variables/ListsFeats.js",
+      "docs/Sheet skripte/_variables/ListsClasses.js",
+      "docs/Sheet skripte/_variables/ListsGear.js",
+      "docs/Sheet skripte 2024/_variables/ListsFeats.js",
+      "docs/Sheet skripte 2024/_variables/ListsClasses.js",
+      "docs/Sheet skripte 2024/_variables/ListsGear.js",
+      "WotC material/pub_20140715_LMoP.js",
+      "WotC material/pub_20140819_HotDQ+20141104_RoT.js",
+      "WotC material/pub_20140930_MM.js",
+      "WotC material/pub_20141209_DMG.js",
+      "WotC material/pub_20150407_PotA.js",
+      "WotC material/pub_20150415_AL-EE.js",
+      "WotC material/pub_20150416_EE.js",
+      "WotC material/pub_20150714_AL-RoD.js",
+      "WotC material/pub_20150915_OotA.js",
+      "WotC material/pub_20151103_SCAG.js",
+      "WotC material/pub_20160315_CoS.js",
+      "WotC material/pub_20160906_SKT.js",
+      "WotC material/pub_20161115_VGtM.js",
+      "WotC material/pub_20170404_TftYP.js",
+      "WotC material/pub_20170915_Tortle.js",
+      "WotC material/pub_20170919_ToA.js",
+      "WotC material/pub_20171011_Grung.js",
+      "WotC material/pub_20171121_XGtE.js",
+      "WotC material/pub_20180529_MToF.js",
+      "WotC material/pub_20180723_WGtE_dupl.js",
+      "WotC material/pub_20180918_WDH.js",
+      "WotC material/pub_20181107_LLoK.js",
+      "WotC material/pub_20181120_GGtR.js",
+      "WotC material/pub_20181120_WDotMM.js",
+      "WotC material/pub_20190521_GoS.js",
+      "WotC material/pub_20190618_AcqInc.js",
+      "WotC material/pub_20190903_DnDEK_dupl.js",
+      "WotC material/pub_20190917_DiA.js",
+      "WotC material/pub_20190919_LR.js",
+      "WotC material/pub_20191112_AWM.js",
+      "WotC material/pub_20191119_ERftLW.js",
+      "WotC material/pub_20200317_EGtW.js",
+      "WotC material/pub_20200721_MOT.js",
+      "WotC material/pub_20200915_RotF.js",
+      "WotC material/pub_20201117-2_TCoE-sidekicks.js",
+      "WotC material/pub_20201117_TCoE.js",
+      "WotC material/pub_20210316_CM.js",
+      "WotC material/pub_20210518_VRGtR.js",
+      "WotC material/pub_20210921_WBtW.js",
+      "WotC material/pub_20211019_FToD.js",
+      "WotC material/pub_20211207_SCC.js",
+      "WotC material/pub_20220125_MotM.js",
+      "WotC material/pub_20220315_CotN.js",
+      "WotC material/pub_20220816_Spelljammer.js",
+      "WotC material/pub_20221206_Dragonlance.js",
+      "WotC material/pub_20230221_KftGV.js",
+      "WotC material/pub_20230815_GotG.js",
+      "WotC material/pub_20230919_PaBTSO.js",
+      "WotC material/pub_20231017_Planescape.js",
+      "WotC material/pub_20231030_CoA.js",
+      "WotC material/pub_20231114_BoMT.js",
+      "WotC material/pub_20240521_VEoR.js",
+      "WotC material/pub_20240716_QftIS.js",
+      "WotC material/pub_al_20190917_ALPG-v9.1.js",
+      "WotC 2024/pub_20250218_MM.js",
+      "WotC material/ua_20150202_Eberron.js",
+      "WotC material/ua_20150406_Modifying-Classes.js",
+      "WotC material/ua_20150504_Waterborne-Adventures.js",
+      "WotC material/ua_20150803_Modern-Magic.js",
+      "WotC material/ua_20150909_Ranger.js",
+      "WotC material/ua_20151005_Prestige Classes and Rune Magic.js",
+      "WotC material/ua_20151102_Light,-Dark,-Underdark!.js",
+      "WotC material/ua_20151217_That-Old-Black-Magic.js",
+      "WotC material/ua_20160104_Kits-of-Old.js",
+      "WotC material/ua_20160404_Gothic-Heroes.js",
+      "WotC material/ua_20160606_Feats.js",
+      "WotC material/ua_20160801_The-Faithful.js",
+      "WotC material/ua_20160912_The-Ranger,-Revised.js",
+      "WotC material/ua_20161107_Barbarian-Primal-Paths.js",
+      "WotC material/ua_20161114_Bard-Colleges.js",
+      "WotC material/ua_20161121_Cleric-Divine-Domains.js",
+      "WotC material/ua_20161128_Druid-Circles.js",
+      "WotC material/ua_20161205_Fighter-Martial-Archetypes.js",
+      "WotC material/ua_20161212_Monk-Monastic-Traditions.js",
+      "WotC material/ua_20161219_Paladin-Sacred-Oaths.js",
+      "WotC material/ua_20170109_Artificer_dupl.js",
+      "WotC material/ua_20170116_Ranger-and-Rogue.js",
+      "WotC material/ua_20170206_Sorcerous-Origins.js",
+      "WotC material/ua_20170213_Warlock-and-Wizard.js",
+      "WotC material/ua_20170313_The-Mystic-Class.js",
+      "WotC material/ua_20170320_Wizard-Revisited.js",
+      "WotC material/ua_20170327_A-Trio-of-Subclasses.js",
+      "WotC material/ua_20170403_Starter-Spells.js",
+      "WotC material/ua_20170417_Feats-for-Skills.js",
+      "WotC material/ua_20170424_Feats-for-Races.js",
+      "WotC material/ua_20170501_Revised-Subclasses.js",
+      "WotC material/ua_20170605_Revised-Class-Options.js",
+      "WotC material/ua_20170911_Eladrin-and-Gith.js",
+      "WotC material/ua_20171009_Fiendish-Options.js",
+      "WotC material/ua_20171113_Elf-Subraces.js",
+      "WotC material/ua_20180108_Three-Subclasses.js",
+      "WotC material/ua_20180409_Order-Domain.js",
+      "WotC material/ua_20180514_Centaur-and-Minotaur.js",
+      "WotC material/ua_20180611_Giant-Soul-Sorcerer.js",
+      "WotC material/ua_20180723_Races-of-Eberron.js",
+      "WotC material/ua_20180810_Magic-Items-of-Eberron.js",
+      "WotC material/ua_20180813_Races-of-Ravnica.js",
+      "WotC material/ua_20180910_Dragonmarks.js",
+      "WotC material/ua_20190228_Artificer_dupl.js",
+      "WotC material/ua_20190514_Artificer_dupl.js",
+      "WotC material/ua_20190815_Barbarian-and-Monk.js",
+      "WotC material/ua_20190905_Sorcerer-and-Warlock.js",
+      "WotC material/ua_20190918_Bard-and-Paladin.js",
+      "WotC material/ua_20191003_Cleric-Druid-and-Wizard.js",
+      "WotC material/ua_20191017_Fighter-Ranger-and-Rogue.js",
+      "WotC material/ua_20191104_Class-Feature-Variants.js",
+      "WotC material/ua_20191125_Fighter-Rogue-and-Wizard.js",
+      "WotC material/ua_20200114_Subclasses-Part-1.js",
+      "WotC material/ua_20200206_Subclasses-Part-2.js",
+      "WotC material/ua_20200224_Subclasses-Part-3.js",
+      "WotC material/ua_20200512_Subclasses-Revisited.js",
+      "WotC material/ua_20200713_Feats-2020.js",
+      "WotC material/ua_20200805_Subclasses-Part-4.js",
+      "WotC material/ua_20201026_Subclasses-Part-5.js",
+      "WotC material/ua_20210126_Gothic-Lineages.js",
+      "WotC material/ua_20210311_Folk-of-the-Feywild.js",
+      "WotC material/ua_20210414_Draconic-Options.js",
+      "WotC material/ua_20211008_Travelers-of-the-Multiverse.js",
+      "WotC material/ua_20220308_Heroes-of-Krynn.js",
+      "WotC material/ua_20220425_Heroes-of-Krynn-Revisited.js",
+      "WotC material/ua_20220523_Giant-Options.js",
+      "WotC material/ua_20220718_Wonders-of-the-Multiverse.js",
+      "Homebrew/reddit_20180203_Tome-of-Monstrous-Races.js",
+      "WotC 2024/not-reprinted_20140819_PHB.js",
+      "WotC 2024/not-reprinted_20201117_TCoE.js"
+    ],
+    "buckets": {
+      "core-seed": [
+        "WotC material/pub_20140818_PHB.js",
+        "WotC 2024/pub_20240917_PHB.js",
+        "docs/Sheet skripte/_variables/ListsFeats.js",
+        "docs/Sheet skripte/_variables/ListsClasses.js",
+        "docs/Sheet skripte/_variables/ListsGear.js",
+        "docs/Sheet skripte 2024/_variables/ListsFeats.js",
+        "docs/Sheet skripte 2024/_variables/ListsClasses.js",
+        "docs/Sheet skripte 2024/_variables/ListsGear.js"
+      ],
+      "published-supplement": [
+        "WotC material/pub_20140715_LMoP.js",
+        "WotC material/pub_20140819_HotDQ+20141104_RoT.js",
+        "WotC material/pub_20140930_MM.js",
+        "WotC material/pub_20141209_DMG.js",
+        "WotC material/pub_20150407_PotA.js",
+        "WotC material/pub_20150415_AL-EE.js",
+        "WotC material/pub_20150416_EE.js",
+        "WotC material/pub_20150714_AL-RoD.js",
+        "WotC material/pub_20150915_OotA.js",
+        "WotC material/pub_20151103_SCAG.js",
+        "WotC material/pub_20160315_CoS.js",
+        "WotC material/pub_20160906_SKT.js",
+        "WotC material/pub_20161115_VGtM.js",
+        "WotC material/pub_20170404_TftYP.js",
+        "WotC material/pub_20170915_Tortle.js",
+        "WotC material/pub_20170919_ToA.js",
+        "WotC material/pub_20171011_Grung.js",
+        "WotC material/pub_20171121_XGtE.js",
+        "WotC material/pub_20180529_MToF.js",
+        "WotC material/pub_20180723_WGtE_dupl.js",
+        "WotC material/pub_20180918_WDH.js",
+        "WotC material/pub_20181107_LLoK.js",
+        "WotC material/pub_20181120_GGtR.js",
+        "WotC material/pub_20181120_WDotMM.js",
+        "WotC material/pub_20190521_GoS.js",
+        "WotC material/pub_20190618_AcqInc.js",
+        "WotC material/pub_20190903_DnDEK_dupl.js",
+        "WotC material/pub_20190917_DiA.js",
+        "WotC material/pub_20190919_LR.js",
+        "WotC material/pub_20191112_AWM.js",
+        "WotC material/pub_20191119_ERftLW.js",
+        "WotC material/pub_20200317_EGtW.js",
+        "WotC material/pub_20200721_MOT.js",
+        "WotC material/pub_20200915_RotF.js",
+        "WotC material/pub_20201117-2_TCoE-sidekicks.js",
+        "WotC material/pub_20201117_TCoE.js",
+        "WotC material/pub_20210316_CM.js",
+        "WotC material/pub_20210518_VRGtR.js",
+        "WotC material/pub_20210921_WBtW.js",
+        "WotC material/pub_20211019_FToD.js",
+        "WotC material/pub_20211207_SCC.js",
+        "WotC material/pub_20220125_MotM.js",
+        "WotC material/pub_20220315_CotN.js",
+        "WotC material/pub_20220816_Spelljammer.js",
+        "WotC material/pub_20221206_Dragonlance.js",
+        "WotC material/pub_20230221_KftGV.js",
+        "WotC material/pub_20230815_GotG.js",
+        "WotC material/pub_20230919_PaBTSO.js",
+        "WotC material/pub_20231017_Planescape.js",
+        "WotC material/pub_20231030_CoA.js",
+        "WotC material/pub_20231114_BoMT.js",
+        "WotC material/pub_20240521_VEoR.js",
+        "WotC material/pub_20240716_QftIS.js",
+        "WotC material/pub_al_20190917_ALPG-v9.1.js",
+        "WotC 2024/pub_20250218_MM.js"
+      ],
+      "ua": [
+        "WotC material/ua_20150202_Eberron.js",
+        "WotC material/ua_20150406_Modifying-Classes.js",
+        "WotC material/ua_20150504_Waterborne-Adventures.js",
+        "WotC material/ua_20150803_Modern-Magic.js",
+        "WotC material/ua_20150909_Ranger.js",
+        "WotC material/ua_20151005_Prestige Classes and Rune Magic.js",
+        "WotC material/ua_20151102_Light,-Dark,-Underdark!.js",
+        "WotC material/ua_20151217_That-Old-Black-Magic.js",
+        "WotC material/ua_20160104_Kits-of-Old.js",
+        "WotC material/ua_20160404_Gothic-Heroes.js",
+        "WotC material/ua_20160606_Feats.js",
+        "WotC material/ua_20160801_The-Faithful.js",
+        "WotC material/ua_20160912_The-Ranger,-Revised.js",
+        "WotC material/ua_20161107_Barbarian-Primal-Paths.js",
+        "WotC material/ua_20161114_Bard-Colleges.js",
+        "WotC material/ua_20161121_Cleric-Divine-Domains.js",
+        "WotC material/ua_20161128_Druid-Circles.js",
+        "WotC material/ua_20161205_Fighter-Martial-Archetypes.js",
+        "WotC material/ua_20161212_Monk-Monastic-Traditions.js",
+        "WotC material/ua_20161219_Paladin-Sacred-Oaths.js",
+        "WotC material/ua_20170109_Artificer_dupl.js",
+        "WotC material/ua_20170116_Ranger-and-Rogue.js",
+        "WotC material/ua_20170206_Sorcerous-Origins.js",
+        "WotC material/ua_20170213_Warlock-and-Wizard.js",
+        "WotC material/ua_20170313_The-Mystic-Class.js",
+        "WotC material/ua_20170320_Wizard-Revisited.js",
+        "WotC material/ua_20170327_A-Trio-of-Subclasses.js",
+        "WotC material/ua_20170403_Starter-Spells.js",
+        "WotC material/ua_20170417_Feats-for-Skills.js",
+        "WotC material/ua_20170424_Feats-for-Races.js",
+        "WotC material/ua_20170501_Revised-Subclasses.js",
+        "WotC material/ua_20170605_Revised-Class-Options.js",
+        "WotC material/ua_20170911_Eladrin-and-Gith.js",
+        "WotC material/ua_20171009_Fiendish-Options.js",
+        "WotC material/ua_20171113_Elf-Subraces.js",
+        "WotC material/ua_20180108_Three-Subclasses.js",
+        "WotC material/ua_20180409_Order-Domain.js",
+        "WotC material/ua_20180514_Centaur-and-Minotaur.js",
+        "WotC material/ua_20180611_Giant-Soul-Sorcerer.js",
+        "WotC material/ua_20180723_Races-of-Eberron.js",
+        "WotC material/ua_20180810_Magic-Items-of-Eberron.js",
+        "WotC material/ua_20180813_Races-of-Ravnica.js",
+        "WotC material/ua_20180910_Dragonmarks.js",
+        "WotC material/ua_20190228_Artificer_dupl.js",
+        "WotC material/ua_20190514_Artificer_dupl.js",
+        "WotC material/ua_20190815_Barbarian-and-Monk.js",
+        "WotC material/ua_20190905_Sorcerer-and-Warlock.js",
+        "WotC material/ua_20190918_Bard-and-Paladin.js",
+        "WotC material/ua_20191003_Cleric-Druid-and-Wizard.js",
+        "WotC material/ua_20191017_Fighter-Ranger-and-Rogue.js",
+        "WotC material/ua_20191104_Class-Feature-Variants.js",
+        "WotC material/ua_20191125_Fighter-Rogue-and-Wizard.js",
+        "WotC material/ua_20200114_Subclasses-Part-1.js",
+        "WotC material/ua_20200206_Subclasses-Part-2.js",
+        "WotC material/ua_20200224_Subclasses-Part-3.js",
+        "WotC material/ua_20200512_Subclasses-Revisited.js",
+        "WotC material/ua_20200713_Feats-2020.js",
+        "WotC material/ua_20200805_Subclasses-Part-4.js",
+        "WotC material/ua_20201026_Subclasses-Part-5.js",
+        "WotC material/ua_20210126_Gothic-Lineages.js",
+        "WotC material/ua_20210311_Folk-of-the-Feywild.js",
+        "WotC material/ua_20210414_Draconic-Options.js",
+        "WotC material/ua_20211008_Travelers-of-the-Multiverse.js",
+        "WotC material/ua_20220308_Heroes-of-Krynn.js",
+        "WotC material/ua_20220425_Heroes-of-Krynn-Revisited.js",
+        "WotC material/ua_20220523_Giant-Options.js",
+        "WotC material/ua_20220718_Wonders-of-the-Multiverse.js"
+      ],
+      "homebrew": [
+        "Homebrew/reddit_20180203_Tome-of-Monstrous-Races.js"
+      ],
+      "other": [
+        "WotC 2024/not-reprinted_20140819_PHB.js",
+        "WotC 2024/not-reprinted_20201117_TCoE.js"
+      ]
+    }
+  },
+  "seedInfo": {
+    "used": false,
+    "path": "/home/dennis/IdeaProjects/Imports-for-MPMB-s-Character-Sheet/data/imports/mpmb-pdf/normalized/latest-mpmb-pdf-content.json",
+    "counts": {
+      "sources": 0,
+      "classes": 0,
+      "subclasses": 0,
+      "species": 0,
+      "backgrounds": 0,
+      "feats": 0,
+      "spells": 0,
+      "equipment": 0
+    }
+  },
+  "registryEntryCounts": {
+    "SourceList": 126,
+    "ClassList": 27,
+    "ClassSubList": 252,
+    "RaceList": 209,
+    "RaceSubList": 103,
+    "BackgroundList": 132,
+    "BackgroundFeatureList": 129,
+    "FeatsList": 239,
+    "SpellsList": 264,
+    "MagicItemsList": 603,
+    "WeaponsList": 106,
+    "ArmourList": 15,
+    "ArmorList": 0,
+    "GearList": 148,
+    "AmmoList": 26,
+    "CreatureList": 92,
+    "CompanionList": 5
+  },
+  "fileResults": [
+    {
+      "file": "WotC material/pub_20140818_PHB.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 18,
+      "registryFallbackCountDelta": 2,
+      "shimCallCountDelta": 34
+    },
+    {
+      "file": "WotC 2024/pub_20240917_PHB.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 38,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 6
+    },
+    {
+      "file": "docs/Sheet skripte/_variables/ListsFeats.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte/_variables/ListsClasses.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 21,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte/_variables/ListsGear.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte 2024/_variables/ListsFeats.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte 2024/_variables/ListsClasses.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 21,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte 2024/_variables/ListsGear.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "WotC material/pub_20140715_LMoP.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20140819_HotDQ+20141104_RoT.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20140930_MM.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20141209_DMG.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 3,
+      "registryFallbackCountDelta": 2,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/pub_20150407_PotA.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20150415_AL-EE.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20150416_EE.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 14,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20150714_AL-RoD.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20150915_OotA.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20151103_SCAG.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 3,
+      "shimCallCountDelta": 39
+    },
+    {
+      "file": "WotC material/pub_20160315_CoS.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 3,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20160906_SKT.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20161115_VGtM.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20170404_TftYP.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 2,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20170915_Tortle.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20170919_ToA.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/pub_20171011_Grung.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20171121_XGtE.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 33,
+      "registryFallbackCountDelta": 2,
+      "shimCallCountDelta": 27
+    },
+    {
+      "file": "WotC material/pub_20180529_MToF.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/pub_20180723_WGtE_dupl.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 7,
+      "shimCallCountDelta": 5
+    },
+    {
+      "file": "WotC material/pub_20180918_WDH.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 2,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20181107_LLoK.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 3,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 7
+    },
+    {
+      "file": "WotC material/pub_20181120_GGtR.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 4,
+      "shimCallCountDelta": 6
+    },
+    {
+      "file": "WotC material/pub_20181120_WDotMM.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "WotC material/pub_20190521_GoS.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20190618_AcqInc.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 4,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20190903_DnDEK_dupl.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 24,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/pub_20190917_DiA.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20190919_LR.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20191112_AWM.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20191119_ERftLW.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 2,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 16
+    },
+    {
+      "file": "WotC material/pub_20200317_EGtW.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 9,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 37
+    },
+    {
+      "file": "WotC material/pub_20200721_MOT.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/pub_20200915_RotF.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20201117-2_TCoE-sidekicks.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 26,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/pub_20201117_TCoE.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 38,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 69
+    },
+    {
+      "file": "WotC material/pub_20210316_CM.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/pub_20210518_VRGtR.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/pub_20210921_WBtW.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 4,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20211019_FToD.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 7,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 19
+    },
+    {
+      "file": "WotC material/pub_20211207_SCC.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 4,
+      "registryFallbackCountDelta": 2,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20220125_MotM.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 12,
+      "registryFallbackCountDelta": 12,
+      "shimCallCountDelta": 7
+    },
+    {
+      "file": "WotC material/pub_20220315_CotN.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20220816_Spelljammer.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 3,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20221206_Dragonlance.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "WotC material/pub_20230221_KftGV.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20230815_GotG.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "WotC material/pub_20230919_PaBTSO.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20231017_Planescape.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 13
+    },
+    {
+      "file": "WotC material/pub_20231030_CoA.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20231114_BoMT.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 3,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20240521_VEoR.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/pub_20240716_QftIS.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/pub_al_20190917_ALPG-v9.1.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC 2024/pub_20250218_MM.js",
+      "status": "ok",
+      "category": "published-supplement",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20150202_Eberron.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 8
+    },
+    {
+      "file": "WotC material/ua_20150406_Modifying-Classes.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20150504_Waterborne-Adventures.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20150803_Modern-Magic.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 6,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20150909_Ranger.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20151005_Prestige Classes and Rune Magic.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20151102_Light,-Dark,-Underdark!.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 2,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20151217_That-Old-Black-Magic.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20160104_Kits-of-Old.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 5
+    },
+    {
+      "file": "WotC material/ua_20160404_Gothic-Heroes.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20160606_Feats.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20160801_The-Faithful.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 2,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20160912_The-Ranger,-Revised.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20161107_Barbarian-Primal-Paths.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20161114_Bard-Colleges.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20161121_Cleric-Divine-Domains.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20161128_Druid-Circles.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20161205_Fighter-Martial-Archetypes.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 5
+    },
+    {
+      "file": "WotC material/ua_20161212_Monk-Monastic-Traditions.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20161219_Paladin-Sacred-Oaths.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20170109_Artificer_dupl.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 2,
+      "registryFallbackCountDelta": 67,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20170116_Ranger-and-Rogue.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 6
+    },
+    {
+      "file": "WotC material/ua_20170206_Sorcerous-Origins.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 5
+    },
+    {
+      "file": "WotC material/ua_20170213_Warlock-and-Wizard.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 25,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20170313_The-Mystic-Class.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 276,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 7
+    },
+    {
+      "file": "WotC material/ua_20170320_Wizard-Revisited.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "WotC material/ua_20170327_A-Trio-of-Subclasses.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20170403_Starter-Spells.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20170417_Feats-for-Skills.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20170424_Feats-for-Races.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20170501_Revised-Subclasses.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 6
+    },
+    {
+      "file": "WotC material/ua_20170605_Revised-Class-Options.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 7,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 5
+    },
+    {
+      "file": "WotC material/ua_20170911_Eladrin-and-Gith.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20171009_Fiendish-Options.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20171113_Elf-Subraces.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20180108_Three-Subclasses.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20180409_Order-Domain.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "WotC material/ua_20180514_Centaur-and-Minotaur.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20180611_Giant-Soul-Sorcerer.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "WotC material/ua_20180723_Races-of-Eberron.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20180810_Magic-Items-of-Eberron.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20180813_Races-of-Ravnica.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20180910_Dragonmarks.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 3,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20190228_Artificer_dupl.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 21,
+      "registryFallbackCountDelta": 53,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20190514_Artificer_dupl.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 19,
+      "registryFallbackCountDelta": 1,
+      "shimCallCountDelta": 5
+    },
+    {
+      "file": "WotC material/ua_20190815_Barbarian-and-Monk.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20190905_Sorcerer-and-Warlock.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 6,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20190918_Bard-and-Paladin.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20191003_Cleric-Druid-and-Wizard.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20191017_Fighter-Ranger-and-Rogue.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20191104_Class-Feature-Variants.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 25,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 44
+    },
+    {
+      "file": "WotC material/ua_20191125_Fighter-Rogue-and-Wizard.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 2,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20200114_Subclasses-Part-1.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 5
+    },
+    {
+      "file": "WotC material/ua_20200206_Subclasses-Part-2.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20200224_Subclasses-Part-3.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 7
+    },
+    {
+      "file": "WotC material/ua_20200512_Subclasses-Revisited.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "WotC material/ua_20200713_Feats-2020.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20200805_Subclasses-Part-4.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20201026_Subclasses-Part-5.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20210126_Gothic-Lineages.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 3
+    },
+    {
+      "file": "WotC material/ua_20210311_Folk-of-the-Feywild.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20210414_Draconic-Options.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 1,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 19
+    },
+    {
+      "file": "WotC material/ua_20211008_Travelers-of-the-Multiverse.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20220308_Heroes-of-Krynn.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "WotC material/ua_20220425_Heroes-of-Krynn-Revisited.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC material/ua_20220523_Giant-Options.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 4
+    },
+    {
+      "file": "WotC material/ua_20220718_Wonders-of-the-Multiverse.js",
+      "status": "ok",
+      "category": "ua",
+      "unknownGlobalsCountDelta": 4,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "Homebrew/reddit_20180203_Tome-of-Monstrous-Races.js",
+      "status": "ok",
+      "category": "homebrew",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 1
+    },
+    {
+      "file": "WotC 2024/not-reprinted_20140819_PHB.js",
+      "status": "ok",
+      "category": "other",
+      "unknownGlobalsCountDelta": 14,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    },
+    {
+      "file": "WotC 2024/not-reprinted_20201117_TCoE.js",
+      "status": "ok",
+      "category": "other",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 2
+    }
+  ],
+  "unknownGlobalsTop": [
+    {
+      "name": "PsionicsList",
+      "count": 231
+    },
+    {
+      "name": "AtHigherLevels",
+      "count": 101
+    },
+    {
+      "name": "AddWarlockInvocation",
+      "count": 78
+    },
+    {
+      "name": "defaultSpellTable",
+      "count": 64
+    },
+    {
+      "name": "Base_spellLevelList",
+      "count": 40
+    },
+    {
+      "name": "PsychicFocus",
+      "count": 40
+    },
+    {
+      "name": "UsingHigherLvl",
+      "count": 25
+    },
+    {
+      "name": "sentientItemConflictTxt",
+      "count": 22
+    },
+    {
+      "name": "cantripDie",
+      "count": 21
+    },
+    {
+      "name": "ProficiencyBonusList",
+      "count": 19
+    },
+    {
+      "name": "RunFunctionAtEnd",
+      "count": 15
+    },
+    {
+      "name": "AddFightingStyle",
+      "count": 14
+    },
+    {
+      "name": "CreateClassFeatureVariant",
+      "count": 14
+    },
+    {
+      "name": "SpellRitualTag",
+      "count": 11
+    },
+    {
+      "name": "CurrentVars",
+      "count": 6
+    },
+    {
+      "name": "addAbilityScoreChoicesToFeat",
+      "count": 5
+    },
+    {
+      "name": "CantripUpgrade",
+      "count": 5
+    },
+    {
+      "name": "spellSchoolList",
+      "count": 5
+    },
+    {
+      "name": "GenericClassFeatures",
+      "count": 2
+    },
+    {
+      "name": "AddWarlockPactBoon",
+      "count": 2
+    },
+    {
+      "name": "typeA4",
+      "count": 1
+    },
+    {
+      "name": "PacksList",
+      "count": 1
+    }
+  ],
+  "unknownGlobalsByFile": {
+    "WotC material/pub_20140818_PHB.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 14
+      },
+      {
+        "name": "SpellRitualTag",
+        "count": 2
+      },
+      {
+        "name": "GenericClassFeatures",
+        "count": 2
+      }
+    ],
+    "WotC 2024/pub_20240917_PHB.js": [
+      {
+        "name": "UsingHigherLvl",
+        "count": 25
+      },
+      {
+        "name": "addAbilityScoreChoicesToFeat",
+        "count": 5
+      },
+      {
+        "name": "CantripUpgrade",
+        "count": 5
+      },
+      {
+        "name": "ProficiencyBonusList",
+        "count": 3
+      }
+    ],
+    "docs/Sheet skripte/_variables/ListsClasses.js": [
+      {
+        "name": "Base_spellLevelList",
+        "count": 20
+      },
+      {
+        "name": "typeA4",
+        "count": 1
+      }
+    ],
+    "docs/Sheet skripte 2024/_variables/ListsClasses.js": [
+      {
+        "name": "Base_spellLevelList",
+        "count": 20
+      },
+      {
+        "name": "ProficiencyBonusList",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20141209_DMG.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 3
+      }
+    ],
+    "WotC material/pub_20150407_PotA.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20150416_EE.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 14
+      }
+    ],
+    "WotC material/pub_20150915_OotA.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20151103_SCAG.js": [
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20160315_CoS.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 2
+      },
+      {
+        "name": "PacksList",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20170404_TftYP.js": [
+      {
+        "name": "SpellRitualTag",
+        "count": 1
+      },
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20171121_XGtE.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 18
+      },
+      {
+        "name": "AddWarlockInvocation",
+        "count": 14
+      },
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20180918_WDH.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 2
+      }
+    ],
+    "WotC material/pub_20181107_LLoK.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 3
+      }
+    ],
+    "WotC material/pub_20181120_WDotMM.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20190618_AcqInc.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 4
+      }
+    ],
+    "WotC material/pub_20190903_DnDEK_dupl.js": [
+      {
+        "name": "defaultSpellTable",
+        "count": 24
+      }
+    ],
+    "WotC material/pub_20190917_DiA.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20191119_ERftLW.js": [
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 1
+      },
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20200317_EGtW.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 7
+      },
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 2
+      }
+    ],
+    "WotC material/pub_20200915_RotF.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20201117-2_TCoE-sidekicks.js": [
+      {
+        "name": "defaultSpellTable",
+        "count": 20
+      },
+      {
+        "name": "CurrentVars",
+        "count": 6
+      }
+    ],
+    "WotC material/pub_20201117_TCoE.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 13
+      },
+      {
+        "name": "AddWarlockInvocation",
+        "count": 8
+      },
+      {
+        "name": "AddFightingStyle",
+        "count": 7
+      },
+      {
+        "name": "CreateClassFeatureVariant",
+        "count": 5
+      },
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 4
+      },
+      {
+        "name": "AddWarlockPactBoon",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20210518_VRGtR.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20210921_WBtW.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 3
+      },
+      {
+        "name": "ProficiencyBonusList",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20211019_FToD.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 4
+      },
+      {
+        "name": "cantripDie",
+        "count": 3
+      }
+    ],
+    "WotC material/pub_20211207_SCC.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 2
+      },
+      {
+        "name": "SpellRitualTag",
+        "count": 1
+      },
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20220125_MotM.js": [
+      {
+        "name": "ProficiencyBonusList",
+        "count": 12
+      }
+    ],
+    "WotC material/pub_20220816_Spelljammer.js": [
+      {
+        "name": "ProficiencyBonusList",
+        "count": 2
+      },
+      {
+        "name": "AtHigherLevels",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20230221_KftGV.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20230815_GotG.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20231017_Planescape.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20231114_BoMT.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 3
+      }
+    ],
+    "WotC material/pub_20240716_QftIS.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20150406_Modifying-Classes.js": [
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20150504_Waterborne-Adventures.js": [
+      {
+        "name": "AddFightingStyle",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20150803_Modern-Magic.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 5
+      },
+      {
+        "name": "AddWarlockInvocation",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20151102_Light,-Dark,-Underdark!.js": [
+      {
+        "name": "AddFightingStyle",
+        "count": 2
+      }
+    ],
+    "WotC material/ua_20151217_That-Old-Black-Magic.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20160404_Gothic-Heroes.js": [
+      {
+        "name": "SpellRitualTag",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20160801_The-Faithful.js": [
+      {
+        "name": "SpellRitualTag",
+        "count": 1
+      },
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170109_Artificer_dupl.js": [
+      {
+        "name": "SpellRitualTag",
+        "count": 2
+      }
+    ],
+    "WotC material/ua_20170213_Warlock-and-Wizard.js": [
+      {
+        "name": "AddWarlockInvocation",
+        "count": 25
+      }
+    ],
+    "WotC material/ua_20170313_The-Mystic-Class.js": [
+      {
+        "name": "PsionicsList",
+        "count": 231
+      },
+      {
+        "name": "PsychicFocus",
+        "count": 40
+      },
+      {
+        "name": "spellSchoolList",
+        "count": 5
+      }
+    ],
+    "WotC material/ua_20170403_Starter-Spells.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170605_Revised-Class-Options.js": [
+      {
+        "name": "AddWarlockInvocation",
+        "count": 7
+      }
+    ],
+    "WotC material/ua_20180108_Three-Subclasses.js": [
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180810_Magic-Items-of-Eberron.js": [
+      {
+        "name": "sentientItemConflictTxt",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180910_Dragonmarks.js": [
+      {
+        "name": "SpellRitualTag",
+        "count": 3
+      }
+    ],
+    "WotC material/ua_20190228_Artificer_dupl.js": [
+      {
+        "name": "defaultSpellTable",
+        "count": 20
+      },
+      {
+        "name": "AtHigherLevels",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20190514_Artificer_dupl.js": [
+      {
+        "name": "cantripDie",
+        "count": 18
+      },
+      {
+        "name": "AtHigherLevels",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20191104_Class-Feature-Variants.js": [
+      {
+        "name": "CreateClassFeatureVariant",
+        "count": 9
+      },
+      {
+        "name": "AddWarlockInvocation",
+        "count": 9
+      },
+      {
+        "name": "AddFightingStyle",
+        "count": 4
+      },
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 2
+      },
+      {
+        "name": "AddWarlockPactBoon",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20191125_Fighter-Rogue-and-Wizard.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 2
+      }
+    ],
+    "WotC material/ua_20200224_Subclasses-Part-3.js": [
+      {
+        "name": "RunFunctionAtEnd",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20210414_Draconic-Options.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20220718_Wonders-of-the-Multiverse.js": [
+      {
+        "name": "AtHigherLevels",
+        "count": 4
+      }
+    ],
+    "WotC 2024/not-reprinted_20140819_PHB.js": [
+      {
+        "name": "AddWarlockInvocation",
+        "count": 14
+      }
+    ]
+  },
+  "shimCallsTop": [
+    {
+      "name": "AddSubClass",
+      "count": 235
+    },
+    {
+      "name": "RequiredSheetVersion",
+      "count": 127
+    },
+    {
+      "name": "AddFeatureChoice",
+      "count": 120
+    },
+    {
+      "name": "AddRacialVariant",
+      "count": 103
+    },
+    {
+      "name": "AddBackgroundVariant",
+      "count": 45
+    }
+  ],
+  "shimCallsByFile": {
+    "WotC material/pub_20140818_PHB.js": [
+      {
+        "name": "AddSubClass",
+        "count": 28
+      },
+      {
+        "name": "AddBackgroundVariant",
+        "count": 4
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddRacialVariant",
+        "count": 1
+      }
+    ],
+    "WotC 2024/pub_20240917_PHB.js": [
+      {
+        "name": "AddSubClass",
+        "count": 5
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20140715_LMoP.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20140819_HotDQ+20141104_RoT.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20140930_MM.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20141209_DMG.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20150407_PotA.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20150415_AL-EE.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20150416_EE.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20150714_AL-RoD.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20150915_OotA.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20151103_SCAG.js": [
+      {
+        "name": "AddBackgroundVariant",
+        "count": 12
+      },
+      {
+        "name": "AddSubClass",
+        "count": 11
+      },
+      {
+        "name": "AddRacialVariant",
+        "count": 9
+      },
+      {
+        "name": "AddFeatureChoice",
+        "count": 6
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20160315_CoS.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20160906_SKT.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20161115_VGtM.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20170404_TftYP.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20170915_Tortle.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20170919_ToA.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20171011_Grung.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20171121_XGtE.js": [
+      {
+        "name": "AddSubClass",
+        "count": 26
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20180529_MToF.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20180723_WGtE_dupl.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 4
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20180918_WDH.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20181107_LLoK.js": [
+      {
+        "name": "AddFeatureChoice",
+        "count": 6
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20181120_GGtR.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 3
+      },
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20181120_WDotMM.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddFeatureChoice",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20190521_GoS.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20190618_AcqInc.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20190903_DnDEK_dupl.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20190917_DiA.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20190919_LR.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20191112_AWM.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20191119_ERftLW.js": [
+      {
+        "name": "AddBackgroundVariant",
+        "count": 12
+      },
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20200317_EGtW.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 20
+      },
+      {
+        "name": "AddFeatureChoice",
+        "count": 8
+      },
+      {
+        "name": "AddBackgroundVariant",
+        "count": 5
+      },
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20200721_MOT.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20200915_RotF.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20201117-2_TCoE-sidekicks.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20201117_TCoE.js": [
+      {
+        "name": "AddFeatureChoice",
+        "count": 45
+      },
+      {
+        "name": "AddSubClass",
+        "count": 21
+      },
+      {
+        "name": "AddRacialVariant",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20210316_CM.js": [
+      {
+        "name": "AddFeatureChoice",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20210518_VRGtR.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20210921_WBtW.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20211019_FToD.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 15
+      },
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddFeatureChoice",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20211207_SCC.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20220125_MotM.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 6
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20220315_CotN.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20220816_Spelljammer.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20221206_Dragonlance.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20230221_KftGV.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20230815_GotG.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20230919_PaBTSO.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20231017_Planescape.js": [
+      {
+        "name": "AddBackgroundVariant",
+        "count": 12
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20231030_CoA.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20231114_BoMT.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20240521_VEoR.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20240716_QftIS.js": [
+      {
+        "name": "AddFeatureChoice",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_al_20190917_ALPG-v9.1.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC 2024/pub_20250218_MM.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20150202_Eberron.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 6
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20150406_Modifying-Classes.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20150504_Waterborne-Adventures.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20150803_Modern-Magic.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20150909_Ranger.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20151005_Prestige Classes and Rune Magic.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20151102_Light,-Dark,-Underdark!.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20151217_That-Old-Black-Magic.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20160104_Kits-of-Old.js": [
+      {
+        "name": "AddSubClass",
+        "count": 4
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20160404_Gothic-Heroes.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20160606_Feats.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20160801_The-Faithful.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      },
+      {
+        "name": "AddFeatureChoice",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20160912_The-Ranger,-Revised.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20161107_Barbarian-Primal-Paths.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20161114_Bard-Colleges.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20161121_Cleric-Divine-Domains.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20161128_Druid-Circles.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20161205_Fighter-Martial-Archetypes.js": [
+      {
+        "name": "AddSubClass",
+        "count": 4
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20161212_Monk-Monastic-Traditions.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20161219_Paladin-Sacred-Oaths.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170109_Artificer_dupl.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170116_Ranger-and-Rogue.js": [
+      {
+        "name": "AddSubClass",
+        "count": 5
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170206_Sorcerous-Origins.js": [
+      {
+        "name": "AddSubClass",
+        "count": 4
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170213_Warlock-and-Wizard.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170313_The-Mystic-Class.js": [
+      {
+        "name": "AddSubClass",
+        "count": 6
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170320_Wizard-Revisited.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170327_A-Trio-of-Subclasses.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170403_Starter-Spells.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170417_Feats-for-Skills.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170424_Feats-for-Races.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170501_Revised-Subclasses.js": [
+      {
+        "name": "AddSubClass",
+        "count": 5
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170605_Revised-Class-Options.js": [
+      {
+        "name": "AddSubClass",
+        "count": 4
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170911_Eladrin-and-Gith.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20171009_Fiendish-Options.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20171113_Elf-Subraces.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180108_Three-Subclasses.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180409_Order-Domain.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180514_Centaur-and-Minotaur.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180611_Giant-Soul-Sorcerer.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180723_Races-of-Eberron.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180810_Magic-Items-of-Eberron.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180813_Races-of-Ravnica.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20180910_Dragonmarks.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20190228_Artificer_dupl.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20190514_Artificer_dupl.js": [
+      {
+        "name": "AddSubClass",
+        "count": 4
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20190815_Barbarian-and-Monk.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20190905_Sorcerer-and-Warlock.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20190918_Bard-and-Paladin.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20191003_Cleric-Druid-and-Wizard.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20191017_Fighter-Ranger-and-Rogue.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20191104_Class-Feature-Variants.js": [
+      {
+        "name": "AddFeatureChoice",
+        "count": 43
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20191125_Fighter-Rogue-and-Wizard.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20200114_Subclasses-Part-1.js": [
+      {
+        "name": "AddSubClass",
+        "count": 4
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20200206_Subclasses-Part-2.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20200224_Subclasses-Part-3.js": [
+      {
+        "name": "AddFeatureChoice",
+        "count": 4
+      },
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20200512_Subclasses-Revisited.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20200713_Feats-2020.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20200805_Subclasses-Part-4.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20201026_Subclasses-Part-5.js": [
+      {
+        "name": "AddSubClass",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20210126_Gothic-Lineages.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 2
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20210311_Folk-of-the-Feywild.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20210414_Draconic-Options.js": [
+      {
+        "name": "AddRacialVariant",
+        "count": 18
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20211008_Travelers-of-the-Multiverse.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20220308_Heroes-of-Krynn.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20220425_Heroes-of-Krynn-Revisited.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20220523_Giant-Options.js": [
+      {
+        "name": "AddSubClass",
+        "count": 3
+      },
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20220718_Wonders-of-the-Multiverse.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "Homebrew/reddit_20180203_Tome-of-Monstrous-Races.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      }
+    ],
+    "WotC 2024/not-reprinted_20140819_PHB.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ],
+    "WotC 2024/not-reprinted_20201117_TCoE.js": [
+      {
+        "name": "RequiredSheetVersion",
+        "count": 1
+      },
+      {
+        "name": "AddSubClass",
+        "count": 1
+      }
+    ]
+  },
+  "registryFallbacksByFile": {
+    "WotC material/pub_20140818_PHB.js": [
+      {
+        "name": "RaceList.human",
+        "count": 1
+      },
+      {
+        "name": "ClassList.druid",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20141209_DMG.js": [
+      {
+        "name": "MagicItemsList.trident of fish command",
+        "count": 1
+      },
+      {
+        "name": "MagicItemsList.cube of force",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20151103_SCAG.js": [
+      {
+        "name": "RaceList.half-elf",
+        "count": 1
+      },
+      {
+        "name": "RaceList.tiefling",
+        "count": 1
+      },
+      {
+        "name": "BackgroundList.acolyte",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20171121_XGtE.js": [
+      {
+        "name": "ClassList.rangerua",
+        "count": 1
+      },
+      {
+        "name": "CompanionList.mount",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20180529_MToF.js": [
+      {
+        "name": "SpellsList.misty step",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20180723_WGtE_dupl.js": [
+      {
+        "name": "SourceList.UA:RoE",
+        "count": 1
+      },
+      {
+        "name": "RaceList.high elf",
+        "count": 1
+      },
+      {
+        "name": "WeaponsList.double-bladed scimitar",
+        "count": 1
+      },
+      {
+        "name": "BackgroundList.house agent",
+        "count": 1
+      },
+      {
+        "name": "SourceList.UA:D",
+        "count": 1
+      },
+      {
+        "name": "SourceList.UA:MIoE",
+        "count": 1
+      },
+      {
+        "name": "SourceList.E:RLW",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20180918_WDH.js": [
+      {
+        "name": "MagicItemsList.staff of power",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20181107_LLoK.js": [
+      {
+        "name": "MagicItemsList.ioun stone",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20181120_GGtR.js": [
+      {
+        "name": "CreatureList.giant eagle",
+        "count": 1
+      },
+      {
+        "name": "CreatureList.giant scorpion",
+        "count": 1
+      },
+      {
+        "name": "CreatureList.rhinoceros",
+        "count": 1
+      },
+      {
+        "name": "CreatureList.dire wolf",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20181120_WDotMM.js": [
+      {
+        "name": "MagicItemsList.horn of valhalla",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20201117-2_TCoE-sidekicks.js": [
+      {
+        "name": "SourceList.T",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20201117_TCoE.js": [
+      {
+        "name": "SourceList.F",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20211019_FToD.js": [
+      {
+        "name": "MagicItemsList.figurine of wondrous power",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20211207_SCC.js": [
+      {
+        "name": "CompanionList.familiar",
+        "count": 1
+      },
+      {
+        "name": "CompanionList.pact_of_the_chain",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20220125_MotM.js": [
+      {
+        "name": "SpellsList.gust of wind",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.nondetection",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.enlarge/reduce",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.invisibility",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.feather fall",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.levitate",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.pass without trace",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.flame blade",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.water walk",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.jump",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.shield",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.detect thoughts",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20231017_Planescape.js": [
+      {
+        "name": "SpellsList.tongues",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_20231114_BoMT.js": [
+      {
+        "name": "MagicItemsList.deck of many things",
+        "count": 1
+      }
+    ],
+    "WotC material/pub_al_20190917_ALPG-v9.1.js": [
+      {
+        "name": "RaceSubList.feral tiefling-winged",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20170109_Artificer_dupl.js": [
+      {
+        "name": "SpellsList.alarm",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.cure wounds",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.disguise self",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.expeditious retreat",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.false life",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.longstrider",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.sanctuary",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.shield of faith",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.aid",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.alter self",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.arcane lock",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.blur",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.continual flame",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.darkvision",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.enhance ability",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.lesser restoration",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.magic weapon",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.protection from poison",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.rope trick",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.see invisibility",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.spider climb",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.blink",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.fly",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.gaseous form",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.glyph of warding",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20190228_Artificer_dupl.js": [
+      {
+        "name": "SpellsList.acid splash",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.dancing lights",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.fire bolt",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.guidance",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.light",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.mage hand",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.mending",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.message",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.poison spray",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.prestidigitation",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.ray of frost",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.resistance",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.shocking grasp",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.spare the dying",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.detect magic",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.grease",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.identify",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.heat metal",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.magic mouth",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.dispel magic",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.animate objects",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.bigby's hand",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.creation",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.greater restoration",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.wall of stone",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20190514_Artificer_dupl.js": [
+      {
+        "name": "SpellsList.faerie fire",
+        "count": 1
+      }
+    ],
+    "WotC material/ua_20190905_Sorcerer-and-Warlock.js": [
+      {
+        "name": "SpellsList.calm emotions",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.sending",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.compulsion",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.evard's black tentacles",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.modify memory",
+        "count": 1
+      },
+      {
+        "name": "SpellsList.rary's telepathic bond",
+        "count": 1
+      }
+    ],
+    "__global__": [
+      {
+        "name": "BackgroundFeatureList.Charlatan",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Criminal Contact",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Entertainer",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Rustic Hospitality",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Guild Membership",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Hermit",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Noble",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Wanderer",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Researcher",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Sailor",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Military Rank",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.City Secrets",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Are You Entertained?",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Retainers",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Bad Reputation",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Artisan",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Farmer",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Guard",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Guide",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Merchant",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Scribe",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Wayfarer",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Wagonmaster",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Deep Miner",
+        "count": 1
+      },
+      {
+        "name": "BackgroundFeatureList.Harborfolk",
+        "count": 1
+      }
+    ]
+  },
+  "partiallyProcessedFiles": []
+}

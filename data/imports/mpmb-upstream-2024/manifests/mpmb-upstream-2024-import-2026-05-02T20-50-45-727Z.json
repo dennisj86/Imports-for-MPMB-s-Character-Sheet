@@ -1,0 +1,82 @@
+{
+  "importTimestamp": "2026-05-02T20:50:45.727Z",
+  "importPreset": "mpmb-upstream-2024",
+  "edition": "2024",
+  "upstreamRoot": "/home/dennis/IdeaProjects/2024_MPMBs-Character-Record-Sheet",
+  "rawManifestPath": "data/imports/mpmb-upstream-2024/raw/manifests/mpmb-upstream-2024-raw-2026-05-02T20-50-45-727Z.json",
+  "normalizedSnapshotPath": "data/imports/mpmb-upstream-2024/normalized/mpmb-upstream-2024-normalized-2026-05-02T20-50-45-727Z.json",
+  "execution": {
+    "scriptsExecuted": 8,
+    "executionErrors": 0,
+    "executionLog": [
+      {
+        "order": 2,
+        "header": "Name Dictionary \"ListsSources\"",
+        "status": "ok"
+      },
+      {
+        "order": 3,
+        "header": "Name Dictionary \"ListsClasses\"",
+        "status": "ok"
+      },
+      {
+        "order": 4,
+        "header": "Name Dictionary \"ListsRaces\"",
+        "status": "ok"
+      },
+      {
+        "order": 5,
+        "header": "Name Dictionary \"ListsBackgrounds\"",
+        "status": "ok"
+      },
+      {
+        "order": 6,
+        "header": "Name Dictionary \"ListsFeats\"",
+        "status": "ok"
+      },
+      {
+        "order": 7,
+        "header": "Name Dictionary \"ListsSpells\"",
+        "status": "ok"
+      },
+      {
+        "order": 8,
+        "header": "Name Dictionary \"ListsGear\"",
+        "status": "ok"
+      },
+      {
+        "order": 9,
+        "header": "Name Dictionary \"ListsMagicItems\"",
+        "status": "ok"
+      }
+    ]
+  },
+  "capturedRegistryCounts": {
+    "ClassList": 12,
+    "ClassSubList": 12,
+    "RaceList": 9,
+    "RaceSubList": 24,
+    "BackgroundList": 4,
+    "BackgroundFeatureList": 4,
+    "FeatsList": 16,
+    "SpellsList": 363,
+    "MagicItemsList": 239,
+    "WeaponsList": 63,
+    "ArmourList": 14,
+    "GearList": 90,
+    "AmmoList": 18,
+    "SourceList": 2
+  },
+  "normalizedCounts": {
+    "sources": 2,
+    "classes": 12,
+    "subclasses": 12,
+    "species": 33,
+    "backgrounds": 4,
+    "feats": 16,
+    "spells": 363,
+    "equipment": 424
+  },
+  "warnings": [],
+  "skipped": []
+}

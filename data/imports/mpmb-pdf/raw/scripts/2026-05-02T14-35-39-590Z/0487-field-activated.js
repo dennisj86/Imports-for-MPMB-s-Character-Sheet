@@ -1,0 +1,1 @@
+applySkillClick('Perc', true);

@@ -1,0 +1,2 @@
+
+ApplyBackground(event.value);

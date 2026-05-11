@@ -1,0 +1,1711 @@
+{
+  "generatedAt": "2026-05-02T20:50:45.598Z",
+  "importPreset": "mpmb-upstream-2014",
+  "baselineLabel": "mpmb-local + mpmb-pdf",
+  "candidateLabel": "mpmb-upstream-2014",
+  "counts": {
+    "baseline": {
+      "sources": 131,
+      "classes": 27,
+      "subclasses": 242,
+      "species": 329,
+      "backgrounds": 133,
+      "feats": 226,
+      "spells": 583,
+      "equipment": 1076
+    },
+    "candidate": {
+      "sources": 5,
+      "classes": 12,
+      "subclasses": 12,
+      "species": 19,
+      "backgrounds": 1,
+      "feats": 1,
+      "spells": 319,
+      "equipment": 431
+    }
+  },
+  "entityTypes": {
+    "classes": {
+      "baseCount": 27,
+      "candidateCount": 12,
+      "delta": -15,
+      "addedCount": 12,
+      "missingCount": 27,
+      "changedCount": 0,
+      "addedSample": [
+        {
+          "id": "barbarian::2014",
+          "key": "barbarian",
+          "name": "Barbarian"
+        },
+        {
+          "id": "bard::2014",
+          "key": "bard",
+          "name": "Bard"
+        },
+        {
+          "id": "cleric::2014",
+          "key": "cleric",
+          "name": "Cleric"
+        },
+        {
+          "id": "druid::2014",
+          "key": "druid",
+          "name": "Druid"
+        },
+        {
+          "id": "fighter::2014",
+          "key": "fighter",
+          "name": "Fighter"
+        },
+        {
+          "id": "monk::2014",
+          "key": "monk",
+          "name": "Monk"
+        },
+        {
+          "id": "paladin::2014",
+          "key": "paladin",
+          "name": "Paladin"
+        },
+        {
+          "id": "ranger::2014",
+          "key": "ranger",
+          "name": "Ranger"
+        },
+        {
+          "id": "rogue::2014",
+          "key": "rogue",
+          "name": "Rogue"
+        },
+        {
+          "id": "sorcerer::2014",
+          "key": "sorcerer",
+          "name": "Sorcerer"
+        },
+        {
+          "id": "warlock::2014",
+          "key": "warlock",
+          "name": "Warlock"
+        },
+        {
+          "id": "wizard::2014",
+          "key": "wizard",
+          "name": "Wizard"
+        }
+      ],
+      "missingSample": [
+        {
+          "id": "artificer::unknown",
+          "key": "artificer",
+          "name": "Artificer"
+        },
+        {
+          "id": "artificer-ua::unknown",
+          "key": "artificer-ua",
+          "name": "Artificer"
+        },
+        {
+          "id": "artificer-ua2::unknown",
+          "key": "artificer-ua2",
+          "name": "Artificer"
+        },
+        {
+          "id": "artificer-ua3::unknown",
+          "key": "artificer-ua3",
+          "name": "Artificer"
+        },
+        {
+          "id": "barbarian::unknown",
+          "key": "barbarian",
+          "name": "Barbarian"
+        },
+        {
+          "id": "bard::unknown",
+          "key": "bard",
+          "name": "Bard"
+        },
+        {
+          "id": "cleric::unknown",
+          "key": "cleric",
+          "name": "Cleric"
+        },
+        {
+          "id": "druid::unknown",
+          "key": "druid",
+          "name": "Druid"
+        },
+        {
+          "id": "sidekick-expert::unknown",
+          "key": "sidekick-expert",
+          "name": "Expert (sidekick)"
+        },
+        {
+          "id": "sidekick-expert-tcoe::unknown",
+          "key": "sidekick-expert-tcoe",
+          "name": "Expert (sidekick)"
+        },
+        {
+          "id": "fighter::unknown",
+          "key": "fighter",
+          "name": "Fighter"
+        },
+        {
+          "id": "monk::unknown",
+          "key": "monk",
+          "name": "Monk"
+        },
+        {
+          "id": "mystic::unknown",
+          "key": "mystic",
+          "name": "Mystic"
+        },
+        {
+          "id": "paladin::unknown",
+          "key": "paladin",
+          "name": "Paladin"
+        },
+        {
+          "id": "ua-playtest-ranger::unknown",
+          "key": "ua-playtest-ranger",
+          "name": "Playtest Ranger"
+        },
+        {
+          "id": "rangerua::unknown",
+          "key": "rangerua",
+          "name": "Ranger"
+        },
+        {
+          "id": "ranger::unknown",
+          "key": "ranger",
+          "name": "Ranger"
+        },
+        {
+          "id": "rogue::unknown",
+          "key": "rogue",
+          "name": "Rogue"
+        },
+        {
+          "id": "rune scribe::unknown",
+          "key": "rune scribe",
+          "name": "Rune Scribe"
+        },
+        {
+          "id": "sorcerer::unknown",
+          "key": "sorcerer",
+          "name": "Sorcerer"
+        },
+        {
+          "id": "spell-less ranger::unknown",
+          "key": "spell-less ranger",
+          "name": "Spell-less Ranger"
+        },
+        {
+          "id": "sidekick-spellcaster::unknown",
+          "key": "sidekick-spellcaster",
+          "name": "Spellcaster (sidekick)"
+        },
+        {
+          "id": "sidekick-spellcaster-tcoe::unknown",
+          "key": "sidekick-spellcaster-tcoe",
+          "name": "Spellcaster (sidekick)"
+        },
+        {
+          "id": "warlock::unknown",
+          "key": "warlock",
+          "name": "Warlock"
+        },
+        {
+          "id": "sidekick-warrior::unknown",
+          "key": "sidekick-warrior",
+          "name": "Warrior (sidekick)"
+        },
+        {
+          "id": "sidekick-warrior-tcoe::unknown",
+          "key": "sidekick-warrior-tcoe",
+          "name": "Warrior (sidekick)"
+        },
+        {
+          "id": "wizard::unknown",
+          "key": "wizard",
+          "name": "Wizard"
+        }
+      ],
+      "changedSample": []
+    },
+    "subclasses": {
+      "baseCount": 242,
+      "candidateCount": 12,
+      "delta": -230,
+      "addedCount": 12,
+      "missingCount": 242,
+      "changedCount": 0,
+      "addedSample": [
+        {
+          "id": "fighter-champion::fighter::2014",
+          "key": "fighter-champion",
+          "name": "Champion"
+        },
+        {
+          "id": "druid-circle-of-the-land::druid::2014",
+          "key": "druid-circle of the land",
+          "name": "Circle of the Land"
+        },
+        {
+          "id": "bard-college-of-lore::bard::2014",
+          "key": "bard-college of lore",
+          "name": "College of Lore"
+        },
+        {
+          "id": "sorcerer-draconic-bloodline::sorcerer::2014",
+          "key": "sorcerer-draconic bloodline",
+          "name": "Draconic Bloodline"
+        },
+        {
+          "id": "ranger-hunter::ranger::2014",
+          "key": "ranger-hunter",
+          "name": "Hunter"
+        },
+        {
+          "id": "cleric-life-domain::cleric::2014",
+          "key": "cleric-life domain",
+          "name": "Life Domain"
+        },
+        {
+          "id": "paladin-oath-of-devotion::paladin::2014",
+          "key": "paladin-oath of devotion",
+          "name": "Oath of Devotion"
+        },
+        {
+          "id": "barbarian-berserker::barbarian::2014",
+          "key": "barbarian-berserker",
+          "name": "Path of the Berserker"
+        },
+        {
+          "id": "wizard-evocation::wizard::2014",
+          "key": "wizard-evocation",
+          "name": "School of Evocation"
+        },
+        {
+          "id": "warlock-the-fiend::warlock::2014",
+          "key": "warlock-the fiend",
+          "name": "the Fiend"
+        },
+        {
+          "id": "rogue-thief::rogue::2014",
+          "key": "rogue-thief",
+          "name": "Thief"
+        },
+        {
+          "id": "monk-way-of-the-open-hand::monk::2014",
+          "key": "monk-way of the open hand",
+          "name": "Way of the Open Hand"
+        }
+      ],
+      "missingSample": [
+        {
+          "id": "sorcerer-aberrant-mind::sorcerer::unknown",
+          "key": "sorcerer-aberrant mind",
+          "name": "Aberrant Mind"
+        },
+        {
+          "id": "sorcerer-aberrant-mind-ua::sorcerer::unknown",
+          "key": "sorcerer-aberrant mind-ua",
+          "name": "Aberrant Mind"
+        },
+        {
+          "id": "artificer-alchemist::artificer::unknown",
+          "key": "artificer-alchemist",
+          "name": "Alchemist"
+        },
+        {
+          "id": "artificer-ua-alchemist::artificer-ua::unknown",
+          "key": "artificer-ua-alchemist",
+          "name": "Alchemist"
+        },
+        {
+          "id": "artificer-ua2-alchemist::artificer-ua2::unknown",
+          "key": "artificer-ua2-alchemist",
+          "name": "Alchemist"
+        },
+        {
+          "id": "artificer-ua3-alchemist::artificer-ua3::unknown",
+          "key": "artificer-ua3-alchemist",
+          "name": "Alchemist"
+        },
+        {
+          "id": "cleric-arcana-domain::cleric::unknown",
+          "key": "cleric-arcana domain",
+          "name": "Arcana Domain"
+        },
+        {
+          "id": "fighter-arcane-archer::fighter::unknown",
+          "key": "fighter-arcane archer",
+          "name": "Arcane Archer"
+        },
+        {
+          "id": "fighter-arcane-archer-ua::fighter::unknown",
+          "key": "fighter-arcane archer-ua",
+          "name": "Arcane Archer"
+        },
+        {
+          "id": "fighter-arcane-archer2-ua::fighter::unknown",
+          "key": "fighter-arcane archer2-ua",
+          "name": "Arcane Archer"
+        },
+        {
+          "id": "rogue-arcane-trickster::rogue::unknown",
+          "key": "rogue-arcane trickster",
+          "name": "Arcane Trickster"
+        },
+        {
+          "id": "artificer-ua3-archivist::artificer-ua3::unknown",
+          "key": "artificer-ua3-archivist",
+          "name": "Archivist"
+        },
+        {
+          "id": "artificer-artillerist::artificer::unknown",
+          "key": "artificer-artillerist",
+          "name": "Artillerist"
+        },
+        {
+          "id": "artificer-ua2-artillerist::artificer-ua2::unknown",
+          "key": "artificer-ua2-artillerist",
+          "name": "Artillerist"
+        },
+        {
+          "id": "artificer-ua3-artillerist::artificer-ua3::unknown",
+          "key": "artificer-ua3-artillerist",
+          "name": "Artillerist"
+        },
+        {
+          "id": "rogue-assassin::rogue::unknown",
+          "key": "rogue-assassin",
+          "name": "Assassin"
+        },
+        {
+          "id": "fighter-battle-master::fighter::unknown",
+          "key": "fighter-battle master",
+          "name": "Battle Master"
+        },
+        {
+          "id": "artificer-battle-smith::artificer::unknown",
+          "key": "artificer-battle smith",
+          "name": "Battle Smith"
+        },
+        {
+          "id": "artificer-ua3-battle-smith::artificer-ua3::unknown",
+          "key": "artificer-ua3-battle smith",
+          "name": "Battle Smith"
+        },
+        {
+          "id": "rangerua-beast-master-ua::rangerua::unknown",
+          "key": "rangerua-beast master-ua",
+          "name": "Beast Conclave"
+        },
+        {
+          "id": "ranger-beast-master::ranger::unknown",
+          "key": "ranger-beast master",
+          "name": "Beast Master"
+        },
+        {
+          "id": "spell-less-ranger-beast-master-ua::spell-less ranger::unknown",
+          "key": "spell-less ranger-beast master-ua",
+          "name": "Beast Master"
+        },
+        {
+          "id": "fighter-brute-ua::fighter::unknown",
+          "key": "fighter-brute-ua",
+          "name": "Brute"
+        },
+        {
+          "id": "fighter-cavalier::fighter::unknown",
+          "key": "fighter-cavalier",
+          "name": "Cavalier"
+        },
+        {
+          "id": "fighter-cavalier-ua::fighter::unknown",
+          "key": "fighter-cavalier-ua",
+          "name": "Cavalier"
+        },
+        {
+          "id": "fighter-cavalier2-ua::fighter::unknown",
+          "key": "fighter-cavalier2-ua",
+          "name": "Cavalier"
+        },
+        {
+          "id": "fighter-champion::fighter::unknown",
+          "key": "fighter-champion",
+          "name": "Champion"
+        },
+        {
+          "id": "wizard-chronurgy-magic::wizard::unknown",
+          "key": "wizard-chronurgy magic",
+          "name": "Chronurgy Magic"
+        },
+        {
+          "id": "druid-circle-of-dreams::druid::unknown",
+          "key": "druid-circle of dreams",
+          "name": "Circle of Dreams"
+        },
+        {
+          "id": "druid-circle-of-dreams-ua::druid::unknown",
+          "key": "druid-circle of dreams-ua",
+          "name": "Circle of Dreams"
+        }
+      ],
+      "changedSample": []
+    },
+    "species": {
+      "baseCount": 329,
+      "candidateCount": 19,
+      "delta": -310,
+      "addedCount": 19,
+      "missingCount": 329,
+      "changedCount": 0,
+      "addedSample": [
+        {
+          "id": "dragonborn-black::2014",
+          "key": "dragonborn-black",
+          "name": "Black dragonborn"
+        },
+        {
+          "id": "dragonborn-blue::2014",
+          "key": "dragonborn-blue",
+          "name": "Blue dragonborn"
+        },
+        {
+          "id": "dragonborn-brass::2014",
+          "key": "dragonborn-brass",
+          "name": "Brass dragonborn"
+        },
+        {
+          "id": "dragonborn-bronze::2014",
+          "key": "dragonborn-bronze",
+          "name": "Bronze dragonborn"
+        },
+        {
+          "id": "dragonborn-copper::2014",
+          "key": "dragonborn-copper",
+          "name": "Copper dragonborn"
+        },
+        {
+          "id": "dragonborn::2014",
+          "key": "dragonborn",
+          "name": "Dragonborn"
+        },
+        {
+          "id": "dragonborn-gold::2014",
+          "key": "dragonborn-gold",
+          "name": "Gold dragonborn"
+        },
+        {
+          "id": "dragonborn-green::2014",
+          "key": "dragonborn-green",
+          "name": "Green dragonborn"
+        },
+        {
+          "id": "half-elf::2014",
+          "key": "half-elf",
+          "name": "Half-elf"
+        },
+        {
+          "id": "half-orc::2014",
+          "key": "half-orc",
+          "name": "Half-orc"
+        },
+        {
+          "id": "high-elf::2014",
+          "key": "high elf",
+          "name": "High elf"
+        },
+        {
+          "id": "hill-dwarf::2014",
+          "key": "hill dwarf",
+          "name": "Hill dwarf"
+        },
+        {
+          "id": "human::2014",
+          "key": "human",
+          "name": "Human"
+        },
+        {
+          "id": "lightfoot-halfling::2014",
+          "key": "lightfoot halfling",
+          "name": "Lightfoot halfling"
+        },
+        {
+          "id": "dragonborn-red::2014",
+          "key": "dragonborn-red",
+          "name": "Red dragonborn"
+        },
+        {
+          "id": "rock-gnome::2014",
+          "key": "rock gnome",
+          "name": "Rock gnome"
+        },
+        {
+          "id": "dragonborn-silver::2014",
+          "key": "dragonborn-silver",
+          "name": "Silver dragonborn"
+        },
+        {
+          "id": "tiefling::2014",
+          "key": "tiefling",
+          "name": "Tiefling"
+        },
+        {
+          "id": "dragonborn-white::2014",
+          "key": "dragonborn-white",
+          "name": "White dragonborn"
+        }
+      ],
+      "missingSample": [
+        {
+          "id": "aarakocra::unknown",
+          "key": "aarakocra",
+          "name": "Aarakocra"
+        },
+        {
+          "id": "aasimar::unknown",
+          "key": "aasimar",
+          "name": "Aasimar"
+        },
+        {
+          "id": "aasimar-revenant-ua::unknown",
+          "key": "aasimar revenant-ua",
+          "name": "Aasimar Revenant"
+        },
+        {
+          "id": "abyssal-tiefling-ua::unknown",
+          "key": "abyssal tiefling-ua",
+          "name": "Abyssal tiefling"
+        },
+        {
+          "id": "high-elf-aereni::unknown",
+          "key": "high elf-aereni",
+          "name": "Aereni high elf"
+        },
+        {
+          "id": "wood-elf-aereni::unknown",
+          "key": "wood elf-aereni",
+          "name": "Aereni wood elf"
+        },
+        {
+          "id": "air-genasi::unknown",
+          "key": "air genasi",
+          "name": "Air genasi"
+        },
+        {
+          "id": "gem-dragonborn-amethyst::unknown",
+          "key": "gem dragonborn-amethyst",
+          "name": "Amethyst gem dragonborn"
+        },
+        {
+          "id": "gem-dragonborn-ua-amethyst::unknown",
+          "key": "gem dragonborn-ua-amethyst",
+          "name": "Amethyst gem dragonborn"
+        },
+        {
+          "id": "astral-elf::unknown",
+          "key": "astral elf",
+          "name": "Astral elf"
+        },
+        {
+          "id": "astral-elf-ua::unknown",
+          "key": "astral elf-ua",
+          "name": "Astral elf"
+        },
+        {
+          "id": "autognome::unknown",
+          "key": "autognome",
+          "name": "Autognome"
+        },
+        {
+          "id": "autognome-ua::unknown",
+          "key": "autognome-ua",
+          "name": "Autognome"
+        },
+        {
+          "id": "avariel-ua::unknown",
+          "key": "avariel-ua",
+          "name": "Avariel"
+        },
+        {
+          "id": "baalzebul-tiefling::unknown",
+          "key": "baalzebul tiefling",
+          "name": "Baalzebul tiefling"
+        },
+        {
+          "id": "beasthide-shifter::unknown",
+          "key": "beasthide shifter",
+          "name": "Beasthide shifter"
+        },
+        {
+          "id": "beasthide-shifter-ua::unknown",
+          "key": "beasthide shifter-ua",
+          "name": "Beasthide shifter"
+        },
+        {
+          "id": "shifter-ua-beasthide::unknown",
+          "key": "shifter-ua-beasthide",
+          "name": "Beasthide shifter"
+        },
+        {
+          "id": "chromatic-dragonborn-black::unknown",
+          "key": "chromatic dragonborn-black",
+          "name": "Black chromatic dragonborn"
+        },
+        {
+          "id": "chromatic-dragonborn-ua-black::unknown",
+          "key": "chromatic dragonborn-ua-black",
+          "name": "Black chromatic dragonborn"
+        },
+        {
+          "id": "draconblood-dragonborn-black::unknown",
+          "key": "draconblood dragonborn-black",
+          "name": "Black draconblood dragonborn"
+        },
+        {
+          "id": "dragonborn-black::unknown",
+          "key": "dragonborn-black",
+          "name": "Black dragonborn"
+        },
+        {
+          "id": "ravenite-dragonborn-black::unknown",
+          "key": "ravenite dragonborn-black",
+          "name": "Black ravenite dragonborn"
+        },
+        {
+          "id": "chromatic-dragonborn-blue::unknown",
+          "key": "chromatic dragonborn-blue",
+          "name": "Blue chromatic dragonborn"
+        },
+        {
+          "id": "chromatic-dragonborn-ua-blue::unknown",
+          "key": "chromatic dragonborn-ua-blue",
+          "name": "Blue chromatic dragonborn"
+        },
+        {
+          "id": "draconblood-dragonborn-blue::unknown",
+          "key": "draconblood dragonborn-blue",
+          "name": "Blue draconblood dragonborn"
+        },
+        {
+          "id": "dragonborn-blue::unknown",
+          "key": "dragonborn-blue",
+          "name": "Blue dragonborn"
+        },
+        {
+          "id": "ravenite-dragonborn-blue::unknown",
+          "key": "ravenite dragonborn-blue",
+          "name": "Blue ravenite dragonborn"
+        },
+        {
+          "id": "draconblood-dragonborn-brass::unknown",
+          "key": "draconblood dragonborn-brass",
+          "name": "Brass draconblood dragonborn"
+        },
+        {
+          "id": "dragonborn-brass::unknown",
+          "key": "dragonborn-brass",
+          "name": "Brass dragonborn"
+        }
+      ],
+      "changedSample": []
+    },
+    "backgrounds": {
+      "baseCount": 133,
+      "candidateCount": 1,
+      "delta": -132,
+      "addedCount": 1,
+      "missingCount": 133,
+      "changedCount": 0,
+      "addedSample": [
+        {
+          "id": "acolyte::2014",
+          "key": "acolyte",
+          "name": "Acolyte"
+        }
+      ],
+      "missingSample": [
+        {
+          "id": "acolyte::unknown",
+          "key": "acolyte",
+          "name": "Acolyte"
+        },
+        {
+          "id": "house-agent::unknown",
+          "key": "house agent",
+          "name": "Agent of House Cannith"
+        },
+        {
+          "id": "house-agent-deneith::unknown",
+          "key": "house agent-deneith",
+          "name": "Agent of House Deneith"
+        },
+        {
+          "id": "house-agent-ghallanda::unknown",
+          "key": "house agent-ghallanda",
+          "name": "Agent of House Ghallanda"
+        },
+        {
+          "id": "house-agent-jorasco::unknown",
+          "key": "house agent-jorasco",
+          "name": "Agent of House Jorasco"
+        },
+        {
+          "id": "house-agent-kundarak::unknown",
+          "key": "house agent-kundarak",
+          "name": "Agent of House Kundarak"
+        },
+        {
+          "id": "house-agent-lyrandar::unknown",
+          "key": "house agent-lyrandar",
+          "name": "Agent of House Lyrandar"
+        },
+        {
+          "id": "house-agent-medani::unknown",
+          "key": "house agent-medani",
+          "name": "Agent of House Medani"
+        },
+        {
+          "id": "house-agent-orien::unknown",
+          "key": "house agent-orien",
+          "name": "Agent of House Orien"
+        },
+        {
+          "id": "house-agent-phiarlan::unknown",
+          "key": "house agent-phiarlan",
+          "name": "Agent of House Phiarlan"
+        },
+        {
+          "id": "house-agent-sivis::unknown",
+          "key": "house agent-sivis",
+          "name": "Agent of House Sivis"
+        },
+        {
+          "id": "house-agent-tharashk::unknown",
+          "key": "house agent-tharashk",
+          "name": "Agent of House Tharashk"
+        },
+        {
+          "id": "house-agent-thuranni::unknown",
+          "key": "house agent-thuranni",
+          "name": "Agent of House Thuranni"
+        },
+        {
+          "id": "house-agent-vadalis::unknown",
+          "key": "house agent-vadalis",
+          "name": "Agent of House Vadalis"
+        },
+        {
+          "id": "anthropologist::unknown",
+          "key": "anthropologist",
+          "name": "Anthropologist"
+        },
+        {
+          "id": "archaeologist::unknown",
+          "key": "archaeologist",
+          "name": "Archaeologist"
+        },
+        {
+          "id": "artisan::unknown",
+          "key": "artisan",
+          "name": "Artisan"
+        },
+        {
+          "id": "astral-drifter::unknown",
+          "key": "astral drifter",
+          "name": "Astral Drifter"
+        },
+        {
+          "id": "athlete::unknown",
+          "key": "athlete",
+          "name": "Athlete"
+        },
+        {
+          "id": "criminal-augen-trust::unknown",
+          "key": "criminal-augen trust",
+          "name": "Augen Trust"
+        },
+        {
+          "id": "azorius-functionary::unknown",
+          "key": "azorius functionary",
+          "name": "Azorius Functionary"
+        },
+        {
+          "id": "black-fist-double-agent::unknown",
+          "key": "black fist double agent",
+          "name": "Black Fist Double Agent"
+        },
+        {
+          "id": "boros-legionnaire::unknown",
+          "key": "boros legionnaire",
+          "name": "Boros Legionnaire"
+        },
+        {
+          "id": "caravan-specialist::unknown",
+          "key": "caravan specialist",
+          "name": "Caravan Specialist"
+        },
+        {
+          "id": "celebrity-adventurer-s-scion::unknown",
+          "key": "celebrity adventurer's scion",
+          "name": "Celebrity Adventurer's Scion"
+        },
+        {
+          "id": "charlatan::unknown",
+          "key": "charlatan",
+          "name": "Charlatan"
+        },
+        {
+          "id": "soldier-city-watch::unknown",
+          "key": "soldier-city watch",
+          "name": "City Watch"
+        },
+        {
+          "id": "guild-artisan-clan-crafter::unknown",
+          "key": "guild artisan-clan crafter",
+          "name": "Clan Crafter"
+        },
+        {
+          "id": "sage-cloistered-scholar::unknown",
+          "key": "sage-cloistered scholar",
+          "name": "Cloistered Scholar"
+        },
+        {
+          "id": "sage-cobalt-scholar::unknown",
+          "key": "sage-cobalt scholar",
+          "name": "Cobalt Scholar"
+        }
+      ],
+      "changedSample": []
+    },
+    "feats": {
+      "baseCount": 226,
+      "candidateCount": 1,
+      "delta": -225,
+      "addedCount": 1,
+      "missingCount": 226,
+      "changedCount": 0,
+      "addedSample": [
+        {
+          "id": "grappler::2014",
+          "key": "grappler",
+          "name": "Grappler"
+        }
+      ],
+      "missingSample": [
+        {
+          "id": "aberrant-dragonmark::unknown",
+          "key": "aberrant dragonmark",
+          "name": "Aberrant Dragonmark"
+        },
+        {
+          "id": "aberrant-dragonmark-ua::unknown",
+          "key": "aberrant dragonmark-ua",
+          "name": "Aberrant Dragonmark"
+        },
+        {
+          "id": "acrobat-ua::unknown",
+          "key": "acrobat-ua",
+          "name": "Acrobat"
+        },
+        {
+          "id": "actor::unknown",
+          "key": "actor",
+          "name": "Actor"
+        },
+        {
+          "id": "adept-of-the-black-robes::unknown",
+          "key": "adept of the black robes",
+          "name": "Adept of the Black Robes"
+        },
+        {
+          "id": "adept-of-the-black-robes-ua::unknown",
+          "key": "adept of the black robes-ua",
+          "name": "Adept of the Black Robes"
+        },
+        {
+          "id": "adept-of-the-red-robes::unknown",
+          "key": "adept of the red robes",
+          "name": "Adept of the Red Robes"
+        },
+        {
+          "id": "adept-of-the-red-robes-ua::unknown",
+          "key": "adept of the red robes-ua",
+          "name": "Adept of the Red Robes"
+        },
+        {
+          "id": "adept-of-the-white-robes::unknown",
+          "key": "adept of the white robes",
+          "name": "Adept of the White Robes"
+        },
+        {
+          "id": "adept-of-the-white-robes-ua::unknown",
+          "key": "adept of the white robes-ua",
+          "name": "Adept of the White Robes"
+        },
+        {
+          "id": "agent-of-order::unknown",
+          "key": "agent of order",
+          "name": "Agent of Order"
+        },
+        {
+          "id": "agent-of-order-ua::unknown",
+          "key": "agent of order-ua",
+          "name": "Agent of Order"
+        },
+        {
+          "id": "alchemist-ua::unknown",
+          "key": "alchemist-ua",
+          "name": "Alchemist"
+        },
+        {
+          "id": "alert::unknown",
+          "key": "alert",
+          "name": "Alert"
+        },
+        {
+          "id": "animal-handler-ua::unknown",
+          "key": "animal handler-ua",
+          "name": "Animal Handler"
+        },
+        {
+          "id": "arcanist-ua::unknown",
+          "key": "arcanist-ua",
+          "name": "Arcanist"
+        },
+        {
+          "id": "artificer-initiate::unknown",
+          "key": "artificer initiate",
+          "name": "Artificer Initiate"
+        },
+        {
+          "id": "athlete::unknown",
+          "key": "athlete",
+          "name": "Athlete"
+        },
+        {
+          "id": "baleful-scion::unknown",
+          "key": "baleful scion",
+          "name": "Baleful Scion"
+        },
+        {
+          "id": "baleful-scion-ua::unknown",
+          "key": "baleful scion-ua",
+          "name": "Baleful Scion"
+        },
+        {
+          "id": "barbed-hide-ua::unknown",
+          "key": "barbed hide-ua",
+          "name": "Barbed Hide"
+        },
+        {
+          "id": "blade-mastery-ua::unknown",
+          "key": "blade mastery-ua",
+          "name": "Blade Mastery"
+        },
+        {
+          "id": "blind-fighting::unknown",
+          "key": "blind fighting",
+          "name": "Blind Fighting"
+        },
+        {
+          "id": "boon-of-energy-resistance::unknown",
+          "key": "boon of energy resistance",
+          "name": "Boon of Energy Resistance"
+        },
+        {
+          "id": "boon-of-fortitude::unknown",
+          "key": "boon of fortitude",
+          "name": "Boon of Fortitude"
+        },
+        {
+          "id": "boon-of-recovery::unknown",
+          "key": "boon of recovery",
+          "name": "Boon of Recovery"
+        },
+        {
+          "id": "boon-of-skill::unknown",
+          "key": "boon of skill",
+          "name": "Boon of Skill"
+        },
+        {
+          "id": "boon-of-speed::unknown",
+          "key": "boon of speed",
+          "name": "Boon of Speed"
+        },
+        {
+          "id": "bountiful-luck::unknown",
+          "key": "bountiful luck",
+          "name": "Bountiful Luck"
+        },
+        {
+          "id": "bountiful-luck-ua::unknown",
+          "key": "bountiful luck-ua",
+          "name": "Bountiful Luck"
+        }
+      ],
+      "changedSample": []
+    },
+    "spells": {
+      "baseCount": 583,
+      "candidateCount": 319,
+      "delta": -264,
+      "addedCount": 319,
+      "missingCount": 583,
+      "changedCount": 0,
+      "addedSample": [
+        {
+          "id": "acid-splash::2014",
+          "key": "acid splash",
+          "name": "Acid Splash"
+        },
+        {
+          "id": "aid::2014",
+          "key": "aid",
+          "name": "Aid"
+        },
+        {
+          "id": "alarm::2014",
+          "key": "alarm",
+          "name": "Alarm"
+        },
+        {
+          "id": "alter-self::2014",
+          "key": "alter self",
+          "name": "Alter Self"
+        },
+        {
+          "id": "animal-friendship::2014",
+          "key": "animal friendship",
+          "name": "Animal Friendship"
+        },
+        {
+          "id": "animal-messenger::2014",
+          "key": "animal messenger",
+          "name": "Animal Messenger"
+        },
+        {
+          "id": "animal-shapes::2014",
+          "key": "animal shapes",
+          "name": "Animal Shapes"
+        },
+        {
+          "id": "animate-dead::2014",
+          "key": "animate dead",
+          "name": "Animate Dead"
+        },
+        {
+          "id": "animate-objects::2014",
+          "key": "animate objects",
+          "name": "Animate Objects"
+        },
+        {
+          "id": "antilife-shell::2014",
+          "key": "antilife shell",
+          "name": "Antilife Shell"
+        },
+        {
+          "id": "antimagic-field::2014",
+          "key": "antimagic field",
+          "name": "Antimagic Field"
+        },
+        {
+          "id": "antipathy-sympathy::2014",
+          "key": "antipathy/sympathy",
+          "name": "Antipathy/Sympathy"
+        },
+        {
+          "id": "arcane-eye::2014",
+          "key": "arcane eye",
+          "name": "Arcane Eye"
+        },
+        {
+          "id": "arcane-lock::2014",
+          "key": "arcane lock",
+          "name": "Arcane Lock"
+        },
+        {
+          "id": "astral-projection::2014",
+          "key": "astral projection",
+          "name": "Astral Projection"
+        },
+        {
+          "id": "augury::2014",
+          "key": "augury",
+          "name": "Augury"
+        },
+        {
+          "id": "awaken::2014",
+          "key": "awaken",
+          "name": "Awaken"
+        },
+        {
+          "id": "bane::2014",
+          "key": "bane",
+          "name": "Bane"
+        },
+        {
+          "id": "banishment::2014",
+          "key": "banishment",
+          "name": "Banishment"
+        },
+        {
+          "id": "barkskin::2014",
+          "key": "barkskin",
+          "name": "Barkskin"
+        },
+        {
+          "id": "beacon-of-hope::2014",
+          "key": "beacon of hope",
+          "name": "Beacon of Hope"
+        },
+        {
+          "id": "bestow-curse::2014",
+          "key": "bestow curse",
+          "name": "Bestow Curse"
+        },
+        {
+          "id": "bigby-s-hand::2014",
+          "key": "bigby's hand",
+          "name": "Bigby's Hand"
+        },
+        {
+          "id": "blade-barrier::2014",
+          "key": "blade barrier",
+          "name": "Blade Barrier"
+        },
+        {
+          "id": "bless::2014",
+          "key": "bless",
+          "name": "Bless"
+        },
+        {
+          "id": "blight::2014",
+          "key": "blight",
+          "name": "Blight"
+        },
+        {
+          "id": "blindness-deafness::2014",
+          "key": "blindness/deafness",
+          "name": "Blindness/Deafness"
+        },
+        {
+          "id": "blink::2014",
+          "key": "blink",
+          "name": "Blink"
+        },
+        {
+          "id": "blur::2014",
+          "key": "blur",
+          "name": "Blur"
+        },
+        {
+          "id": "branding-smite::2014",
+          "key": "branding smite",
+          "name": "Branding Smite"
+        }
+      ],
+      "missingSample": [
+        {
+          "id": "abi-dalzim-s-horrid-wilting::unknown",
+          "key": "abi-dalzim's horrid wilting",
+          "name": "Abi-Dalzim's Horrid Wilting"
+        },
+        {
+          "id": "absorb-elements::unknown",
+          "key": "absorb elements",
+          "name": "Absorb Elements"
+        },
+        {
+          "id": "acid-splash::unknown",
+          "key": "acid splash",
+          "name": "Acid Splash"
+        },
+        {
+          "id": "aganazzar-s-scorcher::unknown",
+          "key": "aganazzar's scorcher",
+          "name": "Aganazzar's Scorcher"
+        },
+        {
+          "id": "aid::unknown",
+          "key": "aid",
+          "name": "Aid"
+        },
+        {
+          "id": "air-bubble::unknown",
+          "key": "air bubble",
+          "name": "Air Bubble"
+        },
+        {
+          "id": "alarm::unknown",
+          "key": "alarm",
+          "name": "Alarm"
+        },
+        {
+          "id": "alter-self::unknown",
+          "key": "alter self",
+          "name": "Alter Self"
+        },
+        {
+          "id": "animal-friendship::unknown",
+          "key": "animal friendship",
+          "name": "Animal Friendship"
+        },
+        {
+          "id": "animal-messenger::unknown",
+          "key": "animal messenger",
+          "name": "Animal Messenger"
+        },
+        {
+          "id": "animal-shapes::unknown",
+          "key": "animal shapes",
+          "name": "Animal Shapes"
+        },
+        {
+          "id": "animate-dead::unknown",
+          "key": "animate dead",
+          "name": "Animate Dead"
+        },
+        {
+          "id": "animate-objects::unknown",
+          "key": "animate objects",
+          "name": "Animate Objects"
+        },
+        {
+          "id": "antagonize::unknown",
+          "key": "antagonize",
+          "name": "Antagonize"
+        },
+        {
+          "id": "antagonize-ua::unknown",
+          "key": "antagonize-ua",
+          "name": "Antagonize"
+        },
+        {
+          "id": "antilife-shell::unknown",
+          "key": "antilife shell",
+          "name": "Antilife Shell"
+        },
+        {
+          "id": "antimagic-field::unknown",
+          "key": "antimagic field",
+          "name": "Antimagic Field"
+        },
+        {
+          "id": "antipathy-sympathy::unknown",
+          "key": "antipathy/sympathy",
+          "name": "Antipathy/Sympathy"
+        },
+        {
+          "id": "arcane-eye::unknown",
+          "key": "arcane eye",
+          "name": "Arcane Eye"
+        },
+        {
+          "id": "arcane-gate::unknown",
+          "key": "arcane gate",
+          "name": "Arcane Gate"
+        },
+        {
+          "id": "arcane-hacking-ua::unknown",
+          "key": "arcane hacking-ua",
+          "name": "Arcane Hacking"
+        },
+        {
+          "id": "arcane-lock::unknown",
+          "key": "arcane lock",
+          "name": "Arcane Lock"
+        },
+        {
+          "id": "arcane-vigor::unknown",
+          "key": "arcane vigor",
+          "name": "Arcane Vigor"
+        },
+        {
+          "id": "arcane-weapon-ua::unknown",
+          "key": "arcane weapon-ua",
+          "name": "Arcane Weapon"
+        },
+        {
+          "id": "armor-of-agathys::unknown",
+          "key": "armor of agathys",
+          "name": "Armor of Agathys"
+        },
+        {
+          "id": "arms-of-hadar::unknown",
+          "key": "arms of hadar",
+          "name": "Arms of Hadar"
+        },
+        {
+          "id": "ashardalon-s-stride::unknown",
+          "key": "ashardalon's stride",
+          "name": "Ashardalon's Stride"
+        },
+        {
+          "id": "astral-projection::unknown",
+          "key": "astral projection",
+          "name": "Astral Projection"
+        },
+        {
+          "id": "augury::unknown",
+          "key": "augury",
+          "name": "Augury"
+        },
+        {
+          "id": "aura-of-life::unknown",
+          "key": "aura of life",
+          "name": "Aura of Life"
+        }
+      ],
+      "changedSample": []
+    },
+    "equipment": {
+      "baseCount": 1076,
+      "candidateCount": 431,
+      "delta": -645,
+      "addedCount": 419,
+      "missingCount": 1076,
+      "changedCount": 0,
+      "addedSample": [
+        {
+          "id": "ladder-10-foot::2014",
+          "key": "ladder (10-foot)",
+          "name": "10-foot ladder"
+        },
+        {
+          "id": "pole-10-foot::2014",
+          "key": "pole (10-foot)",
+          "name": "10-foot pole"
+        },
+        {
+          "id": "abacus::2014",
+          "key": "abacus",
+          "name": "Abacus"
+        },
+        {
+          "id": "acid-splash::2014",
+          "key": "acid splash",
+          "name": "Acid Splash"
+        },
+        {
+          "id": "acid-vial::2014",
+          "key": "acid (vial)",
+          "name": "Acid, vials of"
+        },
+        {
+          "id": "adamantine-armor::2014",
+          "key": "adamantine armor",
+          "name": "Adamantine Armor"
+        },
+        {
+          "id": "alchemist-fire::2014",
+          "key": "alchemist fire",
+          "name": "Alchemist's Fire, flasks"
+        },
+        {
+          "id": "alchemist-s-fire-flask::2014",
+          "key": "alchemist's fire (flask)",
+          "name": "Alchemist's fire, flasks of"
+        },
+        {
+          "id": "ammunition-1-2-or-3::2014",
+          "key": "ammunition, +1, +2, or +3",
+          "name": "Ammunition, +1, +2, or +3"
+        },
+        {
+          "id": "amulet::2014",
+          "key": "amulet",
+          "name": "Amulet holy symbol"
+        },
+        {
+          "id": "amulet-of-health::2014",
+          "key": "amulet of health",
+          "name": "Amulet of Health"
+        },
+        {
+          "id": "amulet-of-proof-against-detection-and-location::2014",
+          "key": "amulet of proof against detection and location",
+          "name": "Amulet of Proof against Detection and Location"
+        },
+        {
+          "id": "amulet-of-the-planes::2014",
+          "key": "amulet of the planes",
+          "name": "Amulet of the Planes"
+        },
+        {
+          "id": "animal-feed-1-day::2014",
+          "key": "animal feed (1 day)",
+          "name": "Animal feed, days of"
+        },
+        {
+          "id": "animated-shield::2014",
+          "key": "animated shield",
+          "name": "Animated Shield"
+        },
+        {
+          "id": "antitoxin-vial::2014",
+          "key": "antitoxin (vial)",
+          "name": "Antitoxin, vials of"
+        },
+        {
+          "id": "apparatus-of-kwalish::2014",
+          "key": "apparatus of kwalish",
+          "name": "Apparatus of Kwalish"
+        },
+        {
+          "id": "armor-of-invulnerability::2014",
+          "key": "armor of invulnerability",
+          "name": "Armor of Invulnerability"
+        },
+        {
+          "id": "armor-of-resistance::2014",
+          "key": "armor of resistance",
+          "name": "Armor of Resistance"
+        },
+        {
+          "id": "armor-of-vulnerability::2014",
+          "key": "armor of vulnerability",
+          "name": "Armor of Vulnerability"
+        },
+        {
+          "id": "armor-1-2-or-3::2014",
+          "key": "armor, +1, +2, or +3",
+          "name": "Armor, +1, +2, or +3"
+        },
+        {
+          "id": "arrow-of-slaying::2014",
+          "key": "arrow of slaying",
+          "name": "Arro w of Slaying"
+        },
+        {
+          "id": "arrow-catching-shield::2014",
+          "key": "arrow-catching shield",
+          "name": "Arrow-Catching Shield"
+        },
+        {
+          "id": "arrows-20::2014",
+          "key": "arrows (20)",
+          "name": "Arrows"
+        },
+        {
+          "id": "arrow::2014",
+          "key": "arrow",
+          "name": "Arrows"
+        },
+        {
+          "id": "backpack::2014",
+          "key": "backpack",
+          "name": "Backpack"
+        },
+        {
+          "id": "ball-bearings-bag-of-1-000::2014",
+          "key": "ball bearings (bag of 1,000)",
+          "name": "Bag of 1000 ball bearings"
+        },
+        {
+          "id": "bag-of-beans::2014",
+          "key": "bag of beans",
+          "name": "Bag of Beans"
+        },
+        {
+          "id": "bag-of-devouring::2014",
+          "key": "bag of devouring",
+          "name": "Bag of Devouring"
+        },
+        {
+          "id": "bag-of-holding::2014",
+          "key": "bag of holding",
+          "name": "Bag of Holding"
+        }
+      ],
+      "missingSample": [
+        {
+          "id": "ladder-10-foot::unknown",
+          "key": "ladder (10-foot)",
+          "name": "10-foot ladder"
+        },
+        {
+          "id": "pole-10-foot::unknown",
+          "key": "pole (10-foot)",
+          "name": "10-foot pole"
+        },
+        {
+          "id": "abacus::unknown",
+          "key": "abacus",
+          "name": "Abacus"
+        },
+        {
+          "id": "abracadabrus::unknown",
+          "key": "abracadabrus",
+          "name": "Abracadabrus"
+        },
+        {
+          "id": "absorbing-tattoo::unknown",
+          "key": "absorbing tattoo",
+          "name": "Absorbing Tattoo"
+        },
+        {
+          "id": "acheron-blade::unknown",
+          "key": "acheron blade",
+          "name": "Acheron Blade"
+        },
+        {
+          "id": "acid-splash::unknown",
+          "key": "acid splash",
+          "name": "Acid Splash"
+        },
+        {
+          "id": "acid-vial::unknown",
+          "key": "acid (vial)",
+          "name": "Acid, vials of"
+        },
+        {
+          "id": "adamantine-ammunition::unknown",
+          "key": "adamantine ammunition",
+          "name": "Adamantine Ammunition"
+        },
+        {
+          "id": "adamantine-armor::unknown",
+          "key": "adamantine armor",
+          "name": "Adamantine Armor"
+        },
+        {
+          "id": "adamantine-weapon::unknown",
+          "key": "adamantine weapon",
+          "name": "Adamantine Weapon"
+        },
+        {
+          "id": "alchemical-compendium::unknown",
+          "key": "alchemical compendium",
+          "name": "Alchemical Compendium"
+        },
+        {
+          "id": "alchemist-fire::unknown",
+          "key": "alchemist fire",
+          "name": "Alchemist's Fire"
+        },
+        {
+          "id": "alchemist-s-fire-flask::unknown",
+          "key": "alchemist's fire (flask)",
+          "name": "Alchemist's fire, flasks of"
+        },
+        {
+          "id": "alchemy-jug::unknown",
+          "key": "alchemy jug",
+          "name": "Alchemy Jug"
+        },
+        {
+          "id": "all-purpose-tool::unknown",
+          "key": "all-purpose tool",
+          "name": "All-Purpose Tool"
+        },
+        {
+          "id": "amethyst-lodestone::unknown",
+          "key": "amethyst lodestone",
+          "name": "Amethyst Lodestone"
+        },
+        {
+          "id": "ammunition-1-2-or-3::unknown",
+          "key": "ammunition, +1, +2, or +3",
+          "name": "Ammunition, +1, +2, or +3"
+        },
+        {
+          "id": "amulet::unknown",
+          "key": "amulet",
+          "name": "Amulet holy symbol"
+        },
+        {
+          "id": "amulet-of-appearance::unknown",
+          "key": "amulet of appearance",
+          "name": "Amulet of Appearance"
+        },
+        {
+          "id": "amulet-of-betrayal::unknown",
+          "key": "amulet of betrayal",
+          "name": "Amulet of Betrayal"
+        },
+        {
+          "id": "amulet-of-duplicity::unknown",
+          "key": "amulet of duplicity",
+          "name": "Amulet of Duplicity"
+        },
+        {
+          "id": "amulet-of-health::unknown",
+          "key": "amulet of health",
+          "name": "Amulet of Health"
+        },
+        {
+          "id": "amulet-of-proof-against-detection-and-location::unknown",
+          "key": "amulet of proof against detection and location",
+          "name": "Amulet of Proof against Detection and Location"
+        },
+        {
+          "id": "amulet-of-protection-from-turning::unknown",
+          "key": "amulet of protection from turning",
+          "name": "Amulet of Protection from Turning"
+        },
+        {
+          "id": "amulet-of-the-black-skull::unknown",
+          "key": "amulet of the black skull",
+          "name": "Amulet of the Black Skull"
+        },
+        {
+          "id": "amulet-of-the-devout::unknown",
+          "key": "amulet of the devout",
+          "name": "Amulet of the Devout"
+        },
+        {
+          "id": "amulet-of-the-drunkard::unknown",
+          "key": "amulet of the drunkard",
+          "name": "Amulet of the Drunkard"
+        },
+        {
+          "id": "amulet-of-the-planes::unknown",
+          "key": "amulet of the planes",
+          "name": "Amulet of the Planes"
+        },
+        {
+          "id": "ancient-relic-boulder::unknown",
+          "key": "ancient relic boulder",
+          "name": "Ancient Relic Boulder"
+        }
+      ],
+      "changedSample": []
+    }
+  },
+  "quality": {
+    "baseline": {
+      "classesWithFeatures": 27,
+      "subclassesWithFeatures": 241,
+      "speciesWithTraits": 329,
+      "backgroundsWithTrait": 1,
+      "featsWithDescription": 219,
+      "spellsWithDescription": 583,
+      "equipmentWithDescription": 926
+    },
+    "candidate": {
+      "classesWithFeatures": 12,
+      "subclassesWithFeatures": 12,
+      "speciesWithTraits": 19,
+      "backgroundsWithTrait": 1,
+      "featsWithDescription": 1,
+      "spellsWithDescription": 319,
+      "equipmentWithDescription": 286
+    },
+    "delta": {
+      "classesWithFeatures": -15,
+      "subclassesWithFeatures": -229,
+      "speciesWithTraits": -310,
+      "backgroundsWithTrait": 0,
+      "featsWithDescription": -218,
+      "spellsWithDescription": -264,
+      "equipmentWithDescription": -640
+    }
+  },
+  "warnings": []
+}
