@@ -99,6 +99,97 @@ function extractList(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+const ABILITY_TOOL_TOKENS = new Set(["str", "dex", "con", "int", "wis", "cha", "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]);
+
+const TOOL_NORMALIZATION_PATTERNS: Array<{ pattern: RegExp; value: string }> = [
+  { pattern: /thieves?[’']?\s*tools?/i, value: "Thieves' tools" },
+  { pattern: /alchemist[’']?\s*supplies/i, value: "Alchemist's supplies" },
+  { pattern: /brewer[’']?\s*supplies/i, value: "Brewer's supplies" },
+  { pattern: /calligrapher[’']?\s*supplies/i, value: "Calligrapher's supplies" },
+  { pattern: /carpenter[’']?\s*tools?/i, value: "Carpenter's tools" },
+  { pattern: /cartographer[’']?\s*tools?/i, value: "Cartographer's tools" },
+  { pattern: /cobbler[’']?\s*tools?/i, value: "Cobbler's tools" },
+  { pattern: /(cook[’']?\s*utensils|cook[’']?\s*tools?)/i, value: "Cook's utensils" },
+  { pattern: /disguise\s*kit/i, value: "Disguise kit" },
+  { pattern: /forgery\s*kit/i, value: "Forgery kit" },
+  { pattern: /herbalism\s*kit/i, value: "Herbalism kit" },
+  { pattern: /navigator[’']?\s*tools?/i, value: "Navigator's tools" },
+  { pattern: /poisoner[’']?\s*kit/i, value: "Poisoner's kit" },
+  { pattern: /smith[’']?\s*tools?/i, value: "Smith's tools" },
+  { pattern: /mason[’']?\s*tools?/i, value: "Mason's tools" },
+  { pattern: /potter[’']?\s*tools?/i, value: "Potter's tools" },
+  { pattern: /weaver[’']?\s*tools?/i, value: "Weaver's tools" },
+  { pattern: /woodcarver[’']?\s*tools?/i, value: "Woodcarver's tools" },
+  { pattern: /tinker[’']?\s*tools?/i, value: "Tinker's tools" },
+  { pattern: /jeweler[’']?\s*tools?/i, value: "Jeweler's tools" },
+  { pattern: /leatherworker[’']?\s*tools?/i, value: "Leatherworker's tools" },
+  { pattern: /painter[’']?\s*supplies/i, value: "Painter's supplies" },
+  { pattern: /glassblower[’']?\s*tools?/i, value: "Glassblower's tools" },
+  { pattern: /artisan[’']?\s*tools?.*choice|choice.*artisan[’']?\s*tools?/i, value: "Artisan's tools (choice)" },
+  { pattern: /musical instrument.*choice|choice.*musical instrument|instrument.*choice/i, value: "Musical instrument (choice)" },
+  { pattern: /gaming set.*choice|choice.*gaming set/i, value: "Gaming set (choice)" },
+  { pattern: /tool(?: proficiency)? .*choice|choice.*tool(?: proficiency)?/i, value: "Tool proficiency (choice)" },
+  { pattern: /land vehicle|vehicle.*land/i, value: "Vehicles (land)" },
+  { pattern: /water vehicle|vehicle.*water/i, value: "Vehicles (water)" },
+];
+
+function dedupeByNormalizedToken(values: string[]): string[] {
+  const byToken = new Map<string, string>();
+  for (const value of values) {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const token = normalizeToken(trimmed);
+    if (!token) {
+      continue;
+    }
+    if (!byToken.has(token)) {
+      byToken.set(token, trimmed);
+    }
+  }
+  return Array.from(byToken.values());
+}
+
+function normalizeToolProficiencies(entries: string[], sourceLabel: string): { values: string[]; diagnostics: string[] } {
+  const diagnostics: string[] = [];
+  const normalized: string[] = [];
+  for (const rawEntry of entries) {
+    const value = rawEntry.replace(/^[+*-]\s*/, "").replace(/\.+$/, "").trim();
+    if (!value) {
+      continue;
+    }
+    if (/^none$/i.test(value)) {
+      continue;
+    }
+    const token = normalizeToken(value);
+    if (!token) {
+      continue;
+    }
+    if (ABILITY_TOOL_TOKENS.has(token)) {
+      diagnostics.push(`${sourceLabel}: tool proficiency token '${value}' is ambiguous and was ignored.`);
+      continue;
+    }
+    let resolved = TOOL_NORMALIZATION_PATTERNS.find((entry) => entry.pattern.test(value))?.value;
+    if (!resolved) {
+      if (/\bchoice\b/i.test(value) && !/\b(tool|kit|supplies|instrument|set|vehicle)\b/i.test(value)) {
+        diagnostics.push(`${sourceLabel}: tool proficiency token '${value}' is not specific enough and was ignored.`);
+        continue;
+      }
+      if (!/\b(tool|tools|kit|kits|supplies|instrument|set|vehicle|vehicles)\b/i.test(value)) {
+        diagnostics.push(`${sourceLabel}: tool proficiency token '${value}' is not a deterministic tool proficiency and was ignored.`);
+        continue;
+      }
+      resolved = value.replace(/\s+/g, " ");
+    }
+    normalized.push(resolved);
+  }
+  return {
+    values: dedupeByNormalizedToken(normalized),
+    diagnostics,
+  };
+}
+
 function parseLanguages(value: string | undefined): string[] {
   const text = String(value ?? "");
   const match = text.match(/languages?\s*[:\-]\s*([^\n]+)/i);
@@ -441,6 +532,8 @@ export function applyBackgroundRules(
   const conversionMode = entity?.conversionMode ?? "native";
   const isConvertedIn2024 = rulesMode === "2024" && conversionMode === "2024-converted";
   const notes = [...(entity?.notes ?? [])];
+  const normalizedTools = normalizeToolProficiencies(extractList(background.toolText), `Background ${background.name}`);
+  notes.push(...normalizedTools.diagnostics);
 
   const hasPlaceholder = /select origin feat/i.test(background.bonusFeat ?? "");
   const nativeBonusFeatName = background.bonusFeat && !hasPlaceholder ? background.bonusFeat : undefined;
@@ -495,14 +588,14 @@ export function applyBackgroundRules(
     },
     abilityScoreRule: rulesMode === "2024" ? "background-2024" : "native",
     skillProficiencies: extractList(background.skillText),
-    toolProficiencies: extractList(background.toolText),
+    toolProficiencies: normalizedTools.values,
     languagesGranted: parseLanguages(`${background.traitText ?? ""}\n${background.toolText ?? ""}`),
     grantedFeatIds,
     grantedFeatNames,
     unresolvedGrantedFeatNames,
     originFeatRequirement,
     notes,
-    dataStatus: unresolvedGrantedFeatNames.length > 0 ? "partial" : "complete",
+    dataStatus: unresolvedGrantedFeatNames.length > 0 || normalizedTools.diagnostics.length > 0 ? "partial" : "complete",
   };
 }
 
@@ -554,6 +647,8 @@ export function applyClassRules(
     tools: parsedRule?.tools ?? [],
     skillChoices: parsedRule?.skillChoices ?? { count: 0, options: [] },
   };
+  const normalizedTools = normalizeToolProficiencies(rule.tools, `Class ${classDef?.name ?? "Unknown"}`);
+  notes.push(...normalizedTools.diagnostics);
 
   return {
     class: classEntity,
@@ -563,14 +658,19 @@ export function applyClassRules(
     savingThrowProficiencies: [...rule.savingThrows],
     armorProficiencies: [...rule.armor],
     weaponProficiencies: [...rule.weapons],
-    toolProficiencies: [...rule.tools],
+    toolProficiencies: [...normalizedTools.values],
     skillChoices: {
       count: rule.skillChoices.count,
       options: [...rule.skillChoices.options],
       source: "class",
     },
     notes,
-    dataStatus: classDef ? (explicitRule || (parsedRule && rule.savingThrows.length > 0) ? "complete" : "partial") : "pending",
+    dataStatus:
+      classDef
+        ? (explicitRule || (parsedRule && rule.savingThrows.length > 0)) && normalizedTools.diagnostics.length === 0
+          ? "complete"
+          : "partial"
+        : "pending",
   };
 }
 
@@ -623,11 +723,19 @@ export function applyBaseProficiencies(
     }
   }
 
+  const tools = dedupeByNormalizedToken([...classResult.toolProficiencies, ...backgroundResult.toolProficiencies]);
+  const rawToolCount = classResult.toolProficiencies.length + backgroundResult.toolProficiencies.length;
+  const diagnostics: string[] = [];
+  if (rawToolCount > tools.length) {
+    diagnostics.push(`Tool proficiency normalization merged ${rawToolCount - tools.length} duplicate entry(s).`);
+  }
+
   return {
     savingThrows: [...classResult.savingThrowProficiencies],
-    skills: [...new Set([...backgroundResult.skillProficiencies, ...speciesResult.skillProficiencies, ...classSkillChoice.selectedSkills, ...speciesSelectedSkills])],
-    tools: [...new Set([...classResult.toolProficiencies, ...backgroundResult.toolProficiencies])],
+    skills: dedupeByNormalizedToken([...backgroundResult.skillProficiencies, ...speciesResult.skillProficiencies, ...classSkillChoice.selectedSkills, ...speciesSelectedSkills]),
+    tools,
     languages: Array.from(languageSet),
+    diagnostics,
     pendingSkillChoices: [
       ...(classSkillChoice.missingCount > 0
         ? [
@@ -898,6 +1006,7 @@ export function resolveAppliedCharacterRules(input: AppliedResolverInput): Appli
     ...classResult.notes,
     ...spellcasting.notes,
     ...abilityScoreAdjustments.notes,
+    ...proficiencies.diagnostics,
   ];
 
   const statuses: AppliedDataStatus[] = [

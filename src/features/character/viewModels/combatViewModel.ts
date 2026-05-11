@@ -1,7 +1,7 @@
 import type { CharacterDraft } from "../../../domain/character";
 import type { CharacterPlayState } from "../../../domain/playState";
 import type { CharacterEngineState } from "../../../services/characterEngine";
-import { normalizeInventoryState, resolveArmorClassFromEquipment, type ArmorClassBreakdown } from "../../../services/equipment";
+import { normalizeInventoryState, resolveAlternativeArmorClassFormulas, resolveArmorClassFromEquipment, type ArmorClassBreakdown } from "../../../services/equipment";
 import type { PlayHitDicePoolCounter } from "../../../services/playState";
 import { activeEffectModifiersForTarget } from "../../../services/rules";
 
@@ -61,10 +61,23 @@ export function buildCombatViewModel(input: {
   const subclassName = engine.subclassDef?.name;
   const characterLine = `${className}${subclassName ? ` (${subclassName})` : ""} · Level ${draft.classSelection.level}`;
   const originLine = [engine.speciesDef?.name, engine.backgroundDef?.name].filter(Boolean).join(" · ") || "Origin pending";
+  const abilityModifiers = {
+    str: engine.derivedStats.abilityScores.str?.modifier ?? 0,
+    dex: engine.derivedStats.abilityScores.dex?.modifier ?? 0,
+    con: engine.derivedStats.abilityScores.con?.modifier ?? 0,
+    int: engine.derivedStats.abilityScores.int?.modifier ?? 0,
+    wis: engine.derivedStats.abilityScores.wis?.modifier ?? 0,
+    cha: engine.derivedStats.abilityScores.cha?.modifier ?? 0,
+  };
   const armorClass = resolveArmorClassFromEquipment({
     inventoryItems: normalizeInventoryState(draft.inventory, engine.equipmentCatalog).items,
     equipmentCatalog: engine.equipmentCatalog,
-    dexModifier: derived.abilityScores.dex.modifier,
+    dexModifier: abilityModifiers.dex,
+    abilityModifiers,
+    alternativeFormulas: resolveAlternativeArmorClassFormulas({
+      classDef: engine.classDef,
+      level: draft.classSelection.level,
+    }),
     ruleModifiers: [
       ...(engine.ruleEngine?.modifiers ?? []),
       ...activeEffectModifiersForTarget(playState.activeEffects, "armor-class", { targetScope: "self" }),

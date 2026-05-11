@@ -6,6 +6,7 @@ import {
   inferEquipmentSlot,
   isShieldDefinition,
   normalizeInventoryState,
+  resolveAlternativeArmorClassFormulas,
   resolveArmorClassFromEquipment,
   resolveEquipmentDefinitionForInventoryItem,
   type ArmorClassBreakdown,
@@ -84,10 +85,23 @@ function toItemView(
 
 export function buildInventoryViewModel(draft: CharacterDraft, engine: CharacterEngineState, playState?: CharacterPlayState): InventoryViewModel {
   const normalizedInventory = normalizeInventoryState(draft.inventory, engine.equipmentCatalog);
+  const abilityModifiers = {
+    str: engine.derivedStats.abilityScores.str?.modifier ?? 0,
+    dex: engine.derivedStats.abilityScores.dex?.modifier ?? 0,
+    con: engine.derivedStats.abilityScores.con?.modifier ?? 0,
+    int: engine.derivedStats.abilityScores.int?.modifier ?? 0,
+    wis: engine.derivedStats.abilityScores.wis?.modifier ?? 0,
+    cha: engine.derivedStats.abilityScores.cha?.modifier ?? 0,
+  };
   const armorClass = resolveArmorClassFromEquipment({
     inventoryItems: normalizedInventory.items,
     equipmentCatalog: engine.equipmentCatalog,
-    dexModifier: engine.derivedStats.abilityScores.dex.modifier,
+    dexModifier: abilityModifiers.dex,
+    abilityModifiers,
+    alternativeFormulas: resolveAlternativeArmorClassFormulas({
+      classDef: engine.classDef,
+      level: draft.classSelection.level,
+    }),
     ruleModifiers: [
       ...(engine.ruleEngine?.modifiers ?? []),
       ...activeEffectModifiersForTarget(playState?.activeEffects, "armor-class", { targetScope: "self" }),

@@ -57,6 +57,61 @@ function stateFor(choice: RuleChoice, context: MpmbStructuredChoiceContext): Rul
   return applyChoiceState(choice, context.draft.ruleChoices?.[choice.id]);
 }
 
+function featureChoiceValue(draft: CharacterDraft, featureId: string): string | undefined {
+  return draft.featureChoices.find((entry) => entry.featureId === featureId)?.optionId;
+}
+
+function scopedSpellSelections(draft: CharacterDraft, contextId: string): string[] {
+  const prefix = `spell-choice:${contextId}:`;
+  const selected = draft.featureChoices
+    .filter((entry) => entry.featureId.startsWith(prefix))
+    .map((entry) => entry.featureId.slice(prefix.length))
+    .filter(Boolean);
+  return Array.from(new Set(selected));
+}
+
+function fallbackFeatSpellListSelection(
+  source: RuleSourceDescriptor,
+  context: MpmbStructuredChoiceContext,
+  options: RuleChoiceOption[],
+): string | undefined {
+  if (source.sourceType !== "feat" || !source.sourceId) {
+    return undefined;
+  }
+  const selected = featureChoiceValue(context.draft, `feat-choice:${source.sourceId}:spell-list`);
+  if (!selected) {
+    return undefined;
+  }
+  return options.some((option) => option.id === selected) ? selected : undefined;
+}
+
+function fallbackFeatSpellAbilitySelection(
+  source: RuleSourceDescriptor,
+  context: MpmbStructuredChoiceContext,
+  options: RuleChoiceOption[],
+): string | undefined {
+  if (source.sourceType !== "feat" || !source.sourceId) {
+    return undefined;
+  }
+  const selected = featureChoiceValue(context.draft, `feat-choice:${source.sourceId}:spell-ability`);
+  if (!selected) {
+    return undefined;
+  }
+  return options.some((option) => option.id === selected) ? selected : undefined;
+}
+
+function fallbackFeatSpellSelection(
+  source: RuleSourceDescriptor,
+  context: MpmbStructuredChoiceContext,
+  isCantrip: boolean,
+): string[] {
+  if (source.sourceType !== "feat" || !source.sourceId) {
+    return [];
+  }
+  const contextId = `spell-context:${source.sourceId}:${isCantrip ? "cantrip" : "level1"}`;
+  return scopedSpellSelections(context.draft, contextId);
+}
+
 function abilityIdFromMpmb(value: unknown): string | undefined {
   if (value === 4 || value === "int" || value === "Int" || value === "Intelligence") return "int";
   if (value === 5 || value === "wis" || value === "Wis" || value === "Wisdom") return "wis";
@@ -140,7 +195,7 @@ function childParentChoice(source: RuleSourceDescriptor, id: string, selectedOpt
   };
 }
 
-function parentChoice(source: RuleSourceDescriptor, options: RuleChoiceOption[]): RuleChoice {
+function parentChoice(source: RuleSourceDescriptor, options: RuleChoiceOption[], selectedOptionIds: string[] = []): RuleChoice {
   return {
     id: choiceId(source, "choices"),
     sourceDescriptorId: source.id,
@@ -150,7 +205,7 @@ function parentChoice(source: RuleSourceDescriptor, options: RuleChoiceOption[])
     minCount: 1,
     maxCount: 1,
     options,
-    selectedOptionIds: [],
+    selectedOptionIds,
     status: "pending",
     appliesAtLevel: source.level,
     diagnostics: ["Structured MPMB choices field produced this parent choice."],
@@ -159,11 +214,18 @@ function parentChoice(source: RuleSourceDescriptor, options: RuleChoiceOption[])
   };
 }
 
-function spellcastingAbilityChoice(source: RuleSourceDescriptor, parent: RuleChoice, optionId: string, option: StructuredRecord): RuleChoice | undefined {
+function spellcastingAbilityChoice(
+  source: RuleSourceDescriptor,
+  parent: RuleChoice,
+  optionId: string,
+  option: StructuredRecord,
+  context: MpmbStructuredChoiceContext,
+): RuleChoice | undefined {
   const options = abilityOptions(option.spellcastingAbility);
   if (options.length === 0) {
     return undefined;
   }
+  const selectedOptionId = fallbackFeatSpellAbilitySelection(source, context, options);
   return {
     id: choiceId(source, `option:${optionId}:spellcasting-ability`),
     sourceDescriptorId: source.id,
@@ -173,7 +235,7 @@ function spellcastingAbilityChoice(source: RuleSourceDescriptor, parent: RuleCho
     minCount: 1,
     maxCount: 1,
     options,
-    selectedOptionIds: [],
+    selectedOptionIds: selectedOptionId ? [selectedOptionId] : [],
     status: "pending",
     appliesAtLevel: source.level,
     diagnostics: ["Structured MPMB spellcastingAbility field produced this child choice."],
@@ -212,6 +274,7 @@ function spellBonusChoice(
   const requiredCount = asNumber(bonus.times) ?? (fixedSelections(bonus.selection).length || 1);
   const idSuffix = `${optionId ? `option:${optionId}:` : ""}spellcasting-bonus:${index}:${isCantrip ? "cantrip" : "spell"}`;
   const unsupported = filter.options.length === 0;
+  const fallbackSelectedSpellIds = fallbackFeatSpellSelection(source, context, isCantrip);
   const id = choiceId(source, idSuffix);
   return {
     id,
@@ -222,7 +285,7 @@ function spellBonusChoice(
     minCount: requiredCount,
     maxCount: requiredCount,
     options: filter.options,
-    selectedOptionIds: [],
+    selectedOptionIds: fallbackSelectedSpellIds.filter((idValue) => filter.options.some((option) => option.id === idValue)),
     status: unsupported ? "unsupported" : "pending",
     appliesAtLevel: source.level,
     diagnostics: [
@@ -295,19 +358,21 @@ export function resolveMpmbStructuredChoices(source: RuleSourceDescriptor, conte
     const selectedOption = selectedOptionId ? optionObject(structured, selectedOptionId) : undefined;
     if (selectedOption && selectedOptionId) {
       const parent = childParentChoice(source, parentId, selectedOptionIds);
-      const abilityChoice = spellcastingAbilityChoice(source, parent, selectedOptionId, selectedOption);
+      const abilityChoice = spellcastingAbilityChoice(source, parent, selectedOptionId, selectedOption, context);
       if (abilityChoice) choices.push(abilityChoice);
       for (const [index, bonus] of spellcastingBonuses(selectedOption.spellcastingBonus).entries()) {
         choices.push(spellBonusChoice(source, parent, selectedOptionId, bonus, index, context));
       }
     }
   } else if (optionLabels.length > 0) {
-    const parent = stateFor(parentChoice(source, optionLabels.map(choiceOption)), context);
+    const options = optionLabels.map(choiceOption);
+    const fallbackSelection = fallbackFeatSpellListSelection(source, context, options);
+    const parent = stateFor(parentChoice(source, options, fallbackSelection ? [fallbackSelection] : []), context);
     choices.push(parent);
     const selectedOptionId = parent.selectedOptionIds[0];
     const selectedOption = selectedOptionId ? optionObject(structured, selectedOptionId) : undefined;
     if (selectedOption && selectedOptionId) {
-      const abilityChoice = spellcastingAbilityChoice(source, parent, selectedOptionId, selectedOption);
+      const abilityChoice = spellcastingAbilityChoice(source, parent, selectedOptionId, selectedOption, context);
       if (abilityChoice) choices.push(abilityChoice);
       for (const [index, bonus] of spellcastingBonuses(selectedOption.spellcastingBonus).entries()) {
         choices.push(spellBonusChoice(source, parent, selectedOptionId, bonus, index, context));

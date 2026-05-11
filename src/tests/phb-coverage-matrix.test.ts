@@ -6,7 +6,7 @@ function uniqueSorted(values: string[]): string[] {
 }
 
 describe("PHB coverage matrix v1", () => {
-  it("covers the requested PHB classes, choice surfaces, apply paths, and modifier paths while documenting intentional gaps", () => {
+  it("covers the requested PHB classes, choice surfaces, apply paths, and modifier paths", () => {
     const classKeys = uniqueSorted(PHB_GOLDEN_COVERAGE_MATRIX.fixtures.map((entry) => entry.classKey));
     const choiceTypes = uniqueSorted(PHB_GOLDEN_COVERAGE_MATRIX.fixtures.flatMap((entry) => entry.choiceTypes));
     const applyPaths = uniqueSorted(PHB_GOLDEN_COVERAGE_MATRIX.fixtures.flatMap((entry) => entry.applyPaths));
@@ -44,10 +44,6 @@ describe("PHB coverage matrix v1", () => {
       "weapon-attack-profile",
       "weapon-damage-flat",
     ]));
-    expect(PHB_GOLDEN_COVERAGE_MATRIX.knownGaps).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: "barbarian-unarmored-defense-actual-content" }),
-      expect.objectContaining({ id: "tool-proficiency-text-normalization" }),
-      expect.objectContaining({ id: "magic-initiate-choice-surface-sync" }),
-    ]));
+    expect(PHB_GOLDEN_COVERAGE_MATRIX.knownGaps).toEqual([]);
   });
 });

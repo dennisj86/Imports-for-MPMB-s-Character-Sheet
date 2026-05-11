@@ -90,7 +90,7 @@ export const PHB_GOLDEN_COVERAGE_MATRIX: {
       choiceTypes: ["background-ability-choice", "class-skill-choice", "origin-feat-choice", "feat-subchoice", "cantrip-selection", "spell-selection"],
       applyPaths: ["ability-score-adjustments", "skill-proficiencies", "tool-proficiencies", "spell-selection", "active-effects"],
       modifierTypes: ["roll-bonus-dice"],
-      notes: ["Magic Initiate coverage is asserted through builder feat/spell contexts rather than the canonical rule-choice surface."],
+      notes: ["Magic Initiate completion is asserted through builder feat/spell contexts and canonical rule-choice status."],
     },
     {
       fixtureId: "barbarian",
@@ -98,7 +98,6 @@ export const PHB_GOLDEN_COVERAGE_MATRIX: {
       choiceTypes: ["background-ability-choice", "class-skill-choice"],
       applyPaths: ["ability-score-adjustments", "skill-proficiencies", "tool-proficiencies", "weapon-proficiencies", "armor-proficiencies", "action-resources"],
       modifierTypes: ["weapon-attack-profile"],
-      notes: ["Unarmored Defense is tracked as a known gap in the current actual-content path."],
     },
     {
       fixtureId: "ranger",
@@ -108,23 +107,7 @@ export const PHB_GOLDEN_COVERAGE_MATRIX: {
       modifierTypes: ["weapon-attack-flat", "weapon-attack-profile"],
     },
   ],
-  knownGaps: [
-    {
-      id: "barbarian-unarmored-defense-actual-content",
-      scope: "barbarian-fixture",
-      reason: "The actual 2024 Barbarian fixture still resolves baseline 10 + DEX AC; class-feature Unarmored Defense is not yet mapped into the real-content AC path.",
-    },
-    {
-      id: "tool-proficiency-text-normalization",
-      scope: "background-tool-proficiencies",
-      reason: "Some text-derived tool grants are still coarse tokens such as `Dex`, `Wis`, or generic instrument labels instead of a fully normalized tool catalog entity.",
-    },
-    {
-      id: "magic-initiate-choice-surface-sync",
-      scope: "wizard-magic-initiate",
-      reason: "Magic Initiate subchoice completion is deterministic in builder spell contexts, but the canonical rule-choice surface still shows the parent feature-option row as pending.",
-    },
-  ],
+  knownGaps: [],
 };
 
 function requireClass(key: string) {

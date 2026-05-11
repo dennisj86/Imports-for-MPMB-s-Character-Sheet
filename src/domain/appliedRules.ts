@@ -106,6 +106,7 @@ export interface AppliedProficienciesResult {
   skills: string[];
   tools: string[];
   languages: string[];
+  diagnostics: string[];
   pendingSkillChoices: Array<{
     source: "class" | "species" | "background";
     count: number;

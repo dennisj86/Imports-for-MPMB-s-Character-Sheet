@@ -1,12 +1,24 @@
 import { toSlug } from "../../lib/slug";
 import type { EquipmentSlot, InventoryItem } from "../../domain/character";
-import type { EquipmentDefinition } from "../../domain/content";
+import type { ClassDefinition, EquipmentDefinition } from "../../domain/content";
 import type { DerivedDataStatus } from "../../domain/derivedStats";
 import type { RuleModifier } from "../../domain/rules";
 import { modifiersForTarget, sumFlatModifiers } from "../rules/modifierPipeline";
 
 export type ArmorDexMode = "full" | "max2" | "none";
 export type ArmorCalculationMode = "unarmored" | "armor" | "armor+shield" | "unarmored+shield";
+export type ArmorAbilityModifierKey = "str" | "dex" | "con" | "int" | "wis" | "cha";
+
+export interface AlternativeArmorClassFormula {
+  id: string;
+  sourceName: string;
+  formulaLabel: string;
+  base: number;
+  abilityModifiers: ArmorAbilityModifierKey[];
+  requiresNoArmor?: boolean;
+  canApplyWhileArmored?: boolean;
+  allowsShield?: boolean;
+}
 
 export interface ArmorClassBreakdown {
   total: number;
@@ -21,6 +33,9 @@ export interface ArmorClassBreakdown {
   bonus: number;
   bonusSources: string[];
   modifierSources?: string[];
+  alternativeFormulaId?: string;
+  alternativeFormulaSource?: string;
+  alternativeFormulaExpression?: string;
   warnings: string[];
   dataStatus: DerivedDataStatus;
 }
@@ -50,6 +65,42 @@ export function normalizeEquipmentToken(value: string | undefined): string {
     .replace(/^open5e-/, "")
     .replace(/-2014$/, "")
     .replace(/-2024$/, "");
+}
+
+function normalizeClassToken(value: string | undefined): string {
+  return normalizeEquipmentToken(value).replace(/-legacy$/, "");
+}
+
+function hasFeatureAtOrBelowLevel(classDef: ClassDefinition | undefined, level: number, matcher: RegExp): boolean {
+  if (!classDef) {
+    return false;
+  }
+  return classDef.features.some((feature) => {
+    if (feature.minLevel > level) {
+      return false;
+    }
+    return matcher.test(`${feature.key ?? ""} ${feature.name}`);
+  });
+}
+
+export function resolveAlternativeArmorClassFormulas(input: {
+  classDef?: ClassDefinition;
+  level: number;
+}): AlternativeArmorClassFormula[] {
+  const classToken = normalizeClassToken(input.classDef?.compatibility?.canonicalKey ?? input.classDef?.canonicalClassKey ?? input.classDef?.key ?? input.classDef?.name);
+  const formulas: AlternativeArmorClassFormula[] = [];
+  if (classToken === "barbarian" && hasFeatureAtOrBelowLevel(input.classDef, input.level, /unarmored defense/i)) {
+    formulas.push({
+      id: "barbarian-unarmored-defense",
+      sourceName: "Barbarian: Unarmored Defense",
+      formulaLabel: "10 + DEX modifier + CON modifier",
+      base: 10,
+      abilityModifiers: ["dex", "con"],
+      requiresNoArmor: true,
+      allowsShield: true,
+    });
+  }
+  return formulas;
 }
 
 function parseArmorFromDescription(description: string | undefined): { base: number; dexMode: ArmorDexMode } | undefined {
@@ -237,9 +288,19 @@ export function resolveArmorClassFromEquipment(input: {
   inventoryItems: InventoryItem[];
   equipmentCatalog: EquipmentDefinition[] | undefined;
   dexModifier: number;
+  abilityModifiers?: Partial<Record<ArmorAbilityModifierKey, number>>;
+  alternativeFormulas?: AlternativeArmorClassFormula[];
   ruleModifiers?: RuleModifier[];
   concentrationActive?: boolean;
 }): ArmorClassBreakdown {
+  const abilityModifiers: Record<ArmorAbilityModifierKey, number> = {
+    str: input.abilityModifiers?.str ?? 0,
+    dex: input.abilityModifiers?.dex ?? input.dexModifier,
+    con: input.abilityModifiers?.con ?? 0,
+    int: input.abilityModifiers?.int ?? 0,
+    wis: input.abilityModifiers?.wis ?? 0,
+    cha: input.abilityModifiers?.cha ?? 0,
+  };
   const warnings: string[] = [];
   const equippedItems = input.inventoryItems.filter((entry) => entry.equipped);
   const equippedDefinitions = equippedItems.map((inventory) => {
@@ -261,8 +322,8 @@ export function resolveArmorClassFromEquipment(input: {
   let armorName: string | undefined;
   let armorBase = 10;
   let dexMode: ArmorDexMode = "full";
-  let dexApplied = input.dexModifier;
-  let armorTotal = 10 + input.dexModifier;
+  let dexApplied = abilityModifiers.dex;
+  let armorTotal = 10 + abilityModifiers.dex;
 
   for (const armor of armorDefinitions) {
     const profile = resolveArmorProfile(armor);
@@ -270,7 +331,7 @@ export function resolveArmorClassFromEquipment(input: {
       warnings.push(`Armor profile for ${armor.name} is not structured enough for automatic AC.`);
       continue;
     }
-    const candidateDex = dexForMode(input.dexModifier, profile.dexMode);
+    const candidateDex = dexForMode(abilityModifiers.dex, profile.dexMode);
     const candidateTotal = profile.base + candidateDex;
     if (candidateTotal > armorTotal || !armorName) {
       armorName = armor.name;
@@ -281,8 +342,50 @@ export function resolveArmorClassFromEquipment(input: {
     }
   }
 
+  let alternativeFormula:
+    | {
+      formula: AlternativeArmorClassFormula;
+      total: number;
+      expression: string;
+      dexContribution: number;
+      otherAbilityContribution: number;
+    }
+    | undefined;
+  for (const formula of input.alternativeFormulas ?? []) {
+    const canApplyWhileArmored = formula.canApplyWhileArmored === true;
+    if (armorName && !canApplyWhileArmored) {
+      continue;
+    }
+    if (formula.requiresNoArmor && armorName) {
+      continue;
+    }
+    const dexContribution = formula.abilityModifiers.includes("dex") ? abilityModifiers.dex : 0;
+    const otherAbilityContribution = formula.abilityModifiers
+      .filter((ability) => ability !== "dex")
+      .reduce((sum, ability) => sum + abilityModifiers[ability], 0);
+    const total = formula.base + dexContribution + otherAbilityContribution;
+    if (!alternativeFormula || total > alternativeFormula.total) {
+      alternativeFormula = {
+        formula,
+        total,
+        expression: formula.formulaLabel,
+        dexContribution,
+        otherAbilityContribution,
+      };
+    }
+  }
+
+  if (alternativeFormula && (!armorName || alternativeFormula.total >= armorTotal)) {
+    armorName = undefined;
+    armorBase = alternativeFormula.formula.base + alternativeFormula.otherAbilityContribution;
+    dexMode = alternativeFormula.formula.abilityModifiers.includes("dex") ? "full" : "none";
+    dexApplied = alternativeFormula.dexContribution;
+    armorTotal = alternativeFormula.total;
+  }
+
   const shield = shieldDefinitions[0];
-  const shieldBonus = shield ? parseShieldBonus(shield) : 0;
+  const shieldAllowed = alternativeFormula?.formula.allowsShield !== false;
+  const shieldBonus = shield && shieldAllowed ? parseShieldBonus(shield) : 0;
   const bonusItems = equippedDefinitions
     .map((entry) => ({ item: entry.like, bonus: parseSimpleAcBonus(entry.like) }))
     .filter((entry): entry is { item: EquipmentLike; bonus: number } => entry.bonus !== undefined && !isShieldDefinition(entry.item));
@@ -321,6 +424,9 @@ export function resolveArmorClassFromEquipment(input: {
     bonus,
     bonusSources: [...bonusSources, ...modifierSources],
     modifierSources,
+    alternativeFormulaId: alternativeFormula?.formula.id,
+    alternativeFormulaSource: alternativeFormula?.formula.sourceName,
+    alternativeFormulaExpression: alternativeFormula?.expression,
     warnings: [
       ...warnings,
       ...ruleModifierResult.applications.filter((entry) => !entry.applied && entry.reason).map((entry) => `${entry.modifier.sourceName}: ${entry.reason}`),

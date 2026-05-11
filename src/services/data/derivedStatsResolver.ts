@@ -17,7 +17,7 @@ import type {
 } from "../../domain/derivedStats";
 import type { ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../../domain/content";
 import type { OptionScopedApplyState, RuleModifier } from "../../domain/rules";
-import { normalizeInventoryState, resolveArmorClassFromEquipment } from "../equipment";
+import { normalizeInventoryState, resolveAlternativeArmorClassFormulas, resolveArmorClassFromEquipment, type ArmorAbilityModifierKey, type AlternativeArmorClassFormula } from "../equipment";
 import { hpGainKey } from "../levelUp";
 import { modifiersForTarget, sumFlatModifiers } from "../rules";
 import { computeOptionScopedAbilityPreview, resolveCombinedRuleProficiencies } from "../rules";
@@ -366,6 +366,8 @@ export function computeArmorClassBase(
   draft: CharacterDraft,
   equipmentCatalog: EquipmentDefinition[] | undefined,
   dexModifier: number,
+  abilityModifiers: Partial<Record<ArmorAbilityModifierKey, number>> = {},
+  alternativeFormulas: AlternativeArmorClassFormula[] = [],
   ruleModifiers: RuleModifier[] = [],
 ): DerivedArmorClassResult {
   const inventory = normalizeInventoryState(draft.inventory, equipmentCatalog);
@@ -373,6 +375,8 @@ export function computeArmorClassBase(
     inventoryItems: inventory.items,
     equipmentCatalog,
     dexModifier,
+    abilityModifiers,
+    alternativeFormulas,
     ruleModifiers,
   });
   return {
@@ -634,7 +638,25 @@ export function resolveDerivedStats(
   const passive = computePassiveScores(skills, ruleModifiers);
   const initiative = computeInitiative(abilityScores, ruleModifiers);
   const speed = computeSpeed(context.speciesDef, appliedRules);
-  const armorClass = computeArmorClassBase(draft, context.equipmentCatalog, abilityScores.dex.modifier, ruleModifiers);
+  const alternativeArmorClassFormulas = resolveAlternativeArmorClassFormulas({
+    classDef: context.classDef,
+    level: draft.classSelection.level,
+  });
+  const armorClass = computeArmorClassBase(
+    draft,
+    context.equipmentCatalog,
+    abilityScores.dex.modifier,
+    {
+      str: abilityScores.str.modifier,
+      dex: abilityScores.dex.modifier,
+      con: abilityScores.con.modifier,
+      int: abilityScores.int.modifier,
+      wis: abilityScores.wis.modifier,
+      cha: abilityScores.cha.modifier,
+    },
+    alternativeArmorClassFormulas,
+    ruleModifiers,
+  );
   const hitPoints = computeHitPointsMaxBase(draft.classSelection.level, context.classDef, abilityScores.con.modifier, draft);
   const spellcasting = computeSpellcastingStats(
     appliedRules,

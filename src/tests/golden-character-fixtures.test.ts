@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCombatViewModel } from "../features/character/viewModels";
+import { buildCombatViewModel, buildInventoryViewModel } from "../features/character/viewModels";
 import { contentSnapshot } from "../services/data/content";
 import {
   addActiveEffectFromSpell,
@@ -23,7 +23,6 @@ import {
   findSpellByName,
   findSpellContext,
   findWeaponProfile,
-  PHB_GOLDEN_COVERAGE_MATRIX,
 } from "./support/phbGoldenFixtures";
 
 function containsToken(values: string[], token: string): boolean {
@@ -209,18 +208,21 @@ describe("PHB golden character fixtures v1", () => {
 
     const featCantrips = findSpellContext(state, `spell-context:${magicInitiate.id}:cantrip`);
     const featLeveled = findSpellContext(state, `spell-context:${magicInitiate.id}:level1`);
+    const parentChoice = state.engine.ruleEngine.choiceSurface.choices.find((choice) => choice.sourceName === "Magic Initiate" && choice.choiceType === "feature-option");
     expect(featCantrips.eligibleSpells.every((entry) => entry.classes.includes("cleric"))).toBe(true);
     expect(featLeveled.eligibleSpells.every((entry) => entry.classes.includes("cleric"))).toBe(true);
     expect(featCantrips.selectedSpellNames).toEqual(["Guidance", "Resistance"]);
     expect(featLeveled.selectedSpellNames).toEqual(["Bless"]);
+    expect(parentChoice?.status).toBe("complete");
     expect(state.engine.selectedSpells.map((entry) => entry.name)).toEqual(
       expect.arrayContaining(["Fire Bolt", "Mage Hand", "Light", "Burning Hands", "Magic Missile", "Shield", "Detect Magic", "Guidance", "Resistance", "Bless"]),
     );
   });
 
-  it("documents the current barbarian actual-content gap while keeping rage, hit dice, and attack stats stable", () => {
+  it("keeps barbarian unarmored defense, rage, hit dice, and attack stats stable", () => {
     const state = buildBarbarianFixture();
     const handaxe = findWeaponProfile(state, "Handaxe");
+    const inventory = buildInventoryViewModel(state.draft, state.engine);
 
     expect(state.engine.derivedStats.abilityScores.str.finalScore).toBe(18);
     expect(state.engine.derivedStats.abilityScores.con.finalScore).toBe(17);
@@ -233,8 +235,9 @@ describe("PHB golden character fixtures v1", () => {
     expect(state.engine.actionResources.resourceSet.resources.some((entry) => entry.name === "Rage" && entry.usesMax === 2)).toBe(true);
     expect(handaxe.proficiencyApplied).toBe(true);
     expect(handaxe.attackBonus).toBe(6);
-    expect(state.engine.derivedStats.armorClass.value).toBe(12);
-    expect(PHB_GOLDEN_COVERAGE_MATRIX.knownGaps.some((entry) => entry.id === "barbarian-unarmored-defense-actual-content")).toBe(true);
+    expect(state.engine.derivedStats.armorClass.value).toBe(15);
+    expect(inventory.armorClass.alternativeFormulaSource).toBe("Barbarian: Unarmored Defense");
+    expect(inventory.armorClass.alternativeFormulaExpression).toBe("10 + DEX modifier + CON modifier");
   });
 
   it("keeps ranger archery, deft explorer languages, mastery selection, and longbow attack math stable", () => {
