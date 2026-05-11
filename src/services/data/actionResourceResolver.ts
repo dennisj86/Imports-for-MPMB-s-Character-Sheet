@@ -26,6 +26,7 @@ import type {
 } from "../../domain/content";
 import type { DerivedCharacterStats, DerivedDataStatus } from "../../domain/derivedStats";
 import type { LevelProgressionResult } from "../../domain/progression";
+import type { CharacterRuleEngineState, RuleSourceType } from "../../domain/rules";
 import { resolveEquipmentDefinitionForInventoryItem } from "../equipment";
 import { ACTION_FEATURE_RULES, type FeatureResourceFallbackRule, type FeatureRule } from "./mappings/actionFeatureRules";
 
@@ -45,6 +46,7 @@ type ActionResourceResolverContext = {
   selectedSpells?: SpellDefinition[];
   equipmentCatalog?: EquipmentDefinition[];
   resourceSet?: CharacterResourceSet;
+  ruleEngine?: CharacterRuleEngineState;
 };
 
 type FeatureUsageResolution = {
@@ -395,6 +397,48 @@ function detectSpellActivation(castingTime: string | undefined): CharacterAction
 function featureRule(feature: FeatureDefinition): FeatureRule | undefined {
   const token = normalizeToken(feature.key || feature.name);
   return ACTION_FEATURE_RULES[token];
+}
+
+function actionSourceTypeForRuleSource(sourceType: RuleSourceType): CharacterAction["sourceType"] {
+  switch (sourceType) {
+    case "class-feature":
+      return "class";
+    case "subclass-feature":
+      return "subclass";
+    case "species-feature":
+      return "species";
+    case "background-feature":
+      return "background";
+    case "feat":
+      return "feat";
+    case "spell":
+      return "spell";
+    case "item":
+      return "item";
+    default:
+      return "core";
+  }
+}
+
+function resourceSourceTypeForRuleSource(sourceType: RuleSourceType): CharacterResource["sourceType"] {
+  switch (sourceType) {
+    case "class-feature":
+      return "class";
+    case "subclass-feature":
+      return "subclass";
+    case "species-feature":
+      return "species";
+    case "background-feature":
+      return "background";
+    case "feat":
+      return "feat";
+    case "spell":
+      return "spell";
+    case "item":
+      return "item";
+    default:
+      return "system";
+  }
 }
 
 function parseDescriptionUsageFallback(description: string | undefined): { usesMax?: number; recharge?: RechargeRule; dataStatus: DerivedDataStatus; notes: string[] } {
@@ -754,6 +798,52 @@ function splitActions(actions: CharacterAction[]): CharacterActionSet {
   return grouped;
 }
 
+function collectOptionScopedResources(
+  ruleEngine: CharacterRuleEngineState | undefined,
+): CharacterResource[] {
+  if (!ruleEngine) {
+    return [];
+  }
+  return ruleEngine.optionScoped.resources.map((resource) => ({
+    id: resource.id,
+    name: resource.label,
+    sourceType: resourceSourceTypeForRuleSource(resource.sourceType),
+    sourceId: resource.sourceDescriptorId,
+    sourceName: resource.sourceName,
+    usesMax: resource.usesMax,
+    usesRemaining: resource.usesMax,
+    recharge: resource.recharge,
+    formula: resource.formula,
+    notes: [...resource.diagnostics],
+    dataStatus: resource.dataStatus,
+  }));
+}
+
+function collectOptionScopedActions(
+  ruleEngine: CharacterRuleEngineState | undefined,
+): CharacterAction[] {
+  if (!ruleEngine) {
+    return [];
+  }
+  return ruleEngine.optionScoped.actions.map((action) => ({
+    id: action.id,
+    name: action.label,
+    activationType: action.activationType,
+    source: {
+      sourceType: actionSourceTypeForRuleSource(action.sourceType),
+      sourceId: action.sourceDescriptorId,
+      sourceName: action.sourceName,
+    },
+    sourceType: actionSourceTypeForRuleSource(action.sourceType),
+    sourceId: action.sourceDescriptorId,
+    description: action.description,
+    requiresResourceIds: action.resourceId ? [action.resourceId] : [],
+    prerequisites: [],
+    notes: [...action.diagnostics],
+    dataStatus: action.dataStatus,
+  }));
+}
+
 export function resolveCharacterResources(
   draft: CharacterDraft,
   appliedRules: AppliedCharacterRules,
@@ -794,7 +884,9 @@ export function resolveCharacterResources(
     dataStatus: progression.spellProgression.dataStatus,
   };
 
-  const resources = [...limitedUse.resources, ...slotResources].sort((left, right) => left.name.localeCompare(right.name));
+  const optionScopedResources = collectOptionScopedResources(context.ruleEngine)
+    .filter((resource) => !limitedUse.resources.some((existing) => existing.id === resource.id) && !slotResources.some((existing) => existing.id === resource.id));
+  const resources = [...limitedUse.resources, ...optionScopedResources, ...slotResources].sort((left, right) => left.name.localeCompare(right.name));
   const dataStatus = combineStatuses([
     spellcastingResources.dataStatus,
     resources.some((entry) => entry.dataStatus === "partial") ? "partial" : "complete",
@@ -836,6 +928,8 @@ export function resolveCharacterActions(
   const featureActions = collectFeatureActions(features, limitedByFeatureId);
   const spellActions = collectSpellActions(context.selectedSpells ?? [], resourceSet.spellcasting);
   const itemActions = collectItemActions(draft, context.equipmentCatalog);
+  const optionScopedActions = collectOptionScopedActions(context.ruleEngine)
+    .filter((action) => !featureActions.some((existing) => existing.id === action.id) && !spellActions.some((existing) => existing.id === action.id) && !itemActions.some((existing) => existing.id === action.id));
 
   resourceSet.spellcasting.cantripActions = spellActions.filter((entry) => entry.sourceType === "spell" && (entry.name || "").length > 0)
     .filter((entry) => {
@@ -844,7 +938,7 @@ export function resolveCharacterActions(
     });
   resourceSet.spellcasting.spellActions = spellActions.filter((entry) => entry.sourceType === "spell");
 
-  return splitActions([...featureActions, ...spellActions, ...itemActions]);
+  return splitActions([...featureActions, ...spellActions, ...itemActions, ...optionScopedActions]);
 }
 
 export function resolveCharacterActionResources(

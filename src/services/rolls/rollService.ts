@@ -121,6 +121,7 @@ export function executeRollRequest(
       permanentModifierBreakdown: modifierBreakdown(request.permanentModifiers),
       temporaryModifierBreakdown: modifierBreakdown(request.temporaryModifiers),
       bonusDice,
+      activeEffects: request.selectedActiveEffects,
       total,
       naturalRoll: d20.keptRoll,
       outcomeLabel: outcomeForRoll(request, d20.keptRoll),
@@ -148,6 +149,7 @@ export function executeRollRequest(
     permanentModifierBreakdown: modifierBreakdown(request.permanentModifiers),
     temporaryModifierBreakdown: modifierBreakdown(request.temporaryModifiers),
     bonusDice,
+    activeEffects: request.selectedActiveEffects,
     total: dice.total + modifier + bonusDiceTotal,
     outcomeLabel: "normal",
     sourceSummary: request.metadata?.sourceSummary as string | undefined,
@@ -160,7 +162,10 @@ function formatModifier(modifier: number): string {
 }
 
 export function createRollPlayEvent(result: RollResult): CharacterPlayEvent {
-  const bonusDice = result.bonusDice?.map((entry) => `${entry.expression}=${entry.total}`).join(", ");
+  const bonusDice = result.bonusDice
+    ?.map((entry) => `${entry.sourceName ? `${entry.sourceName} ` : ""}${entry.expression}=${entry.total}`)
+    .join(", ");
+  const activeEffects = result.activeEffects?.map((entry) => entry.label).join(", ");
   const permanent = result.permanentModifierBreakdown?.filter((entry) => entry.applied).map((entry) => `${entry.sourceName} ${entry.value}`).join(", ");
   const temporary = result.temporaryModifierBreakdown?.filter((entry) => entry.applied).map((entry) => `${entry.sourceName} ${entry.value}`).join(", ");
   return createPlayEvent({
@@ -171,6 +176,7 @@ export function createRollPlayEvent(result: RollResult): CharacterPlayEvent {
       rollResult: result,
       summary: [
         `${result.diceExpression} ${formatModifier(result.modifier)}`,
+        activeEffects ? `effects ${activeEffects}` : undefined,
         bonusDice ? `bonus ${bonusDice}` : undefined,
         permanent ? `permanent ${permanent}` : undefined,
         temporary ? `temporary ${temporary}` : undefined,

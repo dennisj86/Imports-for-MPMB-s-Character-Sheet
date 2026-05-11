@@ -16,10 +16,11 @@ import type {
   SkillKey,
 } from "../../domain/derivedStats";
 import type { ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../../domain/content";
-import type { RuleModifier } from "../../domain/rules";
-import { resolveArmorClassFromEquipment } from "../equipment";
-import { hpGainKey, resolveLevelUpAbilityScoreBonuses } from "../levelUp";
+import type { OptionScopedApplyState, RuleModifier } from "../../domain/rules";
+import { normalizeInventoryState, resolveArmorClassFromEquipment } from "../equipment";
+import { hpGainKey } from "../levelUp";
 import { modifiersForTarget, sumFlatModifiers } from "../rules";
+import { computeOptionScopedAbilityPreview, resolveCombinedRuleProficiencies } from "../rules";
 
 type AbilityScoresWithModifiers = Record<AbilityKey, DerivedAbilityScore>;
 
@@ -29,6 +30,7 @@ type DerivedStatsResolverContext = {
   speciesDef?: SpeciesDefinition;
   equipmentCatalog?: EquipmentDefinition[];
   ruleModifiers?: RuleModifier[];
+  optionScoped?: OptionScopedApplyState;
 };
 
 const ABILITIES: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -65,10 +67,6 @@ const SPELLCASTING_ABILITY_BY_CLASS: Record<string, AbilityKey> = {
   warlock: "cha",
   wizard: "int",
 };
-
-function abilityModifier(score: number): number {
-  return Math.floor((score - 10) / 2);
-}
 
 function normalizeToken(value: string | undefined): string {
   return toSlug(value ?? "")
@@ -167,40 +165,58 @@ function combineStatuses(statuses: DerivedDataStatus[]): DerivedDataStatus {
   return "complete";
 }
 
-export function computeAbilityModifiers(draft: CharacterDraft, appliedRules: AppliedCharacterRules, ruleModifiers: RuleModifier[] = []): AbilityScoresWithModifiers {
-  const output = {} as AbilityScoresWithModifiers;
-  const levelUpBonuses = resolveLevelUpAbilityScoreBonuses(draft);
+export function computeAbilityModifiers(
+  draft: CharacterDraft,
+  appliedRules: AppliedCharacterRules,
+  ruleModifiers: RuleModifier[] = [],
+  optionScoped?: OptionScopedApplyState,
+): AbilityScoresWithModifiers {
+  const modifierBonuses = {} as Partial<Record<AbilityKey, number>>;
   for (const ability of ABILITIES) {
-    const baseScore = draft.abilityScores[ability];
-    const rulesBonus = appliedRules.abilityScoreAdjustments.fixed[ability] ?? 0;
-    const levelUpBonus = levelUpBonuses[ability] ?? 0;
-    const modifierBonus = sumFlatModifiers(modifiersForTarget(ruleModifiers, "ability-score"), {
+    modifierBonuses[ability] = sumFlatModifiers(modifiersForTarget(ruleModifiers, "ability-score"), {
       target: "ability-score",
       ability,
       inventoryItems: draft.inventory.items,
     }).total;
-    const appliedBonus = rulesBonus + levelUpBonus + modifierBonus;
-    const uncappedFinalScore = baseScore + appliedBonus;
-    const finalScore = levelUpBonus > 0 ? Math.min(20, uncappedFinalScore) : uncappedFinalScore;
+  }
+
+  const preview = computeOptionScopedAbilityPreview({
+    draft,
+    appliedRules,
+    abilityScoreBonuses: optionScoped?.abilityScoreBonuses ?? [],
+    abilityScoreMaximums: optionScoped?.abilityScoreMaximums ?? [],
+    modifierBonuses,
+  });
+
+  const output = {} as AbilityScoresWithModifiers;
+  for (const ability of ABILITIES) {
+    const entry = preview[ability];
     const notes: string[] = [];
-    if (rulesBonus !== 0) {
-      notes.push(`Applied rules bonus ${rulesBonus >= 0 ? "+" : ""}${rulesBonus}.`);
+    if (entry.rulesBonus !== 0) {
+      notes.push(`Applied rules bonus ${entry.rulesBonus >= 0 ? "+" : ""}${entry.rulesBonus}.`);
     }
-    if (levelUpBonus !== 0) {
-      notes.push(`Applied level-up ASI bonus ${levelUpBonus >= 0 ? "+" : ""}${levelUpBonus}.`);
+    if (entry.levelUpBonus !== 0) {
+      notes.push(`Applied level-up ASI bonus ${entry.levelUpBonus >= 0 ? "+" : ""}${entry.levelUpBonus}.`);
     }
-    if (modifierBonus !== 0) {
-      notes.push(`Applied rule modifier bonus ${modifierBonus >= 0 ? "+" : ""}${modifierBonus}.`);
+    for (const bonus of optionScoped?.abilityScoreBonuses.filter((candidate) => candidate.ability === ability) ?? []) {
+      notes.push(`${bonus.sourceName}: ${bonus.amount >= 0 ? "+" : ""}${bonus.amount}.`);
     }
-    if (finalScore !== uncappedFinalScore) {
-      notes.push("Level-up ASI capped this ability at 20.");
+    if (entry.modifierBonus !== 0) {
+      notes.push(`Applied rule modifier bonus ${entry.modifierBonus >= 0 ? "+" : ""}${entry.modifierBonus}.`);
+    }
+    const maxima = optionScoped?.abilityScoreMaximums.filter((candidate) => candidate.ability === ability) ?? [];
+    maxima.forEach((maximum) => {
+      notes.push(`${maximum.sourceName}: max ${maximum.maximum}.`);
+    });
+    if (entry.finalScore !== entry.uncappedFinalScore) {
+      notes.push(entry.explicitMaximum !== undefined ? `Ability score capped at ${entry.explicitMaximum}.` : "Level-up ASI capped this ability at 20.");
     }
     output[ability] = {
       ability,
-      baseScore,
-      appliedBonus,
-      finalScore,
-      modifier: abilityModifier(finalScore),
+      baseScore: entry.baseScore,
+      appliedBonus: entry.finalScore - entry.baseScore,
+      finalScore: entry.finalScore,
+      modifier: entry.modifier,
       notes,
     };
   }
@@ -238,16 +254,25 @@ export function computeSavingThrows(
 }
 
 export function computeSkillModifiers(
-  appliedRules: AppliedCharacterRules,
+  skillProficiencies: string[],
+  expertiseProficiencies: string[],
   abilityScores: AbilityScoresWithModifiers,
   proficiencyBonus: number,
   ruleModifiers: RuleModifier[] = [],
 ): Record<SkillKey, DerivedSkillResult> {
   const profSet = new Set<SkillKey>();
-  for (const skillName of appliedRules.proficiencies.skills) {
+  const expertiseSet = new Set<SkillKey>();
+  for (const skillName of skillProficiencies) {
     const normalized = normalizeSkillName(skillName);
     if (normalized) {
       profSet.add(normalized);
+    }
+  }
+  for (const skillName of expertiseProficiencies) {
+    const normalized = normalizeSkillName(skillName);
+    if (normalized) {
+      profSet.add(normalized);
+      expertiseSet.add(normalized);
     }
   }
   for (const modifier of modifiersForTarget(ruleModifiers, "proficiency")) {
@@ -259,6 +284,7 @@ export function computeSkillModifiers(
   const output = {} as Record<SkillKey, DerivedSkillResult>;
   for (const skill of SKILL_CONFIG) {
     const proficient = profSet.has(skill.key);
+    const expertise = expertiseSet.has(skill.key);
     const abilityMod = abilityScores[skill.ability].modifier;
     const modifierBonus = sumFlatModifiers(modifiersForTarget(ruleModifiers, "skill-check"), {
       target: "skill-check",
@@ -270,25 +296,40 @@ export function computeSkillModifiers(
       label: skill.label,
       ability: skill.ability,
       proficient,
-      expertise: false,
+      expertise,
       abilityModifier: abilityMod,
-      proficiencyBonus: proficient ? proficiencyBonus : 0,
-      total: abilityMod + (proficient ? proficiencyBonus : 0) + modifierBonus,
+      proficiencyBonus: proficient ? proficiencyBonus * (expertise ? 2 : 1) : 0,
+      total: abilityMod + (proficient ? proficiencyBonus * (expertise ? 2 : 1) : 0) + modifierBonus,
     };
   }
   return output;
 }
 
-export function computePassiveScores(skills: Record<SkillKey, DerivedSkillResult>) {
+export function computePassiveScores(skills: Record<SkillKey, DerivedSkillResult>, ruleModifiers: RuleModifier[] = []) {
   return {
-    passivePerception: 10 + skills.perception.total,
-    passiveInvestigation: 10 + skills.investigation.total,
-    passiveInsight: 10 + skills.insight.total,
+    passivePerception: 10 + skills.perception.total + sumFlatModifiers(modifiersForTarget(ruleModifiers, "passive-score"), {
+      target: "passive-score",
+      ability: skills.perception.ability,
+      skill: "perception",
+    }).total,
+    passiveInvestigation: 10 + skills.investigation.total + sumFlatModifiers(modifiersForTarget(ruleModifiers, "passive-score"), {
+      target: "passive-score",
+      ability: skills.investigation.ability,
+      skill: "investigation",
+    }).total,
+    passiveInsight: 10 + skills.insight.total + sumFlatModifiers(modifiersForTarget(ruleModifiers, "passive-score"), {
+      target: "passive-score",
+      ability: skills.insight.ability,
+      skill: "insight",
+    }).total,
   };
 }
 
-export function computeInitiative(abilityScores: AbilityScoresWithModifiers): number {
-  return abilityScores.dex.modifier;
+export function computeInitiative(abilityScores: AbilityScoresWithModifiers, ruleModifiers: RuleModifier[] = []): number {
+  return abilityScores.dex.modifier + sumFlatModifiers(modifiersForTarget(ruleModifiers, "initiative"), {
+    target: "initiative",
+    ability: "dex",
+  }).total;
 }
 
 export function computeSpeed(speciesDef: SpeciesDefinition | undefined, appliedRules: AppliedCharacterRules): DerivedMovementResult {
@@ -327,8 +368,9 @@ export function computeArmorClassBase(
   dexModifier: number,
   ruleModifiers: RuleModifier[] = [],
 ): DerivedArmorClassResult {
+  const inventory = normalizeInventoryState(draft.inventory, equipmentCatalog);
   const breakdown = resolveArmorClassFromEquipment({
-    inventoryItems: draft.inventory.items,
+    inventoryItems: inventory.items,
     equipmentCatalog,
     dexModifier,
     ruleModifiers,
@@ -577,12 +619,20 @@ export function resolveDerivedStats(
   context: DerivedStatsResolverContext = {},
 ): DerivedCharacterStats {
   const ruleModifiers = context.ruleModifiers ?? [];
-  const abilityScores = computeAbilityModifiers(draft, appliedRules, ruleModifiers);
+  const optionScoped = context.optionScoped;
+  const combinedProficiencies = optionScoped ? resolveCombinedRuleProficiencies(appliedRules, optionScoped) : undefined;
+  const abilityScores = computeAbilityModifiers(draft, appliedRules, ruleModifiers, optionScoped);
   const proficiencyBonus = computeProficiencyBonus(draft.classSelection.level);
   const savingThrows = computeSavingThrows(appliedRules, abilityScores, proficiencyBonus, ruleModifiers);
-  const skills = computeSkillModifiers(appliedRules, abilityScores, proficiencyBonus, ruleModifiers);
-  const passive = computePassiveScores(skills);
-  const initiative = computeInitiative(abilityScores);
+  const skills = computeSkillModifiers(
+    combinedProficiencies?.skills ?? appliedRules.proficiencies.skills,
+    combinedProficiencies?.expertiseSkills ?? [],
+    abilityScores,
+    proficiencyBonus,
+    ruleModifiers,
+  );
+  const passive = computePassiveScores(skills, ruleModifiers);
+  const initiative = computeInitiative(abilityScores, ruleModifiers);
   const speed = computeSpeed(context.speciesDef, appliedRules);
   const armorClass = computeArmorClassBase(draft, context.equipmentCatalog, abilityScores.dex.modifier, ruleModifiers);
   const hitPoints = computeHitPointsMaxBase(draft.classSelection.level, context.classDef, abilityScores.con.modifier, draft);
@@ -620,6 +670,7 @@ export function resolveDerivedStats(
     ...armorClass.notes,
     ...hitPoints.notes,
     ...spellcasting.notes,
+    ...(optionScoped?.diagnostics.filter((entry) => entry.status === "unsupported").map((entry) => `${entry.sourceName}: ${entry.message}`) ?? []),
   ];
 
   const dataStatus = combineStatuses([
@@ -628,6 +679,11 @@ export function resolveDerivedStats(
     armorClass.dataStatus,
     hitPoints.dataStatus,
     spellcasting.dataStatus,
+    optionScoped?.diagnostics.some((entry) => entry.status === "unsupported")
+      ? "partial"
+      : optionScoped?.diagnostics.some((entry) => entry.status === "choice-required")
+        ? "pending"
+        : "complete",
     pending.length > 0 ? "pending" : "complete",
   ]);
 

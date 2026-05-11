@@ -59,6 +59,7 @@ type EntityWithSource = {
 
 type EntityWithCompatibility = EntityWithSource & {
   compatibility?: CompatibilityMeta;
+  structuredData?: unknown;
 };
 
 const DEFAULT_CONTEXT: Required<Pick<RulesQueryContext, "provider" | "rulesMode">> = {
@@ -182,6 +183,30 @@ function chooseForRulesMode<T extends EntityWithSource>(entries: T[], rulesMode:
   return pickPreferred(entries, rulesMode);
 }
 
+function withSupplementalStructuredData<T extends EntityWithCompatibility>(entry: T, groupEntries: T[]): T {
+  if (entry.structuredData !== undefined) {
+    return entry;
+  }
+  const targetVersion = inferContentVersion(entry);
+  const supplemental = [...groupEntries]
+    .filter((candidate) => candidate.structuredData !== undefined)
+    .sort((left, right) => {
+      const leftMatches = inferContentVersion(left) === targetVersion ? 1 : 0;
+      const rightMatches = inferContentVersion(right) === targetVersion ? 1 : 0;
+      if (leftMatches !== rightMatches) {
+        return rightMatches - leftMatches;
+      }
+      return inferSourceScore(right) - inferSourceScore(left);
+    })[0];
+  if (!supplemental) {
+    return entry;
+  }
+  return {
+    ...entry,
+    structuredData: supplemental.structuredData,
+  };
+}
+
 function canonicalClassKey(entry: ClassDefinition): string {
   return normalizeCanonicalToken(entry.canonicalClassKey ?? entry.key ?? entry.name);
 }
@@ -262,7 +287,7 @@ export function resolveClasses(entries: ClassDefinition[], context: RulesQueryCo
       const has2024 = groupEntries.some((candidate) => inferContentVersion(candidate) === "2024");
       const conversionMode: ConversionMode =
         rulesMode === "2024" && contentVersion !== "2024" ? "legacy-only" : "native";
-      return withCompatibility(entry, {
+      return withCompatibility(withSupplementalStructuredData(entry, groupEntries), {
         contentVersion,
         canonicalKey,
         replacementGroup,
@@ -310,7 +335,7 @@ export function resolveSubclasses(
       if (rulesMode === "2024" && contentVersion !== "2024") {
         notes.push(`Legacy subclass uses 2024 class progression (unlock level ${unlockLevel}).`);
       }
-      return withCompatibility(entry, {
+      return withCompatibility(withSupplementalStructuredData(entry, groupEntries), {
         contentVersion,
         canonicalKey,
         replacementGroup,

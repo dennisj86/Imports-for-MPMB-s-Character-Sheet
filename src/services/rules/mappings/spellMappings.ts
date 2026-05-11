@@ -13,6 +13,7 @@ export const SPELL_RULE_MAPPINGS: RuleMapping[] = [
       activeEffectDefinitions: [
         {
           id: "bless-bonus-dice",
+          effectType: "roll-bonus",
           durationType: "concentration",
           concentrationLinked: true,
           targets: ["selected"],
@@ -44,6 +45,7 @@ export const SPELL_RULE_MAPPINGS: RuleMapping[] = [
       activeEffectDefinitions: [
         {
           id: "guidance-bonus-dice",
+          effectType: "roll-bonus",
           durationType: "concentration",
           concentrationLinked: true,
           targets: ["selected"],
@@ -75,6 +77,7 @@ export const SPELL_RULE_MAPPINGS: RuleMapping[] = [
       activeEffectDefinitions: [
         {
           id: "resistance-bonus-dice",
+          effectType: "roll-bonus",
           durationType: "concentration",
           concentrationLinked: true,
           targets: ["selected"],
@@ -88,6 +91,38 @@ export const SPELL_RULE_MAPPINGS: RuleMapping[] = [
               value: "1d4",
               condition: "manual",
               diagnostics: ["Optional bonus die; user selects it per roll."],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: "spell:shield-of-faith:active-effect",
+    appliesTo: {
+      sourceType: "spell",
+      normalizedName: "shield-of-faith",
+    },
+    confidence: "exact",
+    emits: {
+      diagnostics: ["Shield of Faith mapping creates a self-targeted AC active effect when the cast targets self."],
+      activeEffectDefinitions: [
+        {
+          id: "shield-of-faith-ac",
+          effectType: "ac-bonus",
+          durationType: "concentration",
+          concentrationLinked: true,
+          targets: ["selected"],
+          applicableRollTypes: [],
+          requiresPrompt: false,
+          modifiers: [
+            {
+              id: "shield-of-faith-ac-2",
+              target: "armor-class",
+              valueType: "flat",
+              value: 2,
+              condition: "concentration-active",
+              diagnostics: ["Applies to sheet AC only when this active effect targets self and concentration is active."],
             },
           ],
         },

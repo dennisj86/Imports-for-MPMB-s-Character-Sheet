@@ -26,6 +26,16 @@ function hasEquippedSlot(items: InventoryItem[] | undefined, slot: string): bool
   return Boolean(items?.some((item) => item.equipped && item.equipmentSlot === slot));
 }
 
+function mediumOrHeavyArmorEquipped(items: InventoryItem[] | undefined): boolean {
+  return Boolean(items?.some((item) => {
+    if (!item.equipped || item.equipmentSlot !== "armor") {
+      return false;
+    }
+    const token = `${item.type ?? ""} ${item.name}`.toLowerCase();
+    return token.includes("medium armor") || token.includes("heavy armor") || token.includes("chain mail") || token.includes("scale mail") || token.includes("breastplate") || token.includes("half plate") || token.includes("ring mail") || token.includes("splint") || token.includes("plate");
+  }));
+}
+
 export function evaluateModifierCondition(
   modifier: RuleModifier,
   context: ModifierEvaluationContext = {},
@@ -49,6 +59,10 @@ export function evaluateModifierCondition(
       return { applied: true };
     case "wearing-armor":
       return wearingArmor ? { applied: true } : { applied: false, reason: "Requires equipped armor." };
+    case "wearing-medium-or-heavy-armor":
+      return mediumOrHeavyArmorEquipped(context.inventoryItems) ? { applied: true } : { applied: false, reason: "Requires medium or heavy armor." };
+    case "not-wearing-armor":
+      return !wearingArmor ? { applied: true } : { applied: false, reason: "Requires no equipped armor." };
     case "shield-equipped":
       return shieldEquipped ? { applied: true } : { applied: false, reason: "Requires equipped shield." };
     case "weapon-equipped":

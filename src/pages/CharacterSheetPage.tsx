@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Panel } from "../components/ui/Panel";
 import { useCharacterEngine, useCharacterPlayState } from "../features/character/hooks";
@@ -27,6 +27,7 @@ import type { DerivedCharacterStats } from "../domain/derivedStats";
 import { equipItem, setHpGainMethod, unequipItem } from "../services/equipment";
 import { setAsiOrFeatOption } from "../services/levelUp";
 import { buildCharacterRollView, getLatestRollResult } from "../services/rolls";
+import { buildActiveEffectCatalog, resolveCombinedRuleProficiencies } from "../services/rules";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
 
@@ -85,6 +86,30 @@ function CoreStatGrid({ cards }: { cards: ReturnType<typeof buildCombatViewModel
   );
 }
 
+function listLabel(values: string[], empty = "None"): string {
+  return values.length > 0 ? values.join(", ") : empty;
+}
+
+function ProficiencySummary({
+  proficiencies,
+}: {
+  proficiencies: ReturnType<typeof resolveCombinedRuleProficiencies>;
+}) {
+  return (
+    <div className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+      <p className="text-xs uppercase text-slate-500">Proficiencies</p>
+      <div className="mt-2 space-y-1 text-slate-700">
+        <p>Skills: {listLabel(proficiencies.skills)}</p>
+        <p>Expertise: {listLabel(proficiencies.expertiseSkills)}</p>
+        <p>Tools: {listLabel(proficiencies.tools)}</p>
+        <p>Languages: {listLabel(proficiencies.languages)}</p>
+        <p>Weapons: {listLabel(proficiencies.weapons)}</p>
+        <p>Armor: {listLabel(proficiencies.armor)}</p>
+      </div>
+    </div>
+  );
+}
+
 export function CharacterSheetPage() {
   const generation = useSourceStore((state) => state.generation);
   const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
@@ -127,6 +152,14 @@ export function CharacterSheetPage() {
   const engine = engineView.engine;
   const playState = playStateView.playState;
   const rollView = buildCharacterRollView(engine, playState.activeEffects);
+  const activeEffectCatalog = useMemo(
+    () => buildActiveEffectCatalog(engineView.snapshot),
+    [engineView.snapshot],
+  );
+  const combinedProficiencies = useMemo(
+    () => resolveCombinedRuleProficiencies(engine.appliedRules, engine.ruleEngine.optionScoped),
+    [engine.appliedRules, engine.ruleEngine.optionScoped],
+  );
   const lastRoll = getLatestRollResult(playState.playEvents);
   const combat = buildCombatViewModel({
     draft,
@@ -136,7 +169,7 @@ export function CharacterSheetPage() {
     hitDicePools: playStateView.hitDiceCounters,
   });
   const spellbook = buildSpellbookViewModel(engine, rollView.spellRolls);
-  const inventory = buildInventoryViewModel(draft, engine);
+  const inventory = buildInventoryViewModel(draft, engine, playState);
   const featureGroups = buildFeatureGroupsViewModel(engine);
   const progression = buildProgressionViewModel(draft, engine);
   const equipInventoryItem = (itemInstanceId: string, slot?: Parameters<typeof equipItem>[3]) => {
@@ -214,6 +247,7 @@ export function CharacterSheetPage() {
                 <ArmorBreakdown armorClass={combat.armorClass} />
                 <AbilitySummary derivedStats={engine.derivedStats} />
                 <p className="text-sm text-slate-700">{combat.passiveSummary}</p>
+                <ProficiencySummary proficiencies={combinedProficiencies} />
               </div>
             </Panel>
 
@@ -278,7 +312,11 @@ export function CharacterSheetPage() {
       {activeTab === "actions" ? (
         <Panel title="Actions & Rolls">
           <ActionRollPanel
+            activeEffectCatalog={activeEffectCatalog}
             lastRoll={lastRoll}
+            onActivateEffect={playStateView.addActiveEffect}
+            onCreateCustomEffect={playStateView.addCustomActiveEffect}
+            onDismissEffect={playStateView.dismissActiveEffect}
             onRoll={playStateView.roll}
             onSpendResource={playStateView.spendResource}
             resources={playStateView.resourceCounters}
@@ -321,7 +359,9 @@ export function CharacterSheetPage() {
                 Level {progression.currentLevel} · {progression.className}
                 {progression.subclassName ? ` (${progression.subclassName})` : ""}
               </p>
-              <p className="text-xs text-slate-600">{progression.pendingChoiceCount} open level-up choice(s)</p>
+              <p className="text-xs text-slate-600">
+                {progression.levelUpPendingChoiceCount} open level-up progression choice(s) · {progression.rulePendingChoiceCount} open rule choice(s)
+              </p>
               {progression.pendingChoices.length ? (
                 <ul className="space-y-2">
                   {progression.pendingChoices.map((choice) => (
@@ -331,9 +371,34 @@ export function CharacterSheetPage() {
                     </li>
                   ))}
                 </ul>
+              ) : progression.ruleChoices.some((choice) => choice.status === "missing" || choice.status === "unsupported") ? (
+                <p className="text-slate-600">No level-up-only progression choices are exposed; open rule choices are listed below.</p>
               ) : (
                 <p className="text-slate-600">No required progression choices are exposed for this level.</p>
               )}
+              {progression.ruleChoices.length ? (
+                <div className="space-y-2">
+                  <p className="font-medium">Rule Choices</p>
+                  {progression.ruleChoices.map((choice) => (
+                    <div
+                      key={choice.id}
+                      className={`rounded border p-2 ${
+                        choice.status === "complete"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                          : choice.status === "unsupported"
+                            ? "border-slate-200 bg-slate-50 text-slate-700"
+                            : "border-amber-300 bg-amber-50 text-amber-900"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-medium">{choice.label}</p>
+                        <span className="rounded bg-white/70 px-2 py-0.5 text-xs">{choice.status}</span>
+                      </div>
+                      <p className="text-xs">{choice.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <Link className="inline-block rounded bg-slate-800 px-3 py-2 text-sm text-white" to={`/builder/${draft.id}`}>
                 Open Builder Choices
               </Link>

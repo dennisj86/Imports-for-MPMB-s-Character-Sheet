@@ -149,7 +149,11 @@ const ALL_SKILLS = [
 ] as const;
 
 function normalizeSkillToken(value: string): string {
-  return normalizeToken(value).replace(/-skill$/, "");
+  const normalized = normalizeToken(value);
+  if (normalized === "any-skill") {
+    return normalized;
+  }
+  return normalized.replace(/-skill$/, "");
 }
 
 function resolveClassSkillOptions(options: string[]): string[] {

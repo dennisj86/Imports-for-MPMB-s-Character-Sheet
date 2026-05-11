@@ -8,6 +8,7 @@ export const featureSchema = z.object({
   description: z.string().optional(),
   usages: z.unknown().optional(),
   recovery: z.unknown().optional(),
+  structuredData: z.unknown().optional(),
 });
 
 export const sourceMetaSchema = z.object({
@@ -96,6 +97,7 @@ export const featSchema = z.object({
   sourceMeta: sourceMetaSchema.optional(),
   description: z.string().optional(),
   prerequisite: z.string().optional(),
+  structuredData: z.unknown().optional(),
   compatibility: compatibilityMetaSchema.optional(),
 });
 
@@ -125,6 +127,10 @@ export const equipmentSchema = z.object({
   sourceRefs: z.array(z.string()),
   sourceMeta: sourceMetaSchema.optional(),
   type: z.string().optional(),
+  weaponList: z.string().optional(),
+  damage: z.unknown().optional(),
+  range: z.string().optional(),
+  mastery: z.string().optional(),
   rarity: z.string().optional(),
   weight: z.union([z.number(), z.string()]).optional(),
   description: z.string().optional(),

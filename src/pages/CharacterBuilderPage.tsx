@@ -6,7 +6,7 @@ import type { AppliedCharacterRules } from "../domain/appliedRules";
 import type { AbilityScores, CharacterDraft, HpGainMethod } from "../domain/character";
 import type { DerivedCharacterStats } from "../domain/derivedStats";
 import type { LevelProgressionResult } from "../domain/progression";
-import type { RuleChoice } from "../domain/rules";
+import type { CanonicalRuleChoice, RuleChoice } from "../domain/rules";
 import type { BackgroundDefinition, ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../domain/content";
 import { AbilityScoreEditor } from "../features/character/components/AbilityScoreEditor";
 import { InventoryEditor } from "../features/character/components/InventoryEditor";
@@ -250,7 +250,7 @@ export function CharacterBuilderPage() {
               updateCharacter={updateCharacter}
             />
             <GenericRuleChoicesStep
-              choices={wizardView.engine.ruleEngine.choices}
+              choices={wizardView.engine.ruleEngine.choiceSurface.choices.filter((choice) => choice.playerVisible)}
               draft={draft}
               updateCharacter={updateCharacter}
             />
@@ -321,6 +321,7 @@ export function CharacterBuilderPage() {
             completion={completion}
             draft={draft}
             progression={progression}
+            ruleChoices={wizardView.engine.ruleEngine.choiceSurface.choices.filter((choice) => choice.playerVisible)}
             requiredChoices={requiredChoices}
             selectedBackground={selectedBackground?.name}
             selectedClass={selectedClass?.name}
@@ -994,10 +995,11 @@ function GenericRuleChoicesStep({
   draft,
   updateCharacter,
 }: {
-  choices: RuleChoice[];
+  choices: CanonicalRuleChoice[];
   draft: CharacterDraft;
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
 }) {
+  const [optionQueries, setOptionQueries] = useState<Record<string, string>>({});
   if (choices.length === 0) {
     return null;
   }
@@ -1009,76 +1011,119 @@ function GenericRuleChoicesStep({
           <h3 className="text-sm font-semibold text-slate-900">Generic Rule Choices</h3>
           <p className="text-xs text-slate-600">Feature-, feat-, item- and spell-driven choices resolved from rule descriptors.</p>
         </div>
-        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{choices.length} choice(s)</span>
+        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{choices.length} canonical choice(s)</span>
       </div>
       <div className="mt-3 space-y-2">
         {choices.map((choice) => {
           const selected = new Set(choice.selectedOptionIds);
+          const optionQuery = optionQueries[choice.id] ?? "";
+          const normalizedQuery = optionQuery.trim().toLowerCase();
+          const visibleOptions = normalizedQuery
+            ? choice.options.filter((option) => {
+                const metadataText = Object.values(option.metadata ?? {}).join(" ").toLowerCase();
+                return `${option.label} ${option.tags?.join(" ") ?? ""} ${metadataText}`.toLowerCase().includes(normalizedQuery);
+              })
+            : choice.options;
           const statusClass =
             choice.status === "complete"
               ? "bg-emerald-100 text-emerald-800"
               : choice.status === "unsupported"
                 ? "bg-slate-200 text-slate-700"
+                : choice.status === "blocked"
+                  ? "bg-slate-100 text-slate-500"
                 : "bg-amber-100 text-amber-800";
           return (
-            <div key={choice.id} className="rounded border border-slate-200 p-2 text-sm">
+            <div key={choice.id} className={`rounded border border-slate-200 p-2 text-sm ${choice.parentChoiceId ? "ml-4 border-l-4" : ""}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">{formatChoiceType(choice.choiceType)}</p>
                   <p className="text-xs text-slate-600">
-                    {choice.sourceType} · required {choice.requiredCount} · {choice.options.length} option(s)
+                    {choice.sourceName} · required {choice.requiredCount} · selected {choice.selectedCount} · {choice.options.length} option(s)
                   </p>
+                  {choice.selectedPath?.length ? <p className="text-xs text-slate-500">Depends on selected parent option: {choice.generatedByOptionId}</p> : null}
+                  {(choice.choiceType === "cantrip" || choice.choiceType === "spell") && choice.diagnostics.length ? (
+                    <p className="text-xs text-slate-500">{choice.diagnostics.find((entry) => entry.startsWith("Filter:")) ?? "Filtered spell options"}</p>
+                  ) : null}
                 </div>
                 <span className={`rounded px-2 py-0.5 text-xs ${statusClass}`}>{choice.status}</span>
               </div>
-              {choice.status === "unsupported" ? (
+              {choice.status === "blocked" ? (
                 <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
-                  {choice.diagnostics.length ? choice.diagnostics.map((entry) => <p key={entry}>{entry}</p>) : <p>No deterministic option data is available.</p>}
+                  <p>{choice.choice.blockedReason ?? "Choose the parent option first."}</p>
                 </div>
-              ) : choice.maxCount <= 1 ? (
-                <select
-                  className={`${inputClassName()} mt-2`}
-                  value={choice.selectedOptionIds[0] ?? ""}
-                  onChange={(event) =>
-                    updateCharacter(draft.id, (current) => setRuleChoiceSelection(current, choice, event.target.value ? [event.target.value] : []))
-                  }
-                >
-                  <option value="">Select option</option>
-                  {choice.options.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+              ) : choice.status === "unsupported" ? (
+                <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+                  <p>Needs structured data before this choice can be completed.</p>
+                </div>
+              ) : choice.choice.maxCount <= 1 ? (
+                <>
+                  {choice.options.length > 20 ? (
+                    <input
+                      className={`${inputClassName()} mt-2`}
+                      placeholder="Search options"
+                      value={optionQuery}
+                      onChange={(event) => setOptionQueries((current) => ({ ...current, [choice.id]: event.target.value }))}
+                    />
+                  ) : null}
+                  <select
+                    className={`${inputClassName()} mt-2`}
+                    value={choice.selectedOptionIds[0] ?? ""}
+                    onChange={(event) =>
+                      updateCharacter(draft.id, (current) => setRuleChoiceSelection(current, choice.choice, event.target.value ? [event.target.value] : []))
+                    }
+                  >
+                    <option value="">Select option</option>
+                    {visibleOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                        {option.metadata?.masteryLabel ? ` (${String(option.metadata.masteryLabel)})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </>
               ) : (
-                <div className="mt-2 grid gap-1 sm:grid-cols-2">
-                  {choice.options.map((option) => {
-                    const checked = selected.has(option.id);
-                    return (
-                      <label key={option.id} className="flex items-center gap-2 rounded border border-slate-200 px-2 py-1 text-xs">
-                        <input
-                          checked={checked}
-                          type="checkbox"
-                          onChange={(event) => {
-                            const next = event.target.checked
-                              ? [...choice.selectedOptionIds, option.id]
-                              : choice.selectedOptionIds.filter((entry) => entry !== option.id);
-                            updateCharacter(draft.id, (current) => setRuleChoiceSelection(current, choice, next));
-                          }}
-                        />
-                        <span>{option.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                <>
+                  {choice.options.length > 20 || choice.choiceType === "weapon-mastery" ? (
+                    <input
+                      className={`${inputClassName()} mt-2`}
+                      placeholder={choice.choiceType === "weapon-mastery" ? "Search weapons, mastery, damage, or properties" : "Search options"}
+                      value={optionQuery}
+                      onChange={(event) => setOptionQueries((current) => ({ ...current, [choice.id]: event.target.value }))}
+                    />
+                  ) : null}
+                  <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                    {visibleOptions.map((option) => {
+                      const checked = selected.has(option.id);
+                      return (
+                        <label key={option.id} className="flex items-start gap-2 rounded border border-slate-200 px-2 py-1 text-xs">
+                          <input
+                            checked={checked}
+                            className="mt-0.5"
+                            disabled={!checked && choice.selectedCount >= choice.choice.maxCount}
+                            type="checkbox"
+                            onChange={(event) => {
+                              const next = event.target.checked
+                                ? [...choice.selectedOptionIds, option.id]
+                                : choice.selectedOptionIds.filter((entry) => entry !== option.id);
+                              updateCharacter(draft.id, (current) => setRuleChoiceSelection(current, choice.choice, next));
+                            }}
+                          />
+                          <span>
+                            <span className="font-medium">{option.label}</span>
+                            {choice.choiceType === "weapon-mastery" ? (
+                              <span className="ml-1 text-slate-500">
+                                {option.metadata?.masteryLabel ? `Mastery: ${String(option.metadata.masteryLabel)}` : "Mastery: unavailable"}
+                                {option.metadata?.damage ? ` · ${String(option.metadata.damage)}` : ""}
+                                {option.tags?.length ? ` · ${option.tags.filter((tag) => !tag.startsWith("mastery-")).join(", ")}` : ""}
+                              </span>
+                            ) : null}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </>
               )}
-              {choice.diagnostics.length && choice.status !== "unsupported" ? (
-                <div className="mt-2 text-xs text-slate-500">
-                  {choice.diagnostics.map((entry) => (
-                    <p key={entry}>{entry}</p>
-                  ))}
-                </div>
-              ) : null}
             </div>
           );
         })}
@@ -1269,6 +1314,7 @@ function ReviewStep({
   selectedSpells,
   appliedRules,
   progression,
+  ruleChoices,
   requiredChoices,
   validations,
   completion,
@@ -1283,6 +1329,7 @@ function ReviewStep({
   selectedSpells: string[];
   appliedRules: AppliedCharacterRules;
   progression: LevelProgressionResult;
+  ruleChoices: CanonicalRuleChoice[];
   requiredChoices: BuilderRequiredChoice[];
   validations: Record<WizardStepId, WizardStepValidation>;
   completion: WizardCompletionState;
@@ -1340,6 +1387,17 @@ function ReviewStep({
               <p className="mt-2 text-xs text-slate-600">Progression Pending Choices</p>
               {progression.pendingChoices.map((choice) => (
                 <p key={choice.id}>{choice.description}</p>
+              ))}
+            </>
+          ) : null}
+          {ruleChoices.length ? (
+            <>
+              <p className="mt-2 text-xs text-slate-600">Canonical Rule Choices</p>
+              {ruleChoices.map((choice) => (
+                <p key={choice.id}>
+                  {formatChoiceType(choice.choiceType)}: {choice.status}
+                  {choice.status === "pending" ? ` (${choice.selectedCount}/${choice.requiredCount})` : ""}
+                </p>
               ))}
             </>
           ) : null}

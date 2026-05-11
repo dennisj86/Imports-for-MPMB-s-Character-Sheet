@@ -376,9 +376,11 @@ export function reduceCharacterPlayState(
       };
     }
     if (action.startConcentration) {
+      // Casting a new concentration spell replaces any previous concentration-linked effects.
       nextState = {
         ...nextState,
         concentration: action.startConcentration,
+        activeEffects: dismissConcentrationLinkedEffects(nextState.activeEffects),
       };
     }
     return withEvents(nextState, [action.event, ...(action.extraEvents ?? [])].filter((event): event is CharacterPlayEvent => Boolean(event)), action.timestamp);

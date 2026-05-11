@@ -1,4 +1,5 @@
 import type { CharacterActionResourceState, ResourceRechargeType } from "../../domain/actionResources";
+import type { ActiveEffectDefinition, ActiveEffectTarget } from "../../domain/rules";
 import type { ActiveConditionState, CharacterPlayState, ConcentrationState, HitDicePool } from "../../domain/playState";
 import { createDefaultCharacterPlayState, PLAY_STATE_SCHEMA_VERSION } from "../../domain/playState";
 import type { SpellDefinition } from "../../domain/content";
@@ -6,7 +7,7 @@ import type { RollRequest, RollResult } from "../../domain/rolls";
 import { rollDiceExpression } from "../../features/dice";
 import type { CharacterEngineState } from "../characterEngine";
 import { createRollPlayEvent, executeRollRequest } from "../rolls";
-import { createActiveEffectFromSpell, instantiateActiveEffect } from "../rules";
+import { createActiveEffectFromSpell, createCustomActiveEffect, instantiateActiveEffect, type ActiveEffectActivationOptions, type CreateCustomActiveEffectInput } from "../rules";
 import { findConditionDefinition, normalizeActiveConditionState } from "./conditionDefinitions";
 import {
   deriveHitDicePoolsFromEngine,
@@ -86,6 +87,39 @@ function normalizeCounterMap(input: Record<string, number>): Record<string, numb
   return next;
 }
 
+function normalizeActiveEffects(
+  effects: CharacterPlayState["activeEffects"] | undefined,
+): CharacterPlayState["activeEffects"] {
+  return (effects ?? []).map((effect) => {
+    const modifierSummary = effect.modifierSummary ?? effect.modifiers.reduce<{ dice?: string; flat?: number }>((summary, modifier) => {
+      if (!summary.dice && modifier.valueType === "dice" && typeof modifier.value === "string") {
+        summary.dice = modifier.value.replace(/\s+/g, "");
+      }
+      if (summary.flat === undefined && modifier.valueType === "flat" && typeof modifier.value === "number") {
+        summary.flat = Number(modifier.value);
+      }
+      return summary;
+    }, {});
+    const effectType =
+      effect.effectType ??
+      (effect.modifiers.some((modifier) => modifier.target === "armor-class" && modifier.valueType === "flat")
+        ? "ac-bonus"
+        : effect.modifiers.some((modifier) => modifier.valueType === "advantage")
+          ? "advantage"
+          : effect.modifiers.some((modifier) => modifier.valueType === "disadvantage")
+            ? "disadvantage"
+            : effect.modifiers.some((modifier) => modifier.valueType === "dice" || modifier.valueType === "flat")
+              ? "roll-bonus"
+              : "note");
+    return {
+      ...effect,
+      label: effect.label ?? effect.sourceName ?? effect.id,
+      effectType,
+      modifierSummary: modifierSummary.dice !== undefined || modifierSummary.flat !== undefined ? modifierSummary : undefined,
+    };
+  });
+}
+
 function normalizePlayStateCounters(
   playState: CharacterPlayState,
   sourceHitDicePools?: HitDicePool[],
@@ -107,7 +141,7 @@ function normalizePlayStateCounters(
     spellSlots: normalizeCounterMap(playState.spellSlots),
     hitDice,
     activeConditions,
-    activeEffects: playState.activeEffects ?? [],
+    activeEffects: normalizeActiveEffects(playState.activeEffects),
   };
 }
 
@@ -147,6 +181,27 @@ function activeConditionsEqual(left: ActiveConditionState[], right: ActiveCondit
   });
 }
 
+function activeEffectsEqual(left: CharacterPlayState["activeEffects"], right: CharacterPlayState["activeEffects"]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((entry, index) => {
+    const other = right[index];
+    return Boolean(
+      other &&
+        entry.id === other.id &&
+        entry.label === other.label &&
+        entry.sourceName === other.sourceName &&
+        entry.effectType === other.effectType &&
+        entry.durationType === other.durationType &&
+        entry.status === other.status &&
+        entry.sourceCasterName === other.sourceCasterName &&
+        entry.note === other.note &&
+        entry.modifiers.length === other.modifiers.length,
+    );
+  });
+}
+
 export function ensureCharacterPlayState(
   playState: CharacterPlayState | undefined,
   characterId: string,
@@ -172,8 +227,7 @@ export function ensureCharacterPlayState(
     normalized.deathSaves.stable === playState.deathSaves.stable &&
     normalized.deathSaves.dead === playState.deathSaves.dead &&
     activeConditionsEqual(normalized.activeConditions, playState.activeConditions) &&
-    Array.isArray(playState.activeEffects) &&
-    (playState.activeEffects ?? []).length === normalized.activeEffects.length &&
+    activeEffectsEqual(normalized.activeEffects, playState.activeEffects ?? []) &&
     hitDiceStatesEqual(normalized.hitDice, originalHitDice) &&
     Object.keys(normalized.spentResources).every((key) => normalized.spentResources[key] === playState.spentResources[key]) &&
     Object.keys(normalized.spellSlots).every((key) => normalized.spellSlots[key] === playState.spellSlots[key]) &&
@@ -709,6 +763,20 @@ export interface CastSpellOptions {
   ritualCast?: boolean;
   trackConcentration?: boolean;
   concentrationNotes?: string;
+  activeEffectTarget?: ActiveEffectTarget;
+}
+
+export interface AddActiveEffectOptions {
+  target?: ActiveEffectTarget;
+  external?: boolean;
+  now?: string;
+  diceExpression?: string;
+  sourceCasterName?: string;
+  note?: string;
+}
+
+export interface AddCustomActiveEffectOptions extends CreateCustomActiveEffectInput, ActiveEffectActivationOptions {
+  now?: string;
 }
 
 function firstAvailableSlotLevel(
@@ -851,19 +919,167 @@ export function castSpell(
   if (!activeEffect) {
     return afterCast;
   }
-  const effectState = instantiateActiveEffect(activeEffect, timestamp);
-  return reduceCharacterPlayState(afterCast, {
+  return addResolvedActiveEffect(afterCast, activeEffect, {
+    target: options.activeEffectTarget,
+    now: timestamp,
+  });
+}
+
+function toExternalActiveEffect(
+  effect: ActiveEffectDefinition,
+): ActiveEffectDefinition {
+  return {
+    ...effect,
+    durationType: effect.durationType === "concentration" ? "manual" : effect.durationType,
+    concentrationLinked: false,
+    modifiers: effect.modifiers.map((modifier) =>
+      modifier.condition === "concentration-active"
+        ? {
+            ...modifier,
+            condition: "always",
+            diagnostics: [
+              ...modifier.diagnostics,
+              "Activated as an external buff; local concentration state is not required.",
+            ],
+          }
+        : modifier,
+    ),
+    diagnostics: [
+      ...effect.diagnostics,
+      "Activated as an external buff; duration is tracked manually.",
+    ],
+  };
+}
+
+function createActiveEffectStartEvent(
+  effectState: ReturnType<typeof instantiateActiveEffect>,
+  timestamp: string,
+  extraPayload: Record<string, unknown> = {},
+) {
+  return createPlayEvent({
+    timestamp,
+    type: "active-effect-start",
+    shortLabel: `Effect: ${effectState.label}`,
+    payload: {
+      effectId: effectState.id,
+      label: effectState.label,
+      sourceName: effectState.sourceName,
+      sourceType: effectState.sourceType,
+      effectType: effectState.effectType,
+      applicableRollTypes: effectState.applicableRollTypes,
+      targets: effectState.targets,
+      durationType: effectState.durationType,
+      modifierSummary: effectState.modifierSummary,
+      sourceCasterName: effectState.sourceCasterName,
+      note: effectState.note,
+      ...extraPayload,
+    },
+  });
+}
+
+export function addResolvedActiveEffect(
+  playState: CharacterPlayState,
+  effect: ActiveEffectDefinition,
+  options: AddActiveEffectOptions = {},
+): CharacterPlayState {
+  const timestamp = nowTimestamp(options.now);
+  const effectTemplate = options.external ? toExternalActiveEffect(effect) : effect;
+  const effectState = instantiateActiveEffect(effectTemplate, timestamp, options.target, {
+    diceExpression: options.diceExpression,
+    sourceCasterName: options.sourceCasterName,
+    note: options.note,
+  });
+  return reduceCharacterPlayState(playState, {
     type: "add-active-effect",
     effect: effectState,
     timestamp,
+    event: createActiveEffectStartEvent(effectState, timestamp, {
+      external: Boolean(options.external),
+    }),
+  });
+}
+
+export function addActiveEffectFromSpell(
+  playState: CharacterPlayState,
+  spell: Pick<SpellDefinition, "id" | "name" | "level" | "ritual" | "concentration" | "description" | "sourceMeta">,
+  options: AddActiveEffectOptions = {},
+): CharacterPlayState {
+  const timestamp = nowTimestamp(options.now);
+  const template = createActiveEffectFromSpell(spell as SpellDefinition);
+  if (!template) {
+    return reduceCharacterPlayState(playState, {
+      type: "record-event",
+      timestamp,
+      event: createPlayEvent({
+        timestamp,
+        type: "spell-cast-blocked",
+        shortLabel: `No effect: ${spell.name}`,
+        payload: {
+          spellId: spell.id,
+          spellName: spell.name,
+          reason: "no-active-effect-definition",
+        },
+      }),
+    });
+  }
+  return addResolvedActiveEffect(playState, template, {
+    ...options,
+    now: timestamp,
+  });
+}
+
+export function addCustomActiveEffect(
+  playState: CharacterPlayState,
+  options: AddCustomActiveEffectOptions,
+): CharacterPlayState {
+  const timestamp = nowTimestamp(options.now);
+  const effect = createCustomActiveEffect(options);
+  if (!effect) {
+    return reduceCharacterPlayState(playState, {
+      type: "record-event",
+      timestamp,
+      event: createPlayEvent({
+        timestamp,
+        type: "active-effect-dismiss",
+        shortLabel: "Custom effect blocked",
+        payload: {
+          reason: "invalid-custom-active-effect",
+        },
+      }),
+    });
+  }
+  return addResolvedActiveEffect(playState, effect, {
+    target: "self",
+    now: timestamp,
+    sourceCasterName: options.sourceCasterName,
+    note: options.note,
+  });
+}
+
+export function dismissActiveEffect(
+  playState: CharacterPlayState,
+  effectId: string,
+  reason?: string,
+  now?: string,
+): CharacterPlayState {
+  const timestamp = nowTimestamp(now);
+  const existing = playState.activeEffects.find((effect) => effect.id === effectId);
+  if (!existing || existing.status !== "active") {
+    return playState;
+  }
+  return reduceCharacterPlayState(playState, {
+    type: "dismiss-active-effect",
+    effectId,
+    timestamp,
     event: createPlayEvent({
       timestamp,
-      type: "active-effect-start",
-      shortLabel: `Effect: ${effectState.sourceName}`,
+      type: "active-effect-dismiss",
+      shortLabel: `Dismiss effect: ${existing.label}`,
       payload: {
-        effectId: effectState.id,
-        sourceName: effectState.sourceName,
-        applicableRollTypes: effectState.applicableRollTypes,
+        effectId,
+        label: existing.label,
+        sourceName: existing.sourceName,
+        reason: reason ?? "manual-dismiss",
       },
     }),
   });
@@ -1031,6 +1247,17 @@ export function rollAndRecord(
     now: timestamp,
   });
   let next = recordRollResult(playState, result);
+  const selectedEffectIds = new Set(request.selectedActiveEffectIds ?? []);
+  if (selectedEffectIds.size > 0) {
+    for (const effect of next.activeEffects.filter((entry) => entry.status === "active")) {
+      if (!selectedEffectIds.has(effect.id)) {
+        continue;
+      }
+      if (effect.durationType === "one-roll" || effect.durationType === "until-used") {
+        next = dismissActiveEffect(next, effect.id, "consumed-by-roll", timestamp);
+      }
+    }
+  }
   if (options.spendResourceKey) {
     const max = getResourceMax(runtime, options.spendResourceKey);
     const spent = clampWithin(next.spentResources[options.spendResourceKey] ?? 0, 0, max);

@@ -99,13 +99,69 @@ function entryScore(entry) {
   return score;
 }
 
+function featureIdentity(feature) {
+  return toSlug(feature?.key || feature?.id || feature?.name || "");
+}
+
+function supplementStructuredFields(preferred, fallback) {
+  if (!fallback || typeof fallback !== "object") {
+    return preferred;
+  }
+  let result = preferred;
+  if (result?.structuredData === undefined && fallback.structuredData !== undefined) {
+    result = {
+      ...result,
+      structuredData: fallback.structuredData,
+    };
+  }
+  for (const field of ["weaponList", "damage", "range", "mastery"]) {
+    if (result?.[field] === undefined && fallback[field] !== undefined) {
+      result = {
+        ...result,
+        [field]: fallback[field],
+      };
+    }
+  }
+  if (Array.isArray(result?.features) && Array.isArray(fallback.features)) {
+    const fallbackFeatures = new Map(
+      fallback.features
+        .map((feature) => [featureIdentity(feature), feature])
+        .filter(([key]) => Boolean(key)),
+    );
+    const nextFeatures = result.features.map((feature) => {
+      if (feature?.structuredData !== undefined) {
+        return feature;
+      }
+      const fallbackFeature = fallbackFeatures.get(featureIdentity(feature));
+      if (!fallbackFeature?.structuredData) {
+        return feature;
+      }
+      return {
+        ...feature,
+        structuredData: fallbackFeature.structuredData,
+      };
+    });
+    result = {
+      ...result,
+      features: nextFeatures,
+    };
+  }
+  return result;
+}
+
 function mergeByIdentity(baseEntries, importedEntries, identityFn) {
   const byIdentity = new Map();
   for (const entry of [...baseEntries, ...importedEntries]) {
     const identity = identityFn(entry);
     const existing = byIdentity.get(identity);
-    if (!existing || entryScore(entry) > entryScore(existing)) {
+    if (!existing) {
       byIdentity.set(identity, entry);
+      continue;
+    }
+    if (entryScore(entry) > entryScore(existing)) {
+      byIdentity.set(identity, supplementStructuredFields(entry, existing));
+    } else {
+      byIdentity.set(identity, supplementStructuredFields(existing, entry));
     }
   }
   return Array.from(byIdentity.values());
@@ -187,8 +243,11 @@ function sourceRefs(value) {
 
 function inferLocalEdition(sourceRefEntries) {
   const joined = sourceRefEntries.join(" ").toLowerCase();
-  if (joined.includes("2024")) {
+  if (joined.includes("2024") || /\bp24\b/.test(joined) || /\bsrd24\b/.test(joined)) {
     return "2024";
+  }
+  if (/\bp\b/.test(joined) || /\bsrd\b/.test(joined)) {
+    return "2014";
   }
   return "unknown";
 }
@@ -262,6 +321,59 @@ function extractMinLevel(featureKey, featureValue) {
   return 1;
 }
 
+const structuredChoiceKeys = [
+  "choices",
+  "choicesNotInMenu",
+  "extraTimes",
+  "extraname",
+  "extrachoices",
+  "autoSelectExtrachoices",
+  "choicesWeaponMasteries",
+  "choicesFightingStyles",
+  "spellcastingBonus",
+  "spellcastingAbility",
+  "spellFirstColTitle",
+  "skills",
+  "skillstxt",
+  "scores",
+  "toolProfs",
+  "languageProfs",
+  "armorProfs",
+  "weaponProfs",
+  "addMod",
+  "extraAC",
+  "action",
+  "usages",
+  "recovery",
+  "additional",
+  "firstCol",
+];
+
+function extractStructuredData(value) {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const output = {};
+  for (const key of structuredChoiceKeys) {
+    if (!(key in value)) {
+      continue;
+    }
+    const cloned = safeClone(value[key]);
+    if (cloned !== undefined) {
+      output[key] = cloned;
+    }
+  }
+  for (const choice of Array.isArray(value.choices) ? value.choices : []) {
+    const choiceKey = toSlug(choice);
+    const rawChoice = value[String(choice).toLowerCase()] ?? value[choiceKey] ?? value[String(choice)];
+    const cloned = extractStructuredData(rawChoice);
+    if (cloned !== undefined) {
+      output[choiceKey] = cloned;
+    }
+  }
+  return Object.keys(output).length > 0 ? output : undefined;
+}
+
 function extractFeatures(features, ownerId) {
   if (!features || typeof features !== "object") {
     return [];
@@ -285,6 +397,7 @@ function extractFeatures(features, ownerId) {
       description,
       usages: rawFeature.usages,
       recovery: rawFeature.recovery,
+      structuredData: extractStructuredData(rawFeature),
     });
   }
   return output.sort((a, b) => a.minLevel - b.minLevel || a.name.localeCompare(b.name));
@@ -338,11 +451,22 @@ function gatherSourceFiles() {
     .filter((fileName) => fileName.endsWith(".js"))
     .sort()
     .map((fileName) => path.join("Homebrew", fileName));
-  return [...wotcMaterial, ...wotc2024, ...homebrew];
+  const docsVariableSources = [
+    path.join("docs", "Sheet skripte", "_variables", "ListsFeats.js"),
+    path.join("docs", "Sheet skripte", "_variables", "ListsClasses.js"),
+    path.join("docs", "Sheet skripte", "_variables", "ListsGear.js"),
+    path.join("docs", "Sheet skripte 2024", "_variables", "ListsFeats.js"),
+    path.join("docs", "Sheet skripte 2024", "_variables", "ListsClasses.js"),
+    path.join("docs", "Sheet skripte 2024", "_variables", "ListsGear.js"),
+  ].filter((relativePath) => fs.existsSync(path.join(repoRoot, relativePath)));
+  return [...wotcMaterial, ...wotc2024, ...docsVariableSources, ...homebrew];
 }
 
 function classifySourceFile(relativePath) {
   const normalized = relativePath.replace(/\\/g, "/").toLowerCase();
+  if (normalized.startsWith("docs/sheet skripte")) {
+    return "core-seed";
+  }
   if (normalized === "wotc material/pub_20140818_phb.js" || normalized === "wotc 2024/pub_20240917_phb.js") {
     return "core-seed";
   }
@@ -1163,6 +1287,37 @@ const sandbox = new Proxy(sandboxTarget, {
 });
 const vmContext = vm.createContext(sandbox);
 
+const registryAliases = [
+  { names: ["ClassList", "Base_ClassList"], registry: registries.ClassList },
+  { names: ["ClassSubList", "Base_ClassSubList"], registry: registries.ClassSubList },
+  { names: ["RaceList", "Base_RaceList"], registry: registries.RaceList },
+  { names: ["RaceSubList", "Base_RaceSubList"], registry: registries.RaceSubList },
+  { names: ["BackgroundList", "Base_BackgroundList"], registry: registries.BackgroundList },
+  { names: ["BackgroundFeatureList", "Base_BackgroundFeatureList"], registry: registries.BackgroundFeatureList },
+  { names: ["FeatsList", "Base_FeatsList"], registry: registries.FeatsList },
+  { names: ["SpellsList", "Base_SpellsList"], registry: registries.SpellsList },
+  { names: ["MagicItemsList", "Base_MagicItemsList"], registry: registries.MagicItemsList },
+  { names: ["WeaponsList", "Base_WeaponsList"], registry: registries.WeaponsList },
+  { names: ["ArmourList", "Base_ArmourList"], registry: registries.ArmourList },
+  { names: ["ArmorList", "Base_ArmorList"], registry: registries.ArmorList },
+  { names: ["GearList", "Base_GearList"], registry: registries.GearList },
+  { names: ["AmmoList", "Base_AmmoList"], registry: registries.AmmoList },
+];
+
+function assimilateDetachedBaseRegistries() {
+  for (const { names, registry } of registryAliases) {
+    for (const name of names) {
+      const value = vmContext[name];
+      if (value && typeof value === "object" && value !== registry && !Array.isArray(value)) {
+        for (const [key, entry] of Object.entries(value)) {
+          registry[key] = entry;
+        }
+      }
+      vmContext[name] = registry;
+    }
+  }
+}
+
 function seedFromMpmbPdfSnapshot(snapshotPath) {
   if (!fs.existsSync(snapshotPath)) {
     return {
@@ -1434,6 +1589,7 @@ if (typeof Object.prototype.capitalize !== "function") {
         timeout: 120000,
         displayErrors: true,
       });
+      assimilateDetachedBaseRegistries();
       const afterUnknown = runtimeDiagnostics.unknownGlobalsByFile.get(relativePath);
       const afterUnknownCount = afterUnknown
         ? Array.from(afterUnknown.values()).reduce((total, count) => total + count, 0)
@@ -1610,6 +1766,7 @@ function normalizeContent(loadedSources) {
       sourceMeta: localSourceMeta(refs, key, "partial"),
       description: toText(value?.description) ?? toText(value?.descriptionFull),
       prerequisite: toText(value?.prerequisite),
+      structuredData: extractStructuredData(value),
     };
   });
 
@@ -1652,6 +1809,10 @@ function normalizeContent(loadedSources) {
         sourceRefs: refs,
         sourceMeta: localSourceMeta(refs, `${category}:${key}`, "partial"),
         type: toText(value?.type),
+        weaponList: toText(value?.list),
+        damage: safeClone(value?.damage),
+        range: toText(value?.range),
+        mastery: toText(value?.mastery),
         rarity: toText(value?.rarity),
         weight: value?.weight,
         description: toText(value?.description) ?? toText(value?.descriptionFull),

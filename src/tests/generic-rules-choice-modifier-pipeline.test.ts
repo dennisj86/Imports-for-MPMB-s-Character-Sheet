@@ -128,7 +128,7 @@ function weapon(): EquipmentDefinition {
     sourceRefs: ["test"],
     sourceMeta: TEST_SOURCE_META,
     type: "martial melee weapon",
-    description: "Melee weapon, 1d8 slashing, versatile.",
+    description: "Melee weapon, 1d8 slashing, versatile (1d10).",
   };
 }
 
@@ -223,13 +223,13 @@ describe("generic rules choice + modifier pipeline v1", () => {
     draft.backgroundSelection.backgroundId = "background:test";
 
     const pending = resolveCharacterWizardState(snapshot, draft, { provider: "mpmb", rulesMode: "2024" });
-    expect(pending.validations.feats.errors.some((entry) => entry.includes("choice from"))).toBe(true);
+    expect(pending.validations.feats.errors.some((entry) => entry.includes("choice is incomplete"))).toBe(true);
     expect(pending.validations.review.errors).toContain("Generic rule choices are incomplete.");
 
     const [choice] = resolveCharacterEngineState(snapshot, draft, { provider: "mpmb", rulesMode: "2024" }).ruleEngine.choices;
     const completedDraft = setRuleChoiceSelection(draft, choice, [choice.options[0].id]);
     const completed = resolveCharacterWizardState(snapshot, completedDraft, { provider: "mpmb", rulesMode: "2024" });
-    expect(completed.validations.feats.errors.some((entry) => entry.includes("choice from"))).toBe(false);
+    expect(completed.validations.feats.errors.some((entry) => entry.includes("choice is incomplete"))).toBe(false);
   });
 
   it("applies permanent AC modifiers conditionally and reports non-applied diagnostics", () => {

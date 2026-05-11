@@ -19,20 +19,40 @@ function describeEvent(event: CharacterPlayEvent): string | undefined {
   if (event.type === "roll") {
     const result = event.payload.rollResult;
     if (result && typeof result === "object" && "total" in result && "diceExpression" in result) {
-      const rollResult = result as { diceExpression?: string; rollMode?: string; modifier?: number; total?: number; outcomeLabel?: string; bonusDice?: Array<{ expression?: string; total?: number }> };
+      const rollResult = result as {
+        diceExpression?: string;
+        rollMode?: string;
+        modifier?: number;
+        total?: number;
+        outcomeLabel?: string;
+        bonusDice?: Array<{ expression?: string; total?: number; sourceName?: string }>;
+        activeEffects?: Array<{ label?: string }>;
+      };
       const modifier = typeof rollResult.modifier === "number" ? (rollResult.modifier >= 0 ? `+${rollResult.modifier}` : `${rollResult.modifier}`) : "";
       const outcome = rollResult.outcomeLabel && rollResult.outcomeLabel !== "normal" ? ` · ${rollResult.outcomeLabel}` : "";
-      const bonus = rollResult.bonusDice?.length
-        ? ` · bonus ${rollResult.bonusDice.map((entry) => `${entry.expression ?? "dice"}=${entry.total ?? "?"}`).join(", ")}`
+      const effects = rollResult.activeEffects?.length
+        ? ` · effects ${rollResult.activeEffects.map((entry) => entry.label ?? "effect").join(", ")}`
         : "";
-      return `${rollResult.rollMode ?? "normal"} · ${rollResult.diceExpression ?? "roll"} ${modifier}${bonus} = ${rollResult.total ?? "?"}${outcome}`;
+      const bonus = rollResult.bonusDice?.length
+        ? ` · bonus ${rollResult.bonusDice.map((entry) => `${entry.sourceName ? `${entry.sourceName} ` : ""}${entry.expression ?? "dice"}=${entry.total ?? "?"}`).join(", ")}`
+        : "";
+      return `${rollResult.rollMode ?? "normal"} · ${rollResult.diceExpression ?? "roll"} ${modifier}${effects}${bonus} = ${rollResult.total ?? "?"}${outcome}`;
     }
     return typeof event.payload.summary === "string" ? event.payload.summary : "Roll result.";
   }
   if (event.type === "active-effect-start") {
-    return Array.isArray(event.payload.applicableRollTypes)
-      ? `Applies to ${event.payload.applicableRollTypes.join(", ")}.`
-      : "Active effect started.";
+    const rollTypes = Array.isArray(event.payload.applicableRollTypes) && event.payload.applicableRollTypes.length
+      ? `Applies to ${event.payload.applicableRollTypes.join(", ")}`
+      : undefined;
+    const targets = Array.isArray(event.payload.targets) && event.payload.targets.length
+      ? `Targets ${event.payload.targets.join(", ")}`
+      : undefined;
+    const casterName = typeof event.payload.sourceCasterName === "string" && event.payload.sourceCasterName
+      ? `Source ${event.payload.sourceCasterName}`
+      : undefined;
+    const note = typeof event.payload.note === "string" && event.payload.note ? event.payload.note : undefined;
+    const external = event.payload.external ? "External buff" : undefined;
+    return [rollTypes, targets, casterName, external, note].filter(Boolean).join(" · ") || "Active effect started.";
   }
   if (event.type === "active-effect-dismiss") {
     return typeof event.payload.reason === "string" ? event.payload.reason : "Active effect dismissed.";

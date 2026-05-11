@@ -2,8 +2,12 @@ import { useCallback, useEffect, useMemo } from "react";
 import type { CharacterDraft } from "../../../domain/character";
 import type { CharacterPlayState } from "../../../domain/playState";
 import type { RollRequest } from "../../../domain/rolls";
+import type { ActiveEffectDefinition } from "../../../domain/rules";
 import type { CharacterEngineState } from "../../../services/characterEngine";
 import {
+  addCustomActiveEffect,
+  addResolvedActiveEffect,
+  addActiveEffectFromSpell,
   applyDamage,
   applyHealing,
   applyLongRest,
@@ -11,6 +15,7 @@ import {
   buildPlayStateRuntimeContext,
   castSpell,
   createPlayStateFromEngine,
+  dismissActiveEffect,
   endConcentration,
   ensureCharacterPlayState,
   getLatestHitDieSpendResult,
@@ -60,6 +65,10 @@ export interface CharacterPlayStateViewState {
   spendHitDie: (poolId: string) => void;
   roll: (request: RollRequest, options?: { spendResourceKey?: string; resourceLabel?: string }) => void;
   castSpell: (spellId: string, options?: CastSpellOptions) => void;
+  addActiveEffect: (effect: ActiveEffectDefinition, options?: { external?: boolean; sourceCasterName?: string; note?: string; diceExpression?: string }) => void;
+  addActiveEffectFromSpell: (spellId: string, options?: { external?: boolean }) => void;
+  addCustomActiveEffect: (options: { name: string; applicableRollTypes: RollRequest["type"][]; dice?: string; flat?: number; durationType?: "manual" | "until-used" | "one-roll"; note?: string; sourceCasterName?: string }) => void;
+  dismissActiveEffect: (effectId: string, reason?: string) => void;
   toggleCondition: (conditionIdOrName: string, source?: string, notes?: string) => void;
   startConcentration: (name: string, sourceId?: string, notes?: string) => void;
   endConcentration: (reason?: string) => void;
@@ -230,6 +239,49 @@ export function useCharacterPlayState(
     commit((current) => castSpell(current, runtime, spell, options));
   }, [commit, engine, runtime]);
 
+  const addActiveEffectAction = useCallback((effect: ActiveEffectDefinition, options: { external?: boolean; sourceCasterName?: string; note?: string; diceExpression?: string } = {}) => {
+    commit((current) =>
+      addResolvedActiveEffect(current, effect, {
+        target: "self",
+        external: options.external ?? true,
+        sourceCasterName: options.sourceCasterName,
+        note: options.note,
+        diceExpression: options.diceExpression,
+      }),
+    );
+  }, [commit]);
+
+  const addActiveEffectFromSpellAction = useCallback((spellId: string, options: { external?: boolean } = {}) => {
+    if (!engine) {
+      return;
+    }
+    const spell =
+      engine.selectedSpells.find((entry) => entry.id === spellId) ??
+      engine.spellCatalog.find((entry) => entry.id === spellId);
+    if (!spell) {
+      return;
+    }
+    commit((current) => addActiveEffectFromSpell(current, spell, { target: "self", external: options.external ?? true }));
+  }, [commit, engine]);
+
+  const addCustomActiveEffectAction = useCallback((options: {
+    name: string;
+    applicableRollTypes: RollRequest["type"][];
+    dice?: string;
+    flat?: number;
+    durationType?: "manual" | "until-used" | "one-roll";
+    note?: string;
+    sourceCasterName?: string;
+  }) => {
+    commit((current) =>
+      addCustomActiveEffect(current, options),
+    );
+  }, [commit]);
+
+  const dismissActiveEffectAction = useCallback((effectId: string, reason?: string) => {
+    commit((current) => dismissActiveEffect(current, effectId, reason));
+  }, [commit]);
+
   const toggleConditionAction = useCallback((conditionIdOrName: string, source?: string, notes?: string) => {
     commit((current) => toggleCondition(current, { id: conditionIdOrName, name: conditionIdOrName, source, notes }));
   }, [commit]);
@@ -280,6 +332,10 @@ export function useCharacterPlayState(
     spendHitDie: spendHitDieAction,
     roll: rollAction,
     castSpell: castSpellAction,
+    addActiveEffect: addActiveEffectAction,
+    addActiveEffectFromSpell: addActiveEffectFromSpellAction,
+    addCustomActiveEffect: addCustomActiveEffectAction,
+    dismissActiveEffect: dismissActiveEffectAction,
     toggleCondition: toggleConditionAction,
     startConcentration: startConcentrationAction,
     endConcentration: endConcentrationAction,

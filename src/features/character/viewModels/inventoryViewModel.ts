@@ -1,5 +1,6 @@
 import type { CharacterDraft, EquipmentSlot } from "../../../domain/character";
 import type { EquipmentDefinition } from "../../../domain/content";
+import type { CharacterPlayState } from "../../../domain/playState";
 import type { CharacterEngineState } from "../../../services/characterEngine";
 import {
   inferEquipmentSlot,
@@ -9,7 +10,7 @@ import {
   resolveEquipmentDefinitionForInventoryItem,
   type ArmorClassBreakdown,
 } from "../../../services/equipment";
-import { weaponMasteryBadgesForItem } from "../../../services/rules";
+import { activeEffectModifiersForTarget, weaponMasteryBadgesForItem } from "../../../services/rules";
 
 export interface InventoryItemViewModel {
   instanceId: string;
@@ -81,13 +82,17 @@ function toItemView(
   };
 }
 
-export function buildInventoryViewModel(draft: CharacterDraft, engine: CharacterEngineState): InventoryViewModel {
+export function buildInventoryViewModel(draft: CharacterDraft, engine: CharacterEngineState, playState?: CharacterPlayState): InventoryViewModel {
   const normalizedInventory = normalizeInventoryState(draft.inventory, engine.equipmentCatalog);
   const armorClass = resolveArmorClassFromEquipment({
     inventoryItems: normalizedInventory.items,
     equipmentCatalog: engine.equipmentCatalog,
     dexModifier: engine.derivedStats.abilityScores.dex.modifier,
-    ruleModifiers: engine.ruleEngine?.modifiers ?? [],
+    ruleModifiers: [
+      ...(engine.ruleEngine?.modifiers ?? []),
+      ...activeEffectModifiersForTarget(playState?.activeEffects, "armor-class", { targetScope: "self" }),
+    ],
+    concentrationActive: Boolean(playState?.concentration),
   });
   const items = normalizedInventory.items.map((item) => {
     const definition = resolveEquipmentDefinitionForInventoryItem(item, engine.equipmentCatalog);

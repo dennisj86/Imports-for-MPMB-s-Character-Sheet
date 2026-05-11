@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-10T05:13:37.010Z",
+  "generatedAt": "2026-05-11T05:39:28.267Z",
   "stringCapitalizeType": "function",
   "parseErrorCount": 0,
   "parseErrors": [],
@@ -7,6 +7,12 @@
     "orderedFiles": [
       "WotC material/pub_20140818_PHB.js",
       "WotC 2024/pub_20240917_PHB.js",
+      "docs/Sheet skripte/_variables/ListsFeats.js",
+      "docs/Sheet skripte/_variables/ListsClasses.js",
+      "docs/Sheet skripte/_variables/ListsGear.js",
+      "docs/Sheet skripte 2024/_variables/ListsFeats.js",
+      "docs/Sheet skripte 2024/_variables/ListsClasses.js",
+      "docs/Sheet skripte 2024/_variables/ListsGear.js",
       "WotC material/pub_20140715_LMoP.js",
       "WotC material/pub_20140819_HotDQ+20141104_RoT.js",
       "WotC material/pub_20140930_MM.js",
@@ -136,7 +142,13 @@
     "buckets": {
       "core-seed": [
         "WotC material/pub_20140818_PHB.js",
-        "WotC 2024/pub_20240917_PHB.js"
+        "WotC 2024/pub_20240917_PHB.js",
+        "docs/Sheet skripte/_variables/ListsFeats.js",
+        "docs/Sheet skripte/_variables/ListsClasses.js",
+        "docs/Sheet skripte/_variables/ListsGear.js",
+        "docs/Sheet skripte 2024/_variables/ListsFeats.js",
+        "docs/Sheet skripte 2024/_variables/ListsClasses.js",
+        "docs/Sheet skripte 2024/_variables/ListsGear.js"
       ],
       "published-supplement": [
         "WotC material/pub_20140715_LMoP.js",
@@ -289,20 +301,20 @@
   },
   "registryEntryCounts": {
     "SourceList": 126,
-    "ClassList": 15,
-    "ClassSubList": 232,
+    "ClassList": 27,
+    "ClassSubList": 252,
     "RaceList": 209,
     "RaceSubList": 103,
     "BackgroundList": 132,
     "BackgroundFeatureList": 129,
-    "FeatsList": 227,
+    "FeatsList": 239,
     "SpellsList": 264,
     "MagicItemsList": 603,
-    "WeaponsList": 44,
-    "ArmourList": 1,
+    "WeaponsList": 106,
+    "ArmourList": 15,
     "ArmorList": 0,
-    "GearList": 6,
-    "AmmoList": 7,
+    "GearList": 148,
+    "AmmoList": 26,
     "CreatureList": 92,
     "CompanionList": 5
   },
@@ -322,6 +334,54 @@
       "unknownGlobalsCountDelta": 38,
       "registryFallbackCountDelta": 0,
       "shimCallCountDelta": 6
+    },
+    {
+      "file": "docs/Sheet skripte/_variables/ListsFeats.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte/_variables/ListsClasses.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 21,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte/_variables/ListsGear.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte 2024/_variables/ListsFeats.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte 2024/_variables/ListsClasses.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 21,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
+    },
+    {
+      "file": "docs/Sheet skripte 2024/_variables/ListsGear.js",
+      "status": "ok",
+      "category": "core-seed",
+      "unknownGlobalsCountDelta": 0,
+      "registryFallbackCountDelta": 0,
+      "shimCallCountDelta": 0
     },
     {
       "file": "WotC material/pub_20140715_LMoP.js",
@@ -399,7 +459,7 @@
       "file": "WotC material/pub_20151103_SCAG.js",
       "status": "ok",
       "category": "published-supplement",
-      "unknownGlobalsCountDelta": 2,
+      "unknownGlobalsCountDelta": 1,
       "registryFallbackCountDelta": 3,
       "shimCallCountDelta": 39
     },
@@ -463,7 +523,7 @@
       "file": "WotC material/pub_20171121_XGtE.js",
       "status": "ok",
       "category": "published-supplement",
-      "unknownGlobalsCountDelta": 36,
+      "unknownGlobalsCountDelta": 33,
       "registryFallbackCountDelta": 2,
       "shimCallCountDelta": 27
     },
@@ -576,7 +636,7 @@
       "status": "ok",
       "category": "published-supplement",
       "unknownGlobalsCountDelta": 9,
-      "registryFallbackCountDelta": 7,
+      "registryFallbackCountDelta": 0,
       "shimCallCountDelta": 37
     },
     {
@@ -607,8 +667,8 @@
       "file": "WotC material/pub_20201117_TCoE.js",
       "status": "ok",
       "category": "published-supplement",
-      "unknownGlobalsCountDelta": 39,
-      "registryFallbackCountDelta": 5,
+      "unknownGlobalsCountDelta": 38,
+      "registryFallbackCountDelta": 1,
       "shimCallCountDelta": 69
     },
     {
@@ -776,7 +836,7 @@
       "status": "ok",
       "category": "ua",
       "unknownGlobalsCountDelta": 1,
-      "registryFallbackCountDelta": 1,
+      "registryFallbackCountDelta": 0,
       "shimCallCountDelta": 3
     },
     {
@@ -831,7 +891,7 @@
       "file": "WotC material/ua_20160104_Kits-of-Old.js",
       "status": "ok",
       "category": "ua",
-      "unknownGlobalsCountDelta": 1,
+      "unknownGlobalsCountDelta": 0,
       "registryFallbackCountDelta": 0,
       "shimCallCountDelta": 5
     },
@@ -1007,7 +1067,7 @@
       "file": "WotC material/ua_20170501_Revised-Subclasses.js",
       "status": "ok",
       "category": "ua",
-      "unknownGlobalsCountDelta": 2,
+      "unknownGlobalsCountDelta": 0,
       "registryFallbackCountDelta": 0,
       "shimCallCountDelta": 6
     },
@@ -1191,7 +1251,7 @@
       "file": "WotC material/ua_20200206_Subclasses-Part-2.js",
       "status": "ok",
       "category": "ua",
-      "unknownGlobalsCountDelta": 1,
+      "unknownGlobalsCountDelta": 0,
       "registryFallbackCountDelta": 0,
       "shimCallCountDelta": 4
     },
@@ -1295,7 +1355,7 @@
       "file": "WotC material/ua_20220718_Wonders-of-the-Multiverse.js",
       "status": "ok",
       "category": "ua",
-      "unknownGlobalsCountDelta": 5,
+      "unknownGlobalsCountDelta": 4,
       "registryFallbackCountDelta": 0,
       "shimCallCountDelta": 2
     },
@@ -1342,6 +1402,10 @@
       "count": 64
     },
     {
+      "name": "Base_spellLevelList",
+      "count": 40
+    },
+    {
       "name": "PsychicFocus",
       "count": 40
     },
@@ -1359,7 +1423,7 @@
     },
     {
       "name": "ProficiencyBonusList",
-      "count": 18
+      "count": 19
     },
     {
       "name": "RunFunctionAtEnd",
@@ -1378,10 +1442,6 @@
       "count": 11
     },
     {
-      "name": "GenericClassFeatures",
-      "count": 7
-    },
-    {
       "name": "CurrentVars",
       "count": 6
     },
@@ -1394,16 +1454,20 @@
       "count": 5
     },
     {
-      "name": "FightingStyles",
-      "count": 5
-    },
-    {
       "name": "spellSchoolList",
       "count": 5
     },
     {
+      "name": "GenericClassFeatures",
+      "count": 2
+    },
+    {
       "name": "AddWarlockPactBoon",
       "count": 2
+    },
+    {
+      "name": "typeA4",
+      "count": 1
     },
     {
       "name": "PacksList",
@@ -1443,6 +1507,26 @@
         "count": 3
       }
     ],
+    "docs/Sheet skripte/_variables/ListsClasses.js": [
+      {
+        "name": "Base_spellLevelList",
+        "count": 20
+      },
+      {
+        "name": "typeA4",
+        "count": 1
+      }
+    ],
+    "docs/Sheet skripte 2024/_variables/ListsClasses.js": [
+      {
+        "name": "Base_spellLevelList",
+        "count": 20
+      },
+      {
+        "name": "ProficiencyBonusList",
+        "count": 1
+      }
+    ],
     "WotC material/pub_20141209_DMG.js": [
       {
         "name": "sentientItemConflictTxt",
@@ -1470,10 +1554,6 @@
     "WotC material/pub_20151103_SCAG.js": [
       {
         "name": "RunFunctionAtEnd",
-        "count": 1
-      },
-      {
-        "name": "GenericClassFeatures",
         "count": 1
       }
     ],
@@ -1505,14 +1585,6 @@
       {
         "name": "AddWarlockInvocation",
         "count": 14
-      },
-      {
-        "name": "FightingStyles",
-        "count": 2
-      },
-      {
-        "name": "GenericClassFeatures",
-        "count": 1
       },
       {
         "name": "RunFunctionAtEnd",
@@ -1611,10 +1683,6 @@
       {
         "name": "RunFunctionAtEnd",
         "count": 4
-      },
-      {
-        "name": "GenericClassFeatures",
-        "count": 1
       },
       {
         "name": "AddWarlockPactBoon",
@@ -1741,12 +1809,6 @@
         "count": 1
       }
     ],
-    "WotC material/ua_20160104_Kits-of-Old.js": [
-      {
-        "name": "FightingStyles",
-        "count": 1
-      }
-    ],
     "WotC material/ua_20160404_Gothic-Heroes.js": [
       {
         "name": "SpellRitualTag",
@@ -1793,12 +1855,6 @@
       {
         "name": "AtHigherLevels",
         "count": 1
-      }
-    ],
-    "WotC material/ua_20170501_Revised-Subclasses.js": [
-      {
-        "name": "FightingStyles",
-        "count": 2
       }
     ],
     "WotC material/ua_20170605_Revised-Class-Options.js": [
@@ -1873,12 +1929,6 @@
         "count": 2
       }
     ],
-    "WotC material/ua_20200206_Subclasses-Part-2.js": [
-      {
-        "name": "GenericClassFeatures",
-        "count": 1
-      }
-    ],
     "WotC material/ua_20200224_Subclasses-Part-3.js": [
       {
         "name": "RunFunctionAtEnd",
@@ -1895,10 +1945,6 @@
       {
         "name": "AtHigherLevels",
         "count": 4
-      },
-      {
-        "name": "GenericClassFeatures",
-        "count": 1
       }
     ],
     "WotC 2024/not-reprinted_20140819_PHB.js": [
@@ -3199,36 +3245,6 @@
         "count": 1
       }
     ],
-    "WotC material/pub_20200317_EGtW.js": [
-      {
-        "name": "ClassList.bard",
-        "count": 1
-      },
-      {
-        "name": "ClassList.cleric",
-        "count": 1
-      },
-      {
-        "name": "ClassList.paladin",
-        "count": 1
-      },
-      {
-        "name": "ClassList.ranger",
-        "count": 1
-      },
-      {
-        "name": "ClassList.sorcerer",
-        "count": 1
-      },
-      {
-        "name": "ClassList.warlock",
-        "count": 1
-      },
-      {
-        "name": "ClassList.wizard",
-        "count": 1
-      }
-    ],
     "WotC material/pub_20201117-2_TCoE-sidekicks.js": [
       {
         "name": "SourceList.T",
@@ -3236,22 +3252,6 @@
       }
     ],
     "WotC material/pub_20201117_TCoE.js": [
-      {
-        "name": "ClassList.barbarian",
-        "count": 1
-      },
-      {
-        "name": "ClassList.fighter",
-        "count": 1
-      },
-      {
-        "name": "ClassList.monk",
-        "count": 1
-      },
-      {
-        "name": "ClassList.rogue",
-        "count": 1
-      },
       {
         "name": "SourceList.F",
         "count": 1
@@ -3338,12 +3338,6 @@
     "WotC material/pub_al_20190917_ALPG-v9.1.js": [
       {
         "name": "RaceSubList.feral tiefling-winged",
-        "count": 1
-      }
-    ],
-    "WotC material/ua_20150406_Modifying-Classes.js": [
-      {
-        "name": "ClassSubList.ranger-hunter",
         "count": 1
       }
     ],

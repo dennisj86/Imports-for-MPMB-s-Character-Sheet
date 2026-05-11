@@ -39,6 +39,9 @@ export interface ProgressionViewModel {
   selectedHpGainMethod?: "fixed/default" | "manual" | "rolled" | "max";
   hpGainChoices: HpGainChoiceViewModel[];
   asiOrFeatChoices: AsiOrFeatChoiceViewModel[];
+  ruleChoices: ProgressionChoiceViewModel[];
+  levelUpPendingChoiceCount: number;
+  rulePendingChoiceCount: number;
   pendingChoiceCount: number;
 }
 
@@ -65,20 +68,18 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
 
   const missingCapabilities: ProgressionChoiceViewModel[] = [];
 
-  for (const choice of engine.ruleEngine?.choices ?? []) {
+  const ruleChoices: ProgressionChoiceViewModel[] = [];
+  for (const choice of engine.ruleEngine?.choiceSurface.choices.filter((entry) => entry.playerVisible) ?? []) {
     const viewChoice: ProgressionChoiceViewModel = {
       id: choice.id,
-      label: `${choice.sourceType}: ${choice.choiceType}`,
+      label: choice.label,
       status: choice.status === "complete" ? "complete" : choice.status === "unsupported" ? "unsupported" : "missing",
       detail:
-        choice.diagnostics.join(" ") ||
-        `${choice.requiredCount} required from ${choice.options.length} option(s). Source ${choice.sourceDescriptorId}.`,
+        choice.status === "unsupported"
+          ? "This rule choice needs more structured data before it can be completed."
+          : `${choice.selectedCount}/${choice.requiredCount} selected from ${choice.options.length} option(s).`,
     };
-    if (choice.status === "unsupported") {
-      missingCapabilities.push(viewChoice);
-    } else if (choice.status !== "complete" && choice.requiredCount > 0) {
-      pendingChoices.push(viewChoice);
-    }
+    ruleChoices.push(viewChoice);
   }
 
   if (!hasPendingChoice(engine, /feat|asi|ability score/i) && engine.progression.asiOrFeatChoices.length === 0 && draft.classSelection.level >= 4) {
@@ -89,24 +90,6 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
       detail: "No structured pending choice is exposed for the current level. Do not auto-select feats or ability score improvements from the sheet.",
     });
   }
-
-  missingCapabilities.push({
-    id: "weapon-mastery",
-    label: "Weapon Mastery Choice Surface",
-    status: "unsupported",
-    detail: hasPendingChoice(engine, /weapon mastery/i)
-      ? "A pending Weapon Mastery choice is present and should be completed in the Builder."
-      : "No structured Weapon Mastery choice state is exposed to the sheet yet.",
-  });
-
-  missingCapabilities.push({
-    id: "fighting-style",
-    label: "Fighting Style Choice Surface",
-    status: "unsupported",
-    detail: hasPendingChoice(engine, /fighting style/i)
-      ? "A pending Fighting Style choice is present and should be completed in the Builder."
-      : "No structured Fighting Style choice state is exposed to the sheet yet.",
-  });
 
   const asiOrFeatChoices: AsiOrFeatChoiceViewModel[] = engine.progression.asiOrFeatChoices.map((choice) => ({
     id: choice.id,
@@ -154,6 +137,13 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
   const currentHpGainKey = hpGainKey(draft.classSelection.level);
   const selectedHpGainMethod = draft.levelUp?.hpGainByLevel?.[currentHpGainKey]?.method;
 
+  const levelUpPendingChoiceCount =
+    pendingChoices.filter((choice) => choice.status === "missing").length +
+    missingCapabilities.filter((choice) => choice.status === "unsupported").length +
+    asiOrFeatChoices.filter((choice) => choice.status !== "complete").length +
+    hpGainChoices.filter((choice) => choice.status !== "complete").length;
+  const rulePendingChoiceCount = ruleChoices.filter((choice) => choice.status === "missing" || choice.status === "unsupported").length;
+
   return {
     currentLevel: engine.progression.currentLevel,
     className: engine.classDef?.name ?? "Class pending",
@@ -164,10 +154,9 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
     selectedHpGainMethod,
     hpGainChoices,
     asiOrFeatChoices,
-    pendingChoiceCount:
-      pendingChoices.filter((choice) => choice.status === "missing").length +
-      missingCapabilities.filter((choice) => choice.status === "unsupported").length +
-      asiOrFeatChoices.filter((choice) => choice.status !== "complete").length +
-      hpGainChoices.filter((choice) => choice.status !== "complete").length,
+    ruleChoices,
+    levelUpPendingChoiceCount,
+    rulePendingChoiceCount,
+    pendingChoiceCount: levelUpPendingChoiceCount + rulePendingChoiceCount,
   };
 }

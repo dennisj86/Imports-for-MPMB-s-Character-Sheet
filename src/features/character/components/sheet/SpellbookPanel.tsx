@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import type { SpellDefinition } from "../../../../domain/content";
 import type { RollMode, RollRequest } from "../../../../domain/rolls";
 import type { SpellbookViewModel, SpellCardViewModel } from "../../viewModels/spellbookViewModel";
 import type { CastSpellOptions, PlaySpellSlotCounter } from "../../../../services/playState";
+import { createActiveEffectFromSpell } from "../../../../services/rules";
 
 interface SpellbookPanelProps {
   viewModel: SpellbookViewModel;
@@ -66,6 +68,7 @@ export function SpellbookPanel({
 }: SpellbookPanelProps) {
   const [slotSelectionBySpellId, setSlotSelectionBySpellId] = useState<Record<string, number>>({});
   const [ritualCastBySpellId, setRitualCastBySpellId] = useState<Record<string, boolean>>({});
+  const [selfTargetBySpellId, setSelfTargetBySpellId] = useState<Record<string, boolean>>({});
   const [rollMode, setRollMode] = useState<RollMode>("normal");
   const slotsByLevel = useMemo(() => new Map(slots.map((slot) => [slot.level, slot])), [slots]);
 
@@ -120,6 +123,20 @@ export function SpellbookPanel({
               : defaultSlotLevel(spell, slots);
             const selectedSlot = selectedLevel ? slotsByLevel.get(selectedLevel) : undefined;
             const ritual = ritualCastBySpellId[spell.id] ?? false;
+            const spellForEffect: SpellDefinition = {
+              id: spell.id,
+              key: spell.id,
+              name: spell.name,
+              sourceRefs: [],
+              level: spell.level,
+              concentration: spell.concentration,
+              ritual: spell.ritual,
+              classes: [],
+              description: spell.details ?? spell.summary,
+            };
+            const activeEffect = createActiveEffectFromSpell(spellForEffect);
+            const canApplyEffectToSelf = Boolean(activeEffect);
+            const selfTarget = selfTargetBySpellId[spell.id] ?? true;
             const castMode = spell.level <= 0 ? "cantrip" : ritual ? "ritual" : "slot";
             const canCast = castMode === "cantrip" || castMode === "ritual" || Boolean(selectedSlot && selectedSlot.remaining > 0);
             const rollRequest = spell.rollDescriptor?.rollRequest;
@@ -190,6 +207,21 @@ export function SpellbookPanel({
                         ) : null}
                       </div>
                     ) : null}
+                    {canApplyEffectToSelf ? (
+                      <label className="flex items-center gap-1 text-xs text-slate-700">
+                        <input
+                          checked={selfTarget}
+                          onChange={(event) =>
+                            setSelfTargetBySpellId((current) => ({
+                              ...current,
+                              [spell.id]: event.target.checked,
+                            }))
+                          }
+                          type="checkbox"
+                        />
+                        Apply effect to self
+                      </label>
+                    ) : null}
                     <button
                       className="w-full rounded bg-indigo-700 px-3 py-1.5 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                       disabled={!canCast}
@@ -197,6 +229,8 @@ export function SpellbookPanel({
                         onCastSpell(spell.id, {
                           slotLevel: selectedLevel,
                           ritualCast: ritual,
+                          activeEffectTarget: canApplyEffectToSelf && selfTarget ? "self" : undefined,
+                          concentrationNotes: canApplyEffectToSelf && selfTarget ? "Target: Self" : undefined,
                         })
                       }
                       type="button"

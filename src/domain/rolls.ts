@@ -31,6 +31,11 @@ export interface RollRequest {
   permanentModifiers?: RuleModifier[];
   temporaryModifiers?: RuleModifier[];
   selectedActiveEffectIds?: string[];
+  selectedActiveEffects?: Array<{
+    id: string;
+    label: string;
+    sourceName: string;
+  }>;
   bonusDiceExpressions?: string[];
   proficiencyApplied?: boolean;
   diceExpression: string;
@@ -83,6 +88,11 @@ export interface RollResult {
     rolls: number[];
     total: number;
     sourceName?: string;
+  }>;
+  activeEffects?: Array<{
+    id: string;
+    label: string;
+    sourceName: string;
   }>;
   total: number;
   naturalRoll?: number;

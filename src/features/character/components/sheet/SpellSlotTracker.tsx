@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { SpellDefinition } from "../../../../domain/content";
 import type { CastSpellOptions, PlaySpellSlotCounter } from "../../../../services/playState";
+import { createActiveEffectFromSpell } from "../../../../services/rules";
 
 interface SpellSlotTrackerProps {
   slots: PlaySpellSlotCounter[];
@@ -27,6 +28,7 @@ export function SpellSlotTracker({
 }: SpellSlotTrackerProps) {
   const [slotSelectionBySpellId, setSlotSelectionBySpellId] = useState<Record<string, number>>({});
   const [ritualCastBySpellId, setRitualCastBySpellId] = useState<Record<string, boolean>>({});
+  const [selfTargetBySpellId, setSelfTargetBySpellId] = useState<Record<string, boolean>>({});
 
   const slotsByLevel = useMemo(() => {
     const byLevel = new Map<number, PlaySpellSlotCounter>();
@@ -79,6 +81,9 @@ export function SpellSlotTracker({
               const castMode = spell.level <= 0 ? "cantrip" : ritual ? "ritual" : "slot";
               const noSlotAvailable = castMode === "slot" && availableSlots.length === 0;
               const canCastWithSlot = castMode === "cantrip" || castMode === "ritual" || (selectedSlot ? selectedSlot.remaining > 0 : false);
+              const activeEffect = createActiveEffectFromSpell(spell);
+              const canApplyEffectToSelf = Boolean(activeEffect?.modifiers.some((modifier) => modifier.target === "armor-class"));
+              const selfTarget = selfTargetBySpellId[spell.id] ?? false;
               return (
                 <li key={spell.id} className="rounded border border-slate-200 p-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -102,6 +107,8 @@ export function SpellSlotTracker({
                         onCastSpell(spell.id, {
                           slotLevel: selectedLevel,
                           ritualCast: ritual,
+                          activeEffectTarget: canApplyEffectToSelf && selfTarget ? "self" : undefined,
+                          concentrationNotes: canApplyEffectToSelf && selfTarget ? "Target: Self" : undefined,
                         })
                       }
                       type="button"
@@ -146,6 +153,21 @@ export function SpellSlotTracker({
                         </label>
                       ) : null}
                     </div>
+                  ) : null}
+                  {canApplyEffectToSelf ? (
+                    <label className="mt-2 flex items-center gap-1 text-xs text-slate-700">
+                      <input
+                        checked={selfTarget}
+                        onChange={(event) =>
+                          setSelfTargetBySpellId((current) => ({
+                            ...current,
+                            [spell.id]: event.target.checked,
+                          }))
+                        }
+                        type="checkbox"
+                      />
+                      Apply effect to self
+                    </label>
                   ) : null}
                   {noSlotAvailable ? <p className="mt-2 text-xs text-amber-700">No available slot for this spell.</p> : null}
                   {spell.concentration ? <p className="mt-1 text-xs text-slate-500">Casting this can start or replace concentration.</p> : null}

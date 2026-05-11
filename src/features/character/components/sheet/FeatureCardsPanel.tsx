@@ -31,6 +31,9 @@ export function FeatureCardsPanel({ groups }: FeatureCardsPanelProps) {
                     {feature.ruleChoiceLabels.map((label) => (
                       <span key={label} className="rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">{label}</span>
                     ))}
+                    {feature.appliedSummaryLabels.map((label) => (
+                      <span key={label} className="rounded bg-sky-50 px-2 py-0.5 text-xs text-sky-700">{label}</span>
+                    ))}
                   </div>
                 </div>
                 <p className="mt-2 text-sm text-slate-700">{feature.summary}</p>

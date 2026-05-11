@@ -138,11 +138,12 @@ describe("level-up builder completion v1", () => {
     expect(progression.asiOrFeatChoices.find((entry) => entry.id === choice.id)?.status).toBe("complete");
   });
 
-  it("keeps unsupported Weapon Mastery and Fighting Style honest when no structured choices are exposed", () => {
+  it("uses canonical rule choices instead of old Weapon Mastery and Fighting Style missing surfaces", () => {
     const { context, draft } = createLevelFourPaladin();
     const engine = resolveCharacterEngineState(contentSnapshot, draft, context);
     const progression = buildProgressionViewModel(draft, engine);
-    expect(progression.missingCapabilities.find((entry) => entry.id === "weapon-mastery")?.status).toBe("unsupported");
-    expect(progression.missingCapabilities.find((entry) => entry.id === "fighting-style")?.status).toBe("unsupported");
+    expect(progression.missingCapabilities.find((entry) => entry.id === "weapon-mastery")).toBeUndefined();
+    expect(progression.missingCapabilities.find((entry) => entry.id === "fighting-style")).toBeUndefined();
+    expect(progression.ruleChoices.some((entry) => /Fighting Style|Weapon Mastery/i.test(entry.label))).toBe(true);
   });
 });

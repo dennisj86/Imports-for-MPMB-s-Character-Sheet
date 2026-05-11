@@ -6,6 +6,7 @@ export interface FeatureDefinition {
   description?: string;
   usages?: unknown;
   recovery?: unknown;
+  structuredData?: unknown;
 }
 
 export interface SourceMeta {
@@ -98,6 +99,7 @@ export interface FeatDefinition {
   sourceMeta?: SourceMeta;
   description?: string;
   prerequisite?: string;
+  structuredData?: unknown;
   compatibility?: CompatibilityMeta;
 }
 
@@ -127,6 +129,10 @@ export interface EquipmentDefinition {
   sourceRefs: string[];
   sourceMeta?: SourceMeta;
   type?: string;
+  weaponList?: string;
+  damage?: unknown;
+  range?: string;
+  mastery?: string;
   rarity?: string;
   weight?: number | string;
   description?: string;

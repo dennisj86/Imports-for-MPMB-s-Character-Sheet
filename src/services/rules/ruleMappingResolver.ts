@@ -2,8 +2,17 @@ import { toSlug } from "../../lib/slug";
 import type { CharacterDraft } from "../../domain/character";
 import type { EquipmentDefinition, SpellDefinition } from "../../domain/content";
 import type { ActiveEffectDefinition, RuleChoice, RuleChoiceOption, RuleModifier, RuleSourceDescriptor } from "../../domain/rules";
-import type { RuleActiveEffectTemplate, RuleChoiceOptionTemplate, RuleChoiceTemplate, RuleMapping, RuleMappingOptionSource, RuleModifierTemplate } from "./ruleMappingTypes";
+import type {
+  RuleActiveEffectTemplate,
+  RuleChoiceOptionTemplate,
+  RuleChoiceTemplate,
+  RuleMapping,
+  RuleMappingOptionSource,
+  RuleMappingOptionSourceFilters,
+  RuleModifierTemplate,
+} from "./ruleMappingTypes";
 import { applyChoiceState } from "./choicePipeline";
+import { resolveSpellCatalogOptions, resolveWeaponMasteryOptions, type RuleOptionSourceResult } from "./optionSources";
 import { RULE_MAPPINGS } from "./ruleMappings";
 
 export interface RuleMappingResolverContext {
@@ -91,6 +100,18 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function countWordToNumber(value: string | undefined): number | undefined {
+  const token = String(value ?? "").toLowerCase();
+  if (token === "one" || token === "a" || token === "an") return 1;
+  if (token === "two") return 2;
+  if (token === "three") return 3;
+  if (token === "four") return 4;
+  if (token === "five") return 5;
+  if (token === "six") return 6;
+  const parsed = Number(token);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 export function normalizeRuleMappingToken(value: string | undefined): string {
   return toSlug(value ?? "")
     .replace(/^rule-source-/, "")
@@ -127,34 +148,57 @@ export function matchesRuleMapping(source: RuleSourceDescriptor, mapping: RuleMa
   return true;
 }
 
-function optionsFromSource(source: RuleMappingOptionSource | undefined, context: RuleMappingResolverContext): RuleChoiceOption[] {
-  if (!source) return [];
-  if (source === "skills") return SKILL_OPTIONS;
-  if (source === "tools") return TOOL_OPTIONS;
-  if (source === "languages") return LANGUAGE_OPTIONS;
+function emptyOptionSource(): RuleOptionSourceResult {
+  return {
+    source: {
+      id: "option-source:none",
+      optionType: "other",
+      filters: {},
+      diagnostics: [],
+    },
+    options: [],
+    diagnostics: [],
+  };
+}
+
+function optionsFromSource(
+  source: RuleMappingOptionSource | undefined,
+  context: RuleMappingResolverContext,
+  filters: RuleMappingOptionSourceFilters = {},
+): RuleOptionSourceResult {
+  if (!source) return emptyOptionSource();
+  if (source === "skills") {
+    return {
+      source: { id: "option-source:skills", optionType: "skill", filters: {}, diagnostics: ["Skill option source used static skill list."] },
+      options: SKILL_OPTIONS.map((option) => ({ ...option, optionType: "skill" })),
+      diagnostics: [`Option Source skills included ${SKILL_OPTIONS.length} option(s).`],
+    };
+  }
+  if (source === "tools") {
+    return {
+      source: { id: "option-source:tools", optionType: "tool", filters: {}, diagnostics: ["Tool option source used static tool list."] },
+      options: TOOL_OPTIONS.map((option) => ({ ...option, optionType: "tool" })),
+      diagnostics: [`Option Source tools included ${TOOL_OPTIONS.length} option(s).`],
+    };
+  }
+  if (source === "languages") {
+    return {
+      source: { id: "option-source:languages", optionType: "language", filters: {}, diagnostics: ["Language option source used static language list."] },
+      options: LANGUAGE_OPTIONS.map((option) => ({ ...option, optionType: "language" })),
+      diagnostics: [`Option Source languages included ${LANGUAGE_OPTIONS.length} option(s).`],
+    };
+  }
   if (source === "weapon-catalog") {
-    return (context.equipmentCatalog ?? [])
-      .filter((entry) => entry.category === "weapon")
-      .map((entry) => ({
-        id: entry.id,
-        label: entry.name,
-        value: entry.key,
-        diagnostics: ["Weapon option generated from equipment catalog."],
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label));
+    return resolveWeaponMasteryOptions(context);
   }
   if (source === "spell-cantrips" || source === "spells") {
-    return (context.spellCatalog ?? [])
-      .filter((spell) => (source === "spell-cantrips" ? spell.level === 0 : spell.level > 0))
-      .map((spell) => ({
-        id: spell.id,
-        label: spell.name,
-        value: spell.key,
-        diagnostics: [`${source === "spell-cantrips" ? "Cantrip" : "Spell"} option generated from spell catalog.`],
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label));
+    return resolveSpellCatalogOptions(context, source === "spell-cantrips" ? "cantrip" : "spell", {
+      spellClassKeys: filters.spellClassKeys,
+      minLevel: filters.minLevel,
+      maxLevel: filters.maxLevel,
+    });
   }
-  return [];
+  return emptyOptionSource();
 }
 
 function modifierFromTemplate(source: RuleSourceDescriptor, mapping: RuleMapping, template: RuleModifierTemplate, suffix?: string): RuleModifier {
@@ -180,17 +224,31 @@ function modifierFromTemplate(source: RuleSourceDescriptor, mapping: RuleMapping
 }
 
 function activeEffectFromTemplate(source: RuleSourceDescriptor, mapping: RuleMapping, template: RuleActiveEffectTemplate, suffix?: string): ActiveEffectDefinition {
+  const modifiers = template.modifiers.map((modifier) => modifierFromTemplate(source, mapping, modifier, template.id));
+  const modifierSummary = modifiers.reduce<{ dice?: string; flat?: number }>((summary, modifier) => {
+    if (!summary.dice && modifier.valueType === "dice" && typeof modifier.value === "string") {
+      summary.dice = String(modifier.value).replace(/\s+/g, "");
+    }
+    if (summary.flat === undefined && modifier.valueType === "flat" && typeof modifier.value === "number") {
+      summary.flat = Number(modifier.value);
+    }
+    return summary;
+  }, {});
   return {
     id: `active-effect:${source.id}:${mapping.id}:${template.id}${suffix ? `:${suffix}` : ""}`,
     sourceDescriptorId: source.id,
+    label: source.sourceName,
     sourceName: source.sourceName,
     sourceType: source.sourceType,
+    effectType: template.effectType,
     durationType: template.durationType,
     targets: template.targets ?? ["selected"],
     applicableRollTypes: [...template.applicableRollTypes],
-    modifiers: template.modifiers.map((modifier) => modifierFromTemplate(source, mapping, modifier, template.id)),
+    modifiers,
     requiresPrompt: template.requiresPrompt ?? true,
     remainingUses: template.remainingUses,
+    modifierSummary: modifierSummary.dice !== undefined || modifierSummary.flat !== undefined ? modifierSummary : undefined,
+    configurableFields: template.configurableFields,
     concentrationLinked: template.concentrationLinked ?? template.durationType === "concentration",
     diagnostics: [
       `Rule mapping ${mapping.id} emitted this active effect (${mapping.confidence}).`,
@@ -199,30 +257,49 @@ function activeEffectFromTemplate(source: RuleSourceDescriptor, mapping: RuleMap
   };
 }
 
-function choiceFromTemplate(source: RuleSourceDescriptor, mapping: RuleMapping, template: RuleChoiceTemplate, context: RuleMappingResolverContext, suffix?: string): RuleChoice {
+function choiceFromTemplate(
+  source: RuleSourceDescriptor,
+  mapping: RuleMapping,
+  template: RuleChoiceTemplate,
+  context: RuleMappingResolverContext,
+  suffix?: string,
+  parentChoice?: RuleChoice,
+  selectedOptionId?: string,
+): RuleChoice {
+  const sourceText = `${source.sourceName}\n${source.sourceText ?? ""}`;
+  const parsedRequiredCount = template.requiredCountFromSourceText
+    ? countWordToNumber(
+        sourceText.match(/\b(?:choose|select|gain mastery with|mastery properties of)\s+(one|two|three|four|five|six|[0-9]+)\b/i)?.[1] ??
+          sourceText.match(/\b(one|two|three|four|five|six|[0-9]+)\s+(?:kinds of\s+)?(?:simple\s+or\s+martial\s+)?(?:melee\s+)?weapons?\b/i)?.[1],
+      )
+    : undefined;
+  const requiredCountUnknown = Boolean(template.requiredCountFromSourceText && parsedRequiredCount === undefined && /\bnumber of\b/i.test(sourceText));
+  const requiredCount = parsedRequiredCount ?? template.requiredCount;
+  const optionSourceResult = optionsFromSource(template.optionSource, context, template.optionSourceFilters);
   const generatedOptions = [
     ...(template.options ?? []).map((option) => ({
       id: option.id,
       label: option.label,
       value: option.value,
+      optionType: template.choiceType,
       diagnostics: option.diagnostics,
     })),
-    ...optionsFromSource(template.optionSource, context),
+    ...optionSourceResult.options,
   ];
   const optionMap = new Map<string, RuleChoiceOption>();
   for (const option of generatedOptions) {
     optionMap.set(option.id, option);
   }
   const options = Array.from(optionMap.values());
-  const unsupported = Boolean(template.unsupportedWhenEmpty && options.length === 0);
+  const unsupported = Boolean((template.unsupportedWhenEmpty && options.length === 0) || (template.unsupportedWhenRequiredCountUnknown && requiredCountUnknown));
   return {
     id: `rule-choice:${source.id}:${mapping.id}:${template.id}${suffix ? `:${suffix}` : ""}`,
     sourceDescriptorId: source.id,
     sourceType: source.sourceType,
     choiceType: template.choiceType,
-    requiredCount: template.requiredCount,
-    minCount: template.minCount ?? template.requiredCount,
-    maxCount: template.maxCount ?? template.requiredCount,
+    requiredCount,
+    minCount: template.minCount ?? requiredCount,
+    maxCount: template.maxCount ?? requiredCount,
     options,
     selectedOptionIds: [],
     status: unsupported ? "unsupported" : "pending",
@@ -230,8 +307,24 @@ function choiceFromTemplate(source: RuleSourceDescriptor, mapping: RuleMapping, 
     diagnostics: [
       `Rule mapping ${mapping.id} emitted this choice (${mapping.confidence}).`,
       ...(unsupported ? ["No deterministic option source was available."] : []),
+      ...(requiredCountUnknown ? ["Required count could not be determined from structured data or declarative mapping."] : []),
+      ...optionSourceResult.diagnostics,
       ...(template.diagnostics ?? []),
     ],
+    parentChoiceId: parentChoice?.id,
+    dependsOn: parentChoice && selectedOptionId
+      ? {
+          parentChoiceId: parentChoice.id,
+          requiredSelectedOptionId: selectedOptionId,
+          childChoiceId: `rule-choice:${source.id}:${mapping.id}:${template.id}${suffix ? `:${suffix}` : ""}`,
+          dependencyType: "selected-option",
+        }
+      : undefined,
+    selectedPath: parentChoice && selectedOptionId ? [parentChoice.id, selectedOptionId] : undefined,
+    optionScope: selectedOptionId,
+    generatedByOptionId: selectedOptionId,
+    choiceStage: parentChoice ? "child" : "parent",
+    isAvailable: true,
   };
 }
 
@@ -243,7 +336,7 @@ function selectedOptionsForChoice(choice: RuleChoice, context: RuleMappingResolv
 
 function templateOptions(template: RuleChoiceTemplate, context: RuleMappingResolverContext): RuleChoiceOptionTemplate[] {
   const staticOptions = template.options ?? [];
-  const dynamic = optionsFromSource(template.optionSource, context).map((option): RuleChoiceOptionTemplate => ({
+  const dynamic = optionsFromSource(template.optionSource, context, template.optionSourceFilters).options.map((option): RuleChoiceOptionTemplate => ({
     id: option.id,
     label: option.label,
     value: option.value,
@@ -313,7 +406,7 @@ function contributionFromMapping(source: RuleSourceDescriptor, mapping: RuleMapp
         effects.push(activeEffectFromTemplate(source, mapping, effect, selected.id));
       }
       for (const nestedChoiceTemplate of optionTemplate?.choices ?? []) {
-        choices.push(choiceFromTemplate(source, mapping, nestedChoiceTemplate, context, selected.id));
+        choices.push(choiceFromTemplate(source, mapping, nestedChoiceTemplate, context, selected.id, choice, selected.id));
       }
     }
   }

@@ -238,6 +238,7 @@ export function resolveArmorClassFromEquipment(input: {
   equipmentCatalog: EquipmentDefinition[] | undefined;
   dexModifier: number;
   ruleModifiers?: RuleModifier[];
+  concentrationActive?: boolean;
 }): ArmorClassBreakdown {
   const warnings: string[] = [];
   const equippedItems = input.inventoryItems.filter((entry) => entry.equipped);
@@ -289,6 +290,7 @@ export function resolveArmorClassFromEquipment(input: {
     inventoryItems: input.inventoryItems,
     shieldEquipped: Boolean(shield),
     wearingArmor: Boolean(armorName),
+    concentrationActive: input.concentrationActive,
     target: "armor-class",
   });
   const ruleBonus = ruleModifierResult.total;

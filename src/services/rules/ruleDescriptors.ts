@@ -3,11 +3,16 @@ import type { CharacterDraft } from "../../domain/character";
 import type { BackgroundDefinition, ClassDefinition, EquipmentDefinition, FeatDefinition, FeatureDefinition, SpeciesDefinition, SpellDefinition, SubclassDefinition } from "../../domain/content";
 import type { CharacterRuleEngineState, RuleModifier, RuleSourceDescriptor, RuleSourceType } from "../../domain/rules";
 import { resolveEquipmentDefinitionForInventoryItem } from "../equipment";
-import { extractChoicesFromText, resolveRuleChoices } from "./choicePipeline";
+import { extractChoicesFromText } from "./choicePipeline";
+import { resolveMpmbStructuredChoices } from "./mpmbStructuredChoices";
+import { resolveOptionScopedApplyState } from "./optionScopedApplyPaths";
+import { buildRuleChoiceSurface } from "./ruleChoiceSurface";
 import { applyRuleMappingsToSources } from "./ruleMappingResolver";
+import type { AppliedCharacterRules } from "../../domain/appliedRules";
 
 export interface RuleDescriptorInput {
   draft: CharacterDraft;
+  appliedRules?: AppliedCharacterRules;
   classDef?: ClassDefinition;
   subclassDef?: SubclassDefinition;
   speciesDef?: SpeciesDefinition;
@@ -35,6 +40,9 @@ function tagsFromText(text: string | undefined): string[] {
 }
 
 function parseFlatAcModifier(source: RuleSourceDescriptor, text: string | undefined): RuleModifier[] {
+  if (source.sourceType === "spell") {
+    return [];
+  }
   const match = String(text ?? "").match(/\+([1-5])\s+(?:bonus\s+)?(?:to\s+)?(?:ac|armor class)\b/i);
   if (!match) {
     return [];
@@ -61,6 +69,7 @@ function createDescriptor(input: {
   sourceName: string;
   level?: number;
   text?: string;
+  structuredData?: unknown;
   index?: number;
 }): RuleSourceDescriptor {
   const source: RuleSourceDescriptor = {
@@ -77,6 +86,7 @@ function createDescriptor(input: {
     effects: [],
     diagnostics: [],
     sourceText: input.text,
+    structuredData: input.structuredData,
   };
   source.choices = extractChoicesFromText(source, input.text);
   source.modifiers = parseFlatAcModifier(source, input.text);
@@ -94,6 +104,7 @@ function featureDescriptor(draft: CharacterDraft, sourceType: RuleSourceType, ow
     sourceName: `${ownerName ? `${ownerName}: ` : ""}${feature.name}`,
     level: feature.minLevel,
     text: feature.description,
+    structuredData: feature.structuredData,
   });
 }
 
@@ -135,6 +146,7 @@ export function resolveRuleSourceDescriptors(input: RuleDescriptorInput): RuleSo
       sourceId: feat.id,
       sourceName: feat.name,
       text: [feat.prerequisite, feat.description].filter(Boolean).join("\n"),
+      structuredData: feat.structuredData,
     }));
   }
   for (const item of input.draft.inventory.items.filter((entry) => entry.equipped)) {
@@ -160,21 +172,48 @@ export function resolveRuleSourceDescriptors(input: RuleDescriptorInput): RuleSo
 }
 
 export function resolveCharacterRuleEngine(input: RuleDescriptorInput): CharacterRuleEngineState {
-  const sources = applyRuleMappingsToSources(resolveRuleSourceDescriptors(input), {
+  const structuredSources = resolveRuleSourceDescriptors(input).map((source) => ({
+    ...source,
+    choices: [
+      ...source.choices,
+      ...resolveMpmbStructuredChoices(source, {
+        draft: input.draft,
+        equipmentCatalog: input.equipmentCatalog,
+        spellCatalog: input.spellCatalog,
+      }),
+    ],
+  }));
+  const sources = applyRuleMappingsToSources(structuredSources, {
     draft: input.draft,
     equipmentCatalog: input.equipmentCatalog,
     spellCatalog: input.spellCatalog,
   });
-  const choices = resolveRuleChoices(sources, input.draft.ruleChoices);
-  const modifiers = sources.flatMap((source) => source.modifiers);
+  const optionScoped = resolveOptionScopedApplyState({
+    sources,
+    draft: input.draft,
+    appliedRules: input.appliedRules,
+  });
+  const choiceSurface = buildRuleChoiceSurface(sources, input.draft.ruleChoices);
+  const canonicalChoices = choiceSurface.choices.map((choice) => choice.choice);
+  const modifiers = [...sources.flatMap((source) => source.modifiers), ...optionScoped.modifiers];
   const effects = sources.flatMap((source) => source.effects);
   const diagnostics = sources.flatMap((source) => source.diagnostics);
+  const optionScopedDiagnostics = optionScoped.diagnostics.map((entry) => {
+    const optionLabel = entry.optionLabel ?? entry.optionId;
+    return `${entry.sourceName}${optionLabel ? ` / ${optionLabel}` : ""}: ${entry.field} ${entry.status}${entry.applyPath ? ` via ${entry.applyPath}` : ""}. ${entry.message}`;
+  });
+  const hasUnsupportedOptionScoped = optionScoped.diagnostics.some((entry) => entry.status === "unsupported");
   return {
     sources,
-    choices,
+    choices: canonicalChoices,
+    choiceSurface,
     modifiers,
     effects,
-    diagnostics,
-    dataStatus: diagnostics.length || choices.some((choice) => choice.status === "unsupported") ? "partial" : "complete",
+    optionScoped,
+    diagnostics: [...diagnostics, ...optionScopedDiagnostics, ...choiceSurface.diagnostics],
+    dataStatus:
+      diagnostics.length || hasUnsupportedOptionScoped || choiceSurface.choices.some((choice) => choice.status === "unsupported")
+        ? "partial"
+        : "complete",
   };
 }

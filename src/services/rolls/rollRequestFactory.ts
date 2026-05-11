@@ -4,7 +4,7 @@ import type { ActiveEffectState } from "../../domain/rules";
 import type { AbilityKey, DerivedCharacterStats, SkillKey } from "../../domain/derivedStats";
 import type { CharacterRollView, RollActionDescriptor, RollRequest, RollSourceType } from "../../domain/rolls";
 import type { CharacterEngineState } from "../characterEngine";
-import { buildWeaponAttackProfiles, type WeaponAttackProfile } from "../rules";
+import { buildWeaponAttackProfiles, resolveCombinedRuleProficiencies, type WeaponAttackProfile } from "../rules";
 import { classifySpell } from "../spells";
 
 const ABILITY_LABELS: Record<AbilityKey, string> = {
@@ -265,12 +265,18 @@ function buildSpellDescriptor(
 }
 
 export function buildCharacterRollView(engine: CharacterEngineState, activeEffects: ActiveEffectState[] = []): CharacterRollView {
+  const combinedProficiencies =
+    engine.appliedRules && engine.ruleEngine?.optionScoped
+      ? resolveCombinedRuleProficiencies(engine.appliedRules, engine.ruleEngine.optionScoped)
+      : undefined;
+  const weaponProficiencies = combinedProficiencies && combinedProficiencies.weapons.length > 0 ? combinedProficiencies.weapons : undefined;
   const weaponProfiles = engine.draft
     ? buildWeaponAttackProfiles({
         draft: engine.draft,
         equipmentCatalog: engine.equipmentCatalog ?? [],
         derivedStats: engine.derivedStats,
         modifiers: engine.ruleEngine?.modifiers ?? [],
+        weaponProficiencies,
       })
     : [];
   const profileBySourceId = new Map<string, WeaponAttackProfile>();

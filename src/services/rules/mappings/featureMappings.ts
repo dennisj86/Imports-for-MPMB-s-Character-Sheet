@@ -2,6 +2,69 @@ import type { RuleMapping } from "../ruleMappingTypes";
 
 export const FEATURE_RULE_MAPPINGS: RuleMapping[] = [
   {
+    id: "feature:bardic-inspiration:active-effect",
+    appliesTo: {
+      sourceType: "class-feature",
+      normalizedName: "bardic-inspiration",
+    },
+    confidence: "exact",
+    emits: {
+      diagnostics: ["Bardic Inspiration is exposed as a configurable external roll-bonus effect."],
+      activeEffectDefinitions: [
+        {
+          id: "bardic-inspiration-bonus-die",
+          effectType: "roll-bonus",
+          durationType: "until-used",
+          targets: ["selected"],
+          applicableRollTypes: ["ability-check", "skill-check", "attack-roll", "spell-attack", "saving-throw"],
+          requiresPrompt: true,
+          configurableFields: ["die-size"],
+          modifiers: [
+            {
+              id: "bardic-inspiration-d6",
+              target: "other",
+              valueType: "dice",
+              value: "1d6",
+              condition: "manual",
+              diagnostics: ["Default die size is d6; override it at activation when the source bard level is unknown or higher."],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: "feature:war-gods-blessing:active-effect",
+    appliesTo: {
+      sourceType: "subclass-feature",
+      normalizedName: "war-god-s-blessing",
+    },
+    confidence: "exact",
+    emits: {
+      diagnostics: ["War God's Blessing is exposed as a one-roll flat attack bonus effect."],
+      activeEffectDefinitions: [
+        {
+          id: "war-gods-blessing-attack-bonus",
+          effectType: "roll-bonus",
+          durationType: "one-roll",
+          targets: ["selected"],
+          applicableRollTypes: ["attack-roll"],
+          requiresPrompt: true,
+          modifiers: [
+            {
+              id: "war-gods-blessing-plus-10",
+              target: "other",
+              valueType: "flat",
+              value: 10,
+              condition: "manual",
+              diagnostics: ["Optional flat attack bonus applied only when the user selects the effect for a roll."],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     id: "feature:fighting-style:choice",
     appliesTo: {
       sourceType: ["class-feature", "subclass-feature"],
@@ -74,6 +137,21 @@ export const FEATURE_RULE_MAPPINGS: RuleMapping[] = [
               ],
             },
             {
+              id: "two-weapon-fighting",
+              label: "Two-Weapon Fighting",
+              diagnostics: ["Choice is supported, but off-hand damage automation remains a future weapon-profile capability."],
+              modifiers: [
+                {
+                  id: "two-weapon-fighting-note",
+                  target: "weapon-damage",
+                  valueType: "note",
+                  value: "Future capability: off-hand damage ability modifier handling.",
+                  condition: "manual",
+                  diagnostics: ["No automatic two-weapon fighting damage adjustment is implemented in V1."],
+                },
+              ],
+            },
+            {
               id: "protection",
               label: "Protection",
               diagnostics: ["Reaction style is surfaced as a supported manual capability, without combat automation."],
@@ -106,15 +184,36 @@ export const FEATURE_RULE_MAPPINGS: RuleMapping[] = [
             {
               id: "blessed-warrior",
               label: "Blessed Warrior",
-              diagnostics: ["Creates a cantrip subchoice when spell catalog data is available."],
+              diagnostics: ["Creates option-scoped cantrip subchoices from structured MPMB spellcastingBonus data when that data is available."],
               choices: [
                 {
                   id: "blessed-warrior-cantrips",
                   choiceType: "cantrip",
                   requiredCount: 2,
+                  minCount: 2,
+                  maxCount: 2,
                   optionSource: "spell-cantrips",
+                  optionSourceFilters: { spellClassKeys: ["cleric"], minLevel: 0, maxLevel: 0 },
                   unsupportedWhenEmpty: true,
-                  diagnostics: ["Select cantrips through the generic rule choice pipeline."],
+                  diagnostics: ["Declarative Fighting Style mapping provides a Cleric cantrip child choice for Blessed Warrior."],
+                },
+              ],
+            },
+            {
+              id: "druidic-warrior",
+              label: "Druidic Warrior",
+              diagnostics: ["Creates option-scoped cantrip subchoices from structured MPMB spellcastingBonus data when that data is available."],
+              choices: [
+                {
+                  id: "druidic-warrior-cantrips",
+                  choiceType: "cantrip",
+                  requiredCount: 2,
+                  minCount: 2,
+                  maxCount: 2,
+                  optionSource: "spell-cantrips",
+                  optionSourceFilters: { spellClassKeys: ["druid"], minLevel: 0, maxLevel: 0 },
+                  unsupportedWhenEmpty: true,
+                  diagnostics: ["Declarative Fighting Style mapping provides a Druid cantrip child choice for Druidic Warrior."],
                 },
               ],
             },
@@ -137,6 +236,8 @@ export const FEATURE_RULE_MAPPINGS: RuleMapping[] = [
           id: "weapon-mastery",
           choiceType: "weapon-mastery",
           requiredCount: 1,
+          requiredCountFromSourceText: true,
+          unsupportedWhenRequiredCountUnknown: true,
           optionSource: "weapon-catalog",
           unsupportedWhenEmpty: true,
           diagnostics: ["Weapon Mastery choices use weapon catalog entries as options. Effects are informational in V1."],

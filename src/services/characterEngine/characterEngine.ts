@@ -207,6 +207,7 @@ export function resolveCharacterEngineState(
   });
   const ruleEngine = resolveCharacterRuleEngine({
     draft,
+    appliedRules,
     classDef,
     subclassDef,
     speciesDef,
@@ -222,6 +223,7 @@ export function resolveCharacterEngineState(
     speciesDef,
     equipmentCatalog,
     ruleModifiers: ruleEngine.modifiers,
+    optionScoped: ruleEngine.optionScoped,
   });
   const progression = resolveLevelProgression(draft, appliedRules, derivedStats, {
     classDef,
@@ -237,6 +239,7 @@ export function resolveCharacterEngineState(
     selectedFeats,
     selectedSpells,
     equipmentCatalog,
+    ruleEngine,
   });
 
   return {

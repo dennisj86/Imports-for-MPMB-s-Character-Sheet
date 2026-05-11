@@ -128,7 +128,11 @@ function normalizeClassKey(classDef: ClassDefinition | undefined): string {
 }
 
 function normalizeSkillToken(value: string): string {
-  return normalizeToken(value).replace(/-skill$/, "");
+  const normalized = normalizeToken(value);
+  if (normalized === "any-skill") {
+    return normalized;
+  }
+  return normalized.replace(/-skill$/, "");
 }
 
 function resolveClassSkillOptions(options: string[]): string[] {
@@ -1067,6 +1071,8 @@ export function validateBuilderStep(
   const errors: string[] = [];
   const warnings: string[] = [];
   const { draft, classDef, subclassDef, appliedRules, progression } = input;
+  const pendingCanonicalRuleChoices = (input.ruleEngine?.choiceSurface.choices ?? [])
+    .filter((choice) => choice.playerVisible && choice.requiredCount > 0 && (choice.status === "pending" || choice.status === "blocked"));
 
   if (stepId === "class") {
     if (!draft.name.trim()) {
@@ -1104,10 +1110,8 @@ export function validateBuilderStep(
   }
 
   if (stepId === "feats") {
-    for (const choice of input.ruleEngine?.choices ?? []) {
-      if (choice.status === "pending" && choice.requiredCount > 0) {
-        errors.push(`${choice.sourceType} choice from ${choice.sourceDescriptorId} is incomplete.`);
-      }
+    for (const choice of pendingCanonicalRuleChoices) {
+      errors.push(`${choice.sourceName} ${choice.choiceType} choice is incomplete.`);
     }
     for (const choice of progression.asiOrFeatChoices) {
       if (!choice.satisfied) {
@@ -1167,7 +1171,7 @@ export function validateBuilderStep(
     if (progression.asiOrFeatChoices.some((entry) => !entry.satisfied)) {
       errors.push("ASI/Feat level-up choices are incomplete.");
     }
-    if ((input.ruleEngine?.choices ?? []).some((entry) => entry.status === "pending" && entry.requiredCount > 0)) {
+    if (pendingCanonicalRuleChoices.length > 0) {
       errors.push("Generic rule choices are incomplete.");
     }
     if (spellContexts.some((entry) => entry.requiredCount > 0 && !entry.satisfied)) {

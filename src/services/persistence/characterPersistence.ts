@@ -151,6 +151,8 @@ const ruleModifierSchema = z.object({
   condition: z.enum([
     "always",
     "wearing-armor",
+    "wearing-medium-or-heavy-armor",
+    "not-wearing-armor",
     "shield-equipped",
     "weapon-equipped",
     "weapon-is-melee",
@@ -169,22 +171,60 @@ const ruleModifierSchema = z.object({
   diagnostics: z.array(z.string()).default([]),
 });
 
-const activeEffectSchema = z.object({
-  id: z.string(),
-  sourceDescriptorId: z.string(),
-  sourceName: z.string(),
-  sourceType: ruleSourceTypeSchema,
-  startedAt: z.string(),
-  durationType: z.enum(["concentration", "until-rest", "timed", "manual", "one-roll"]),
-  targets: z.array(z.enum(["self", "ally", "selected", "global", "unknown"])),
-  applicableRollTypes: z.array(z.enum(["ability-check", "skill-check", "saving-throw", "attack-roll", "spell-attack", "damage-roll", "death-save", "custom"])),
-  modifiers: z.array(ruleModifierSchema),
-  requiresPrompt: z.boolean(),
-  remainingUses: z.number().int().nonnegative().optional(),
-  concentrationLinked: z.boolean(),
-  status: z.enum(["active", "expired", "dismissed"]),
-  diagnostics: z.array(z.string()).default([]),
-});
+const activeEffectSchema = z
+  .object({
+    id: z.string(),
+    sourceDescriptorId: z.string(),
+    label: z.string().optional(),
+    sourceName: z.string(),
+    sourceType: ruleSourceTypeSchema,
+    startedAt: z.string(),
+    effectType: z.enum(["roll-bonus", "ac-bonus", "advantage", "disadvantage", "note"]).optional(),
+    durationType: z.enum(["concentration", "until-used", "until-rest", "timed", "manual", "one-roll"]),
+    targets: z.array(z.enum(["self", "ally", "selected", "global", "unknown"])),
+    applicableRollTypes: z.array(z.enum(["ability-check", "skill-check", "saving-throw", "attack-roll", "spell-attack", "damage-roll", "death-save", "custom"])),
+    modifiers: z.array(ruleModifierSchema),
+    requiresPrompt: z.boolean(),
+    remainingUses: z.number().int().nonnegative().optional(),
+    modifierSummary: z.object({
+      dice: z.string().optional(),
+      flat: z.number().optional(),
+    }).optional(),
+    configurableFields: z.array(z.enum(["die-size"])).optional(),
+    concentrationLinked: z.boolean(),
+    status: z.enum(["active", "expired", "dismissed"]),
+    sourceCasterName: z.string().optional(),
+    note: z.string().optional(),
+    diagnostics: z.array(z.string()).default([]),
+  })
+  .transform((effect) => {
+    const modifierSummary = effect.modifierSummary ?? effect.modifiers.reduce<{ dice?: string; flat?: number }>((summary, modifier) => {
+      if (!summary.dice && modifier.valueType === "dice" && typeof modifier.value === "string") {
+        summary.dice = modifier.value.replace(/\s+/g, "");
+      }
+      if (summary.flat === undefined && modifier.valueType === "flat" && typeof modifier.value === "number") {
+        summary.flat = Number(modifier.value);
+      }
+      return summary;
+    }, {});
+    const effectType =
+      effect.effectType ??
+      (effect.modifiers.some((modifier) => modifier.target === "armor-class" && modifier.valueType === "flat")
+        ? "ac-bonus"
+        : effect.modifiers.some((modifier) => modifier.valueType === "advantage")
+          ? "advantage"
+          : effect.modifiers.some((modifier) => modifier.valueType === "disadvantage")
+            ? "disadvantage"
+            : effect.modifiers.some((modifier) => modifier.valueType === "dice" || modifier.valueType === "flat")
+              ? "roll-bonus"
+              : "note");
+    return {
+      ...effect,
+      label: effect.label ?? effect.sourceName ?? effect.id,
+      effectType,
+      modifierSummary: modifierSummary.dice !== undefined || modifierSummary.flat !== undefined ? modifierSummary : undefined,
+    };
+  });
 
 const playStateSchema = z.object({
   schemaVersion: z.literal(1),

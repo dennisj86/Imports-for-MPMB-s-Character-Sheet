@@ -1,6 +1,15 @@
 import type { CharacterDraft } from "../../domain/character";
 import type { RulesMode } from "../../domain/content";
-import type { RuleChoiceType, RuleModifier, RuleModifierCondition, RuleModifierTarget, RuleModifierValueType, RuleSourceType } from "../../domain/rules";
+import type {
+  ActiveEffectConfigField,
+  ActiveEffectType,
+  RuleChoiceType,
+  RuleModifier,
+  RuleModifierCondition,
+  RuleModifierTarget,
+  RuleModifierValueType,
+  RuleSourceType,
+} from "../../domain/rules";
 import type { RollType } from "../../domain/rolls";
 
 export type RuleMappingConfidence = "exact" | "structured" | "declarative" | "fallback";
@@ -12,6 +21,12 @@ export type RuleMappingOptionSource =
   | "weapon-catalog"
   | "spell-cantrips"
   | "spells";
+
+export interface RuleMappingOptionSourceFilters {
+  spellClassKeys?: string[];
+  minLevel?: number;
+  maxLevel?: number;
+}
 
 export interface RuleMappingAppliesTo {
   sourceType?: RuleSourceType | RuleSourceType[];
@@ -49,13 +64,15 @@ export interface RuleChoiceSelectionModifierTemplate {
 
 export interface RuleActiveEffectTemplate {
   id: string;
-  durationType: "concentration" | "until-rest" | "timed" | "manual" | "one-roll";
+  effectType: ActiveEffectType;
+  durationType: "concentration" | "until-used" | "until-rest" | "timed" | "manual" | "one-roll";
   targets?: Array<"self" | "ally" | "selected" | "global" | "unknown">;
   applicableRollTypes: RollType[];
   modifiers: RuleModifierTemplate[];
   requiresPrompt?: boolean;
   concentrationLinked?: boolean;
   remainingUses?: number;
+  configurableFields?: ActiveEffectConfigField[];
   diagnostics?: string[];
 }
 
@@ -73,10 +90,13 @@ export interface RuleChoiceTemplate {
   id: string;
   choiceType: RuleChoiceType;
   requiredCount: number;
+  requiredCountFromSourceText?: boolean;
+  unsupportedWhenRequiredCountUnknown?: boolean;
   minCount?: number;
   maxCount?: number;
   options?: RuleChoiceOptionTemplate[];
   optionSource?: RuleMappingOptionSource;
+  optionSourceFilters?: RuleMappingOptionSourceFilters;
   applySelectionAs?: RuleChoiceSelectionModifierTemplate;
   unsupportedWhenEmpty?: boolean;
   diagnostics?: string[];

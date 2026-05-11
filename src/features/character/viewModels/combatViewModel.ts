@@ -3,6 +3,7 @@ import type { CharacterPlayState } from "../../../domain/playState";
 import type { CharacterEngineState } from "../../../services/characterEngine";
 import { normalizeInventoryState, resolveArmorClassFromEquipment, type ArmorClassBreakdown } from "../../../services/equipment";
 import type { PlayHitDicePoolCounter } from "../../../services/playState";
+import { activeEffectModifiersForTarget } from "../../../services/rules";
 
 export interface CoreStatCard {
   id: string;
@@ -64,7 +65,11 @@ export function buildCombatViewModel(input: {
     inventoryItems: normalizeInventoryState(draft.inventory, engine.equipmentCatalog).items,
     equipmentCatalog: engine.equipmentCatalog,
     dexModifier: derived.abilityScores.dex.modifier,
-    ruleModifiers: engine.ruleEngine?.modifiers ?? [],
+    ruleModifiers: [
+      ...(engine.ruleEngine?.modifiers ?? []),
+      ...activeEffectModifiersForTarget(playState.activeEffects, "armor-class", { targetScope: "self" }),
+    ],
+    concentrationActive: Boolean(playState.concentration),
   });
   const hitDice = hitDiceSummary(input.hitDicePools);
 

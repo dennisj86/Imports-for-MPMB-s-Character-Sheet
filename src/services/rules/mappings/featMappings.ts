@@ -77,31 +77,4 @@ export const FEAT_RULE_MAPPINGS: RuleMapping[] = [
       ],
     },
   },
-  {
-    id: "feat:magic-initiate:spell-choices",
-    appliesTo: {
-      sourceType: "feat",
-      normalizedName: "magic-initiate",
-    },
-    confidence: "exact",
-    emits: {
-      diagnostics: ["Magic Initiate spell choices are exposed as generic cantrip/spell choices when catalog data is available."],
-      choices: [
-        {
-          id: "magic-initiate-cantrips",
-          choiceType: "cantrip",
-          requiredCount: 2,
-          optionSource: "spell-cantrips",
-          unsupportedWhenEmpty: true,
-        },
-        {
-          id: "magic-initiate-spell",
-          choiceType: "spell",
-          requiredCount: 1,
-          optionSource: "spells",
-          unsupportedWhenEmpty: true,
-        },
-      ],
-    },
-  },
 ];
