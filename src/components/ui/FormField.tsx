@@ -16,5 +16,5 @@ export function FormField({ label, hint, children }: FormFieldProps) {
 }
 
 export function inputClassName() {
-  return "w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-slate-500 focus:outline-none";
+  return "sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300";
 }

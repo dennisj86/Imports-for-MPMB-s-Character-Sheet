@@ -1,49 +1,118 @@
-import type { FeatureGroupViewModel } from "../../viewModels/featuresViewModel";
+import { useMemo, useState } from "react";
+import type { FeatureGroupId, FeatureGroupViewModel } from "../../viewModels/featuresViewModel";
+import { EmptyState, FeatureCardShell, SectionHeader, StatusBadge } from "./SheetDesignSystem";
 
 interface FeatureCardsPanelProps {
   groups: FeatureGroupViewModel[];
 }
 
 export function FeatureCardsPanel({ groups }: FeatureCardsPanelProps) {
+  const [featureSearch, setFeatureSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState<"all" | FeatureGroupId>("all");
+  const [actionFilter, setActionFilter] = useState<"all" | "actionable" | "passive">("all");
+
+  const normalizedFeatureSearch = featureSearch.trim().toLowerCase();
+  const filteredGroups = useMemo(
+    () =>
+      groups
+        .map((group) => ({
+          ...group,
+          features: group.features.filter((feature) => {
+            const searchMatch = normalizedFeatureSearch.length === 0
+              || `${feature.name} ${feature.summary} ${feature.details ?? ""} ${feature.sourceLabel} ${feature.actionType ?? ""} ${feature.ruleChoiceLabels.join(" ")} ${feature.appliedSummaryLabels.join(" ")}`.toLowerCase().includes(normalizedFeatureSearch);
+            const groupMatch = groupFilter === "all" || group.id === groupFilter;
+            const actionMatch = actionFilter === "all"
+              ? true
+              : actionFilter === "actionable"
+                ? Boolean(feature.actionType && feature.actionType !== "Passive")
+                : !feature.actionType || feature.actionType === "Passive";
+            return searchMatch && groupMatch && actionMatch;
+          }),
+        }))
+        .filter((group) => group.features.length > 0),
+    [actionFilter, groupFilter, groups, normalizedFeatureSearch],
+  );
+  const shownFeatures = filteredGroups.reduce((sum, group) => sum + group.features.length, 0);
+
   if (groups.length === 0) {
-    return <p className="text-sm text-slate-500">No readable feature entries resolved yet.</p>;
+    return <EmptyState title="Features" description="No readable feature entries resolved yet." />;
   }
 
   return (
     <div className="space-y-4">
-      {groups.map((group) => (
+      <div className="sheet-card grid gap-2 p-3 md:grid-cols-[minmax(0,2fr),repeat(2,minmax(0,1fr)),auto]">
+        <input
+          aria-label="Search features"
+          className="sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+          onChange={(event) => setFeatureSearch(event.target.value)}
+          placeholder="Search features, summaries, applied choices..."
+          type="search"
+          value={featureSearch}
+        />
+        <select
+          aria-label="Filter features by source"
+          className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+          onChange={(event) => setGroupFilter(event.target.value as "all" | FeatureGroupId)}
+          value={groupFilter}
+        >
+          <option value="all">All Sources</option>
+          {groups.map((group) => (
+            <option key={`feature-group-${group.id}`} value={group.id}>
+              {group.label}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Filter features by action profile"
+          className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+          onChange={(event) => setActionFilter(event.target.value as "all" | "actionable" | "passive")}
+          value={actionFilter}
+        >
+          <option value="all">All Action Types</option>
+          <option value="actionable">Actionable</option>
+          <option value="passive">Passive / Utility</option>
+        </select>
+        <div className="flex items-center">
+          <StatusBadge label={`${shownFeatures} shown`} status="info" />
+        </div>
+      </div>
+
+      {shownFeatures === 0 ? (
+        <EmptyState title="Feature Search" description="No features match the current filters." />
+      ) : null}
+
+      {filteredGroups.map((group) => (
         <section key={group.id} className="space-y-2">
-          <h3 className="text-xs font-medium uppercase text-slate-500">{group.label}</h3>
+          <SectionHeader actions={<StatusBadge label={`${group.features.length}`} status="info" />} title={group.label} />
           <div className="grid gap-2 lg:grid-cols-2">
             {group.features.map((feature) => (
-              <article key={feature.id} className="rounded border border-slate-200 p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{feature.name}</p>
-                    <p className="text-xs text-slate-600">
-                      {feature.sourceLabel}
-                      {feature.level ? ` · L${feature.level}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {feature.actionType ? <span className="rounded bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">{feature.actionType}</span> : null}
-                    {feature.usesLabel ? <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{feature.usesLabel}</span> : null}
+              <FeatureCardShell
+                key={feature.id}
+                title={feature.name}
+                subtitle={`${feature.sourceLabel}${feature.level ? ` · L${feature.level}` : ""}`}
+                badges={
+                  <>
+                    {feature.actionType ? <StatusBadge status="info" label={feature.actionType} /> : null}
+                    {feature.usesLabel ? <StatusBadge status="pending" label={feature.usesLabel} /> : null}
                     {feature.ruleChoiceLabels.map((label) => (
-                      <span key={label} className="rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">{label}</span>
+                      <StatusBadge key={label} label={label} status="complete" />
                     ))}
                     {feature.appliedSummaryLabels.map((label) => (
-                      <span key={label} className="rounded bg-sky-50 px-2 py-0.5 text-xs text-sky-700">{label}</span>
+                      <StatusBadge key={label} label={label} status="info" />
                     ))}
-                  </div>
-                </div>
-                <p className="mt-2 text-sm text-slate-700">{feature.summary}</p>
+                  </>
+                }
+              >
+                <p className="text-sm text-slate-700">{feature.summary}</p>
                 {feature.details ? (
                   <details className="mt-2 text-xs text-slate-600">
-                    <summary className="cursor-pointer text-slate-700">Details</summary>
+                    <summary aria-label={`Show details for ${feature.name}`} className="sheet-focus-ring cursor-pointer text-slate-700">
+                      Details
+                    </summary>
                     <p className="mt-1 whitespace-pre-wrap">{feature.details}</p>
                   </details>
                 ) : null}
-              </article>
+              </FeatureCardShell>
             ))}
           </div>
         </section>

@@ -3,6 +3,7 @@ import type { ActiveEffectCatalogEntry, ActiveEffectDefinition } from "../../../
 import type { CharacterRollView, RollActionDescriptor, RollMode, RollRequest, RollResult, RollType } from "../../../../domain/rolls";
 import type { PlayResourceCounter } from "../../../../services/playState";
 import { activeEffectsForRollType, searchActiveEffectCatalog, type ActiveEffectCatalogEffectFilter, type ActiveEffectCatalogSourceFilter } from "../../../../services/rules";
+import { ActionCard, EmptyState, RollResultCard, SectionHeader, StatusBadge } from "./SheetDesignSystem";
 
 interface ActionRollPanelProps {
   rollView: CharacterRollView;
@@ -38,12 +39,6 @@ const DIE_SIZE_OPTIONS = ["1d4", "1d6", "1d8", "1d10", "1d12"];
 
 function modifierLabel(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`;
-}
-
-function modeLabel(mode: RollMode): string {
-  if (mode === "advantage") return "Advantage";
-  if (mode === "disadvantage") return "Disadvantage";
-  return "Normal";
 }
 
 function sourceFilterLabel(sourceFilter: ActiveEffectCatalogSourceFilter): string {
@@ -101,6 +96,10 @@ function rollTypeLabel(rollType: RollType): string {
   return "Custom";
 }
 
+function normalizeSearch(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 type WeaponProfileMetadata = {
   usageMode?: "melee" | "ranged" | "thrown" | "versatile-one-hand" | "versatile-two-hand";
   versatileDamageDice?: string;
@@ -126,50 +125,26 @@ function RollButton({
   children,
   onRoll,
   disabled,
+  disabledReason,
 }: {
   request: RollRequest;
   rollMode: RollMode;
   children: string;
   onRoll: (request: RollRequest) => void;
   disabled?: boolean;
+  disabledReason?: string;
 }) {
   return (
     <button
-      className="rounded bg-slate-700 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+      aria-label={`${children}: ${request.label}`}
+      className="sheet-focus-ring rounded bg-slate-700 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
       disabled={disabled}
+      title={disabled ? disabledReason ?? "Action currently unavailable." : undefined}
       onClick={() => onRoll({ ...request, rollMode })}
       type="button"
     >
       {children}
     </button>
-  );
-}
-
-function LastRollCard({ result }: { result?: RollResult }) {
-  if (!result) {
-    return <p className="rounded border border-slate-200 bg-slate-50 p-2 text-sm text-slate-500">No rolls yet.</p>;
-  }
-  const rawRolls = result.dice.rawRolls.join(", ");
-  const baseRoll = result.dice.keptRoll ?? result.dice.rawRolls[0] ?? 0;
-  const appliedBonuses = result.temporaryModifierBreakdown?.filter((entry) => entry.applied) ?? [];
-  return (
-    <div className="rounded border border-indigo-200 bg-indigo-50 p-3">
-      <p className="text-xs uppercase text-indigo-700">Last Roll</p>
-      <p className="text-sm font-semibold text-slate-900">{result.label}</p>
-      <div className="space-y-1 text-xs text-slate-700">
-        <p>Mode: {modeLabel(result.rollMode)}</p>
-        <p>Base Roll: {baseRoll}</p>
-        <p>Base Modifier: {modifierLabel(result.baseModifier ?? result.modifier)}</p>
-        {result.activeEffects?.length ? <p>Active Effect: {result.activeEffects.map((entry) => entry.label).join(", ")}</p> : null}
-        {appliedBonuses.length ? <p>Bonus Modifiers: {appliedBonuses.map((entry) => `${entry.sourceName} ${entry.value}`).join(", ")}</p> : null}
-        {result.bonusDice?.length ? (
-          <p>Bonus Dice: {result.bonusDice.map((entry) => `${entry.sourceName ? `${entry.sourceName} ` : ""}${entry.expression}=${entry.total}`).join(", ")}</p>
-        ) : null}
-        <p className="text-sm font-semibold text-slate-900">Total: {result.total}</p>
-      </div>
-      {rawRolls ? <p className="mt-1 text-xs text-slate-600">Dice: {rawRolls}{result.dice.keptRoll ? ` · kept ${result.dice.keptRoll}` : ""}</p> : null}
-      {result.outcomeLabel && result.outcomeLabel !== "normal" ? <p className="text-xs text-amber-700">{result.outcomeLabel}</p> : null}
-    </div>
   );
 }
 
@@ -185,22 +160,27 @@ function RequestGrid({
   onRoll: (request: RollRequest) => void;
 }) {
   return (
-    <div>
-      <p className="mb-2 text-xs font-medium uppercase text-slate-500">{title}</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {requests.map((request) => (
-          <button
-            key={request.id}
-            className="flex items-center justify-between rounded border border-slate-200 px-2 py-1.5 text-left text-sm hover:bg-slate-50"
-            onClick={() => onRoll({ ...request, rollMode })}
-            type="button"
-          >
-            <span>{request.label}</span>
-            <span className="font-medium">{modifierLabel(request.modifier)}</span>
-          </button>
-        ))}
-      </div>
-    </div>
+    <section className="space-y-2">
+      <SectionHeader title={title} />
+      {requests.length === 0 ? (
+        <EmptyState title={title} description="No matching entries." />
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {requests.map((request) => (
+            <button
+              aria-label={`Roll ${request.label}`}
+              key={request.id}
+              className="sheet-focus-ring sheet-card flex items-center justify-between rounded px-2 py-1.5 text-left text-sm"
+              onClick={() => onRoll({ ...request, rollMode })}
+              type="button"
+            >
+              <span>{request.label}</span>
+              <span className="font-medium">{modifierLabel(request.modifier)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -237,6 +217,7 @@ function ActionDescriptorRow({
     hasVersatileMode && versatileBaseDice
       ? `One-handed ${versatileBaseDice} · Two-handed ${versatileDamageDice}`
       : undefined;
+  const spendDisabledReason = resource ? `${resource.name} is depleted.` : "Resource unavailable.";
 
   const withWeaponUsage = (request: RollRequest | undefined): RollRequest | undefined => {
     if (!request || !hasVersatileMode) {
@@ -261,72 +242,80 @@ function ActionDescriptorRow({
   const effectiveDamageRequest = withWeaponUsage(descriptor.damageRequest);
 
   return (
-    <li className="rounded border border-slate-200 p-2">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-medium">{descriptor.label}</p>
-          <p className="text-xs text-slate-600">
-            {descriptor.activationType ?? "action"}
-            {descriptor.sourceSummary ? ` · ${descriptor.sourceSummary}` : ""}
-            {descriptor.rollRequest ? ` · attack ${modifierLabel(descriptor.rollRequest.modifier)}` : ""}
-          </p>
-          {descriptor.spellSaveDc ? (
-            <p className="text-xs text-slate-700">
-              Save DC {descriptor.spellSaveDc}{descriptor.spellSaveAbility ? ` · ${descriptor.spellSaveAbility.toUpperCase()}` : ""}
-            </p>
-          ) : null}
-          {effectiveDamageRequest ? <p className="text-xs text-slate-700">Damage {effectiveDamageRequest.diceExpression}</p> : null}
-          {hasVersatileMode ? (
-            <label className="mt-1 inline-flex items-center gap-2 text-xs text-slate-700">
-              Usage
-              <select
-                className="rounded border border-slate-300 bg-white px-1 py-0.5 text-xs text-slate-800"
-                onChange={(event) => onChangeVersatileMode(event.target.value as "one-hand" | "two-hand")}
-                value={selectedVersatileMode}
+    <li>
+      <ActionCard
+        title={descriptor.label}
+        subtitle={`${descriptor.activationType ?? "action"}${descriptor.sourceSummary ? ` · ${descriptor.sourceSummary}` : ""}${descriptor.rollRequest ? ` · attack ${modifierLabel(descriptor.rollRequest.modifier)}` : ""}`}
+        badges={
+          <>
+            {descriptor.mappingBadges?.map((badge) => (
+              <StatusBadge key={badge} label={badge} status="info" />
+            ))}
+            {ambiguousResources ? <StatusBadge label="manual resource spend" status="blocked" /> : null}
+            {resource ? <StatusBadge label={`${resource.name} ${resource.remaining}/${resource.max}`} status={resource.remaining > 0 ? "complete" : "pending"} /> : null}
+          </>
+        }
+        actions={
+          <>
+            {effectiveRollRequest ? (
+              <RollButton request={effectiveRollRequest} rollMode={rollMode} onRoll={(request) => onRoll(request)}>
+                Roll
+              </RollButton>
+            ) : null}
+            {effectiveDamageRequest ? (
+              <RollButton request={effectiveDamageRequest} rollMode="normal" onRoll={(request) => onRoll(request)}>
+                Damage
+              </RollButton>
+            ) : null}
+            {effectiveRollRequest && singleResourceId ? (
+              <button
+                aria-label={`Roll and spend ${resource?.name ?? "resource"} for ${descriptor.label}`}
+                className="sheet-focus-ring rounded bg-indigo-700 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                disabled={!canSpend}
+                title={!canSpend ? spendDisabledReason : undefined}
+                onClick={() => onRoll({ ...effectiveRollRequest, rollMode }, { spendResourceKey: singleResourceId, resourceLabel: resource?.name })}
+                type="button"
               >
-                <option value="one-hand">One-handed</option>
-                <option value="two-hand">Two-handed</option>
-              </select>
-              {versatileLabel ? <span className="text-slate-500">{versatileLabel}</span> : null}
-            </label>
-          ) : null}
-          {descriptor.mappingBadges?.length ? <p className="text-xs text-slate-600">{descriptor.mappingBadges.join(" · ")}</p> : null}
-          {resource ? <p className="text-xs text-slate-600">Resource: {resource.name} ({resource.remaining}/{resource.max})</p> : null}
-          {ambiguousResources ? <p className="text-xs text-amber-700">Multiple resources linked; spend manually.</p> : null}
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {effectiveRollRequest ? (
-            <RollButton request={effectiveRollRequest} rollMode={rollMode} onRoll={(request) => onRoll(request)}>
-              Roll
-            </RollButton>
-          ) : null}
-          {effectiveDamageRequest ? (
-            <RollButton request={effectiveDamageRequest} rollMode="normal" onRoll={(request) => onRoll(request)}>
-              Damage
-            </RollButton>
-          ) : null}
-          {effectiveRollRequest && singleResourceId ? (
-            <button
-              className="rounded bg-indigo-700 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={!canSpend}
-              onClick={() => onRoll({ ...effectiveRollRequest, rollMode }, { spendResourceKey: singleResourceId, resourceLabel: resource?.name })}
-              type="button"
+                Roll + Spend
+              </button>
+            ) : null}
+            {!effectiveRollRequest && singleResourceId ? (
+              <button
+                aria-label={`Spend ${resource?.name ?? "resource"} for ${descriptor.label}`}
+                className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                disabled={!canSpend}
+                title={!canSpend ? spendDisabledReason : undefined}
+                onClick={() => onSpendResource(singleResourceId, 1, resource?.name)}
+                type="button"
+              >
+                Spend
+              </button>
+            ) : null}
+          </>
+        }
+      >
+        {descriptor.spellSaveDc ? (
+          <p className="text-xs text-slate-700">
+            Save DC {descriptor.spellSaveDc}{descriptor.spellSaveAbility ? ` · ${descriptor.spellSaveAbility.toUpperCase()}` : ""}
+          </p>
+        ) : null}
+        {effectiveDamageRequest ? <p className="text-xs text-slate-700">Damage {effectiveDamageRequest.diceExpression}</p> : null}
+        {hasVersatileMode ? (
+          <label className="mt-1 inline-flex items-center gap-2 text-xs text-slate-700">
+            Usage
+            <select
+              aria-label={`Select weapon usage mode for ${descriptor.label}`}
+              className="rounded border border-slate-300 bg-white px-1 py-0.5 text-xs text-slate-800"
+              onChange={(event) => onChangeVersatileMode(event.target.value as "one-hand" | "two-hand")}
+              value={selectedVersatileMode}
             >
-              Roll + Spend
-            </button>
-          ) : null}
-          {!effectiveRollRequest && singleResourceId ? (
-            <button
-              className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-              disabled={!canSpend}
-              onClick={() => onSpendResource(singleResourceId, 1, resource?.name)}
-              type="button"
-            >
-              Spend
-            </button>
-          ) : null}
-        </div>
-      </div>
+              <option value="one-hand">One-handed</option>
+              <option value="two-hand">Two-handed</option>
+            </select>
+            {versatileLabel ? <span className="text-slate-500">{versatileLabel}</span> : null}
+          </label>
+        ) : null}
+      </ActionCard>
     </li>
   );
 }
@@ -360,13 +349,37 @@ export function ActionRollPanel({
   const [customCasterName, setCustomCasterName] = useState("");
   const [customRollTypes, setCustomRollTypes] = useState<RollType[]>(["ability-check"]);
   const [weaponUsageByActionId, setWeaponUsageByActionId] = useState<Record<string, "one-hand" | "two-hand">>({});
+  const [actionSearch, setActionSearch] = useState("");
 
   const resourceById = useMemo(() => new Map(resources.map((resource) => [resource.id, resource])), [resources]);
-  const actionableSpells = rollView.spellRolls.filter((entry) => entry.rollRequest || entry.damageRequest || entry.spellSaveDc);
+  const actionableSpells = useMemo(
+    () => rollView.spellRolls.filter((entry) => entry.rollRequest || entry.damageRequest || entry.spellSaveDc),
+    [rollView.spellRolls],
+  );
   const activeEffects = rollView.activeEffects?.filter((effect) => effect.status === "active") ?? [];
+  const inactiveEffects = rollView.activeEffects?.filter((effect) => effect.status !== "active") ?? [];
+  const consumedEffects = inactiveEffects.filter((effect) => effect.durationType === "until-used" || effect.durationType === "one-roll");
   const rollSelectableEffects = activeEffects
     .filter((effect) => effect.applicableRollTypes.length > 0)
     .filter((effect) => effect.targets.includes("self") || effect.targets.includes("global"));
+  const normalizedActionSearch = normalizeSearch(actionSearch);
+  const matchesActionSearch = (value: string): boolean => normalizeSearch(value).includes(normalizedActionSearch);
+  const filterRollRequests = (entries: RollRequest[]): RollRequest[] => (
+    normalizedActionSearch
+      ? entries.filter((entry) => matchesActionSearch(`${entry.label} ${entry.type} ${entry.diceExpression}`))
+      : entries
+  );
+  const filterDescriptors = (entries: RollActionDescriptor[]): RollActionDescriptor[] => (
+    normalizedActionSearch
+      ? entries.filter((entry) =>
+        matchesActionSearch(`${entry.label} ${entry.sourceSummary ?? ""} ${entry.notes.join(" ")} ${(entry.mappingBadges ?? []).join(" ")}`))
+      : entries
+  );
+  const filteredAbilityChecks = filterRollRequests(rollView.abilityChecks);
+  const filteredSavingThrows = filterRollRequests(rollView.savingThrows);
+  const filteredSkillChecks = filterRollRequests(rollView.skillChecks);
+  const filteredActionRolls = filterDescriptors(rollView.actionRolls);
+  const filteredSpellRolls = filterDescriptors(actionableSpells);
   const excludedEffectIds = useMemo(() => activeEffects.map((effect) => effect.id), [activeEffects]);
   const searchResult = useMemo(
     () =>
@@ -383,6 +396,7 @@ export function ActionRollPanel({
   const searchDiagnostics = searchResult.diagnostics;
 
   const selectedCatalogEntry = filteredCatalog.find((entry) => entry.id === selectedCatalogId) ?? activeEffectCatalog.find((entry) => entry.id === selectedCatalogId);
+  const canActivateCustomEffect = customName.trim().length > 0 && customRollTypes.length > 0;
 
   const applySelectedEffects = (request: RollRequest): RollRequest => {
     const applicable = activeEffectsForRollType(rollSelectableEffects, request.type).filter((effect) => selectedEffectIds.includes(effect.id));
@@ -453,9 +467,14 @@ export function ActionRollPanel({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
+        <SectionHeader
+          subtitle="Select optional buffs first, then execute rolls and resource spends."
+          title="Action Console"
+        />
         <label className="text-sm text-slate-700">
           Roll Mode{" "}
           <select
+            aria-label="Select roll mode"
             className="ml-2 rounded border border-slate-300 bg-white px-2 py-1 text-sm"
             onChange={(event) => setRollMode(event.target.value as RollMode)}
             value={rollMode}
@@ -467,16 +486,36 @@ export function ActionRollPanel({
         </label>
       </div>
 
-      <LastRollCard result={lastRoll} />
+      <div className="sheet-card space-y-2 p-3">
+        <SectionHeader
+          actions={<StatusBadge label={`${filteredActionRolls.length + filteredSpellRolls.length} actions`} status="info" />}
+          subtitle="Search across checks, action profiles and spell action entries."
+          title="Action Search"
+        />
+        <input
+          aria-label="Search action entries"
+          className="sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+          onChange={(event) => setActionSearch(event.target.value)}
+          placeholder="Search actions, attacks, saves, skills..."
+          type="search"
+          value={actionSearch}
+        />
+      </div>
+
+      <RollResultCard result={lastRoll} />
 
       {activeEffects.length > 0 ? (
-        <div className="rounded border border-slate-200 bg-slate-50 p-2">
-          <p className="mb-1 text-xs font-medium uppercase text-slate-500">Active Buffs</p>
+        <div className="sheet-card bg-slate-50 p-2">
+          <SectionHeader
+            actions={<StatusBadge label={`${activeEffects.length} active`} status="complete" />}
+            subtitle="Effects with duration `one-roll` or `until-used` are consumed once checked and used in a roll."
+            title="Active Buffs"
+          />
           <ul className="space-y-1">
             {activeEffects.map((effect) => (
-              <li key={effect.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-white px-2 py-1">
+              <li key={effect.id} className="sheet-card flex flex-wrap items-center justify-between gap-2 rounded bg-white px-2 py-1">
                 <div className="text-xs text-slate-700">
-                  <p className="font-medium">{effect.label}</p>
+                  <p className="font-medium text-slate-900">{effect.label}</p>
                   <p>
                     {sourceTypeLabel(effect.sourceType)} · {effect.durationType} · {effect.targets.join(", ")}
                     {effect.modifierSummary?.dice ? ` · ${effect.modifierSummary.dice}` : ""}
@@ -484,9 +523,10 @@ export function ActionRollPanel({
                   </p>
                   {effect.note ? <p className="text-slate-600">{effect.note}</p> : null}
                 </div>
+                <StatusBadge status="complete" label="active" />
                 {onDismissEffect ? (
                   <button
-                    className="rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-800"
+                    className="sheet-focus-ring rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-800"
                     onClick={() => onDismissEffect(effect.id)}
                     type="button"
                   >
@@ -499,14 +539,32 @@ export function ActionRollPanel({
         </div>
       ) : null}
 
+      {consumedEffects.length > 0 ? (
+        <div className="sheet-card border-slate-300 bg-slate-50 p-2">
+          <SectionHeader
+            actions={<StatusBadge label={`${consumedEffects.length} consumed`} status="pending" />}
+            subtitle="Consumed one-roll/until-used effects are removed from active selection until re-activated."
+            title="Consumed Buffs"
+          />
+          <ul className="space-y-1">
+            {consumedEffects.slice(0, 8).map((effect) => (
+              <li key={effect.id} className="sheet-card flex items-center justify-between gap-2 rounded bg-white px-2 py-1 text-xs text-slate-700">
+                <p className="font-medium text-slate-900">{effect.label}</p>
+                <StatusBadge label={effect.status} status="pending" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {onActivateEffect ? (
-        <div className="space-y-2 rounded border border-slate-200 bg-slate-50 p-3">
-          <p className="text-xs font-medium uppercase text-slate-500">Activate External Buff</p>
+        <div className="sheet-card space-y-2 bg-slate-50 p-3">
+          <SectionHeader subtitle="Search and activate mapped support effects" title="Activate External Buff" />
           <div className="flex flex-wrap gap-2">
             {(["spells", "features", "items", "custom"] as const).map((value) => (
               <button
                 key={value}
-                className={`rounded px-2 py-1 text-xs ${sourceFilters.includes(value) ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-200"}`}
+                className={`sheet-focus-ring rounded px-2 py-1 text-xs ${sourceFilters.includes(value) ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-200"}`}
                 onClick={() => toggleSourceFilter(value)}
                 type="button"
               >
@@ -516,7 +574,7 @@ export function ActionRollPanel({
             {(["all", "roll-bonus", "ac-bonus"] as const).map((value) => (
               <button
                 key={value}
-                className={`rounded px-2 py-1 text-xs ${effectFilter === value ? "bg-indigo-700 text-white" : "bg-white text-slate-700 border border-slate-200"}`}
+                className={`sheet-focus-ring rounded px-2 py-1 text-xs ${effectFilter === value ? "bg-indigo-700 text-white" : "bg-white text-slate-700 border border-slate-200"}`}
                 onClick={() => setEffectFilter(value)}
                 type="button"
               >
@@ -525,25 +583,28 @@ export function ActionRollPanel({
             ))}
           </div>
           <input
-            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+            aria-label="Search mapped external buffs"
+            className="sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
             onChange={(event) => setBuffSearch(event.target.value)}
             placeholder="Search buffs across spells, features, feats, and items"
             type="search"
             value={buffSearch}
           />
-          <div className="text-xs text-slate-600">
-            Filters: {searchDiagnostics.activeSourceFilters.length ? searchDiagnostics.activeSourceFilters.map(sourceFilterLabel).join(", ") : "None"} · Effect: {effectFilterLabel(searchDiagnostics.activeEffectFilter)}
+          <div className="flex flex-wrap gap-1 text-xs text-slate-600">
+            <StatusBadge label={`Sources: ${searchDiagnostics.activeSourceFilters.length ? searchDiagnostics.activeSourceFilters.map(sourceFilterLabel).join(", ") : "None"}`} status="info" />
+            <StatusBadge label={`Effect: ${effectFilterLabel(searchDiagnostics.activeEffectFilter)}`} status="info" />
           </div>
           {filteredCatalog.length ? (
             <ul className="max-h-56 space-y-1 overflow-auto">
               {filteredCatalog.map((entry) => (
                 <li key={entry.id}>
                   <button
-                    className={`flex w-full items-start justify-between rounded border px-2 py-1 text-left text-xs ${selectedCatalogId === entry.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}
+                    className={`sheet-focus-ring flex w-full items-start justify-between rounded border px-2 py-1 text-left text-xs ${selectedCatalogId === entry.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}
                     onClick={() => {
                       setSelectedCatalogId(entry.id);
                       setActivationDice(entry.modifier.dice ?? "");
                     }}
+                    aria-label={`Select buff ${entry.label}`}
                     type="button"
                   >
                     <span>
@@ -556,13 +617,7 @@ export function ActionRollPanel({
               ))}
             </ul>
           ) : (
-            <div className="rounded border border-dashed border-slate-300 bg-white p-2 text-xs text-slate-700">
-              <p className="font-medium">No activatable buffs match this search.</p>
-              <p>Active filters: {searchDiagnostics.activeSourceFilters.length ? searchDiagnostics.activeSourceFilters.map(sourceFilterLabel).join(", ") : "None"} · {effectFilterLabel(searchDiagnostics.activeEffectFilter)}</p>
-              <p>Searched source types: {searchDiagnostics.searchedSourceTypes.join(", ") || "None"}</p>
-              <p>{searchDiagnostics.mappedOnlyHint}</p>
-              {futureMatches.length ? <p>Known but not activatable yet.</p> : null}
-            </div>
+            <EmptyState title="No activatable buffs match this search." description={`${searchDiagnostics.mappedOnlyHint}${futureMatches.length ? " Known but not activatable entries exist." : ""}`} />
           )}
 
           {futureMatches.length ? (
@@ -590,7 +645,8 @@ export function ActionRollPanel({
                 <label className="text-xs text-slate-700">
                   Source / Caster Name
                   <input
-                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                    aria-label="External buff source or caster name"
+                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
                     onChange={(event) => setActivationCasterName(event.target.value)}
                     type="text"
                     value={activationCasterName}
@@ -600,7 +656,8 @@ export function ActionRollPanel({
                   <label className="text-xs text-slate-700">
                     Bonus Die
                     <select
-                      className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                      aria-label="Select bonus die for external buff"
+                      className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
                       onChange={(event) => setActivationDice(event.target.value)}
                       value={activationDice || selectedCatalogEntry.modifier.dice || "1d6"}
                     >
@@ -614,13 +671,14 @@ export function ActionRollPanel({
               <label className="text-xs text-slate-700">
                 Note
                 <input
-                  className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                  aria-label="External buff note"
+                  className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
                   onChange={(event) => setActivationNote(event.target.value)}
                   type="text"
                   value={activationNote}
                 />
               </label>
-              <button className="rounded bg-indigo-700 px-3 py-2 text-sm text-white" onClick={activateSelectedCatalogEntry} type="button">
+              <button className="sheet-focus-ring rounded bg-indigo-700 px-3 py-2 text-sm text-white" onClick={activateSelectedCatalogEntry} type="button">
                 Activate on self
               </button>
             </div>
@@ -633,7 +691,8 @@ export function ActionRollPanel({
                 <label className="text-xs text-slate-700">
                   Name
                   <input
-                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                    aria-label="Custom buff name"
+                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
                     onChange={(event) => setCustomName(event.target.value)}
                     type="text"
                     value={customName}
@@ -642,7 +701,8 @@ export function ActionRollPanel({
                 <label className="text-xs text-slate-700">
                   Duration
                   <select
-                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                    aria-label="Custom buff duration"
+                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
                     onChange={(event) => setCustomDuration(event.target.value as "manual" | "until-used" | "one-roll")}
                     value={customDuration}
                   >
@@ -654,7 +714,8 @@ export function ActionRollPanel({
                 <label className="text-xs text-slate-700">
                   Bonus Dice
                   <input
-                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                    aria-label="Custom buff bonus dice"
+                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
                     onChange={(event) => setCustomDice(event.target.value)}
                     placeholder="1d4"
                     type="text"
@@ -664,7 +725,8 @@ export function ActionRollPanel({
                 <label className="text-xs text-slate-700">
                   Flat Bonus
                   <input
-                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                    aria-label="Custom buff flat bonus"
+                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
                     onChange={(event) => setCustomFlat(event.target.value)}
                     placeholder="+2"
                     type="number"
@@ -674,7 +736,8 @@ export function ActionRollPanel({
                 <label className="text-xs text-slate-700 md:col-span-2">
                   Source / Caster Name
                   <input
-                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                    aria-label="Custom buff source or caster name"
+                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
                     onChange={(event) => setCustomCasterName(event.target.value)}
                     type="text"
                     value={customCasterName}
@@ -683,7 +746,8 @@ export function ActionRollPanel({
                 <label className="text-xs text-slate-700 md:col-span-2">
                   Note
                   <input
-                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                    aria-label="Custom buff note"
+                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
                     onChange={(event) => setCustomNote(event.target.value)}
                     type="text"
                     value={customNote}
@@ -694,6 +758,7 @@ export function ActionRollPanel({
                 {CUSTOM_ROLL_TYPE_OPTIONS.map((option) => (
                   <label key={option.value} className="flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-xs text-slate-700">
                     <input
+                      aria-label={`Apply custom buff to ${option.label} rolls`}
                       checked={customRollTypes.includes(option.value)}
                       onChange={(event) =>
                         setCustomRollTypes((current) =>
@@ -706,7 +771,13 @@ export function ActionRollPanel({
                   </label>
                 ))}
               </div>
-              <button className="rounded bg-slate-900 px-3 py-2 text-sm text-white" onClick={activateCustomEffect} type="button">
+              <button
+                className="sheet-focus-ring rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                disabled={!canActivateCustomEffect}
+                onClick={activateCustomEffect}
+                title={!canActivateCustomEffect ? "Enter a custom buff name and at least one roll type." : undefined}
+                type="button"
+              >
                 Activate Custom Buff
               </button>
             </div>
@@ -715,12 +786,17 @@ export function ActionRollPanel({
       ) : null}
 
       {rollSelectableEffects.length > 0 ? (
-        <div className="rounded border border-slate-200 bg-slate-50 p-2">
-          <p className="mb-1 text-xs font-medium uppercase text-slate-500">Optional Active Effects</p>
+        <div className="sheet-card bg-slate-50 p-2">
+          <SectionHeader
+            actions={<StatusBadge label={`${selectedEffectIds.length} selected`} status="info" />}
+            subtitle="Checked effects apply to the next matching roll. One-roll and until-used effects are consumed."
+            title="Optional Active Effects"
+          />
           <div className="flex flex-wrap gap-2">
             {rollSelectableEffects.map((effect) => (
-              <label key={effect.id} className="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
+              <label key={effect.id} className="sheet-card flex items-center gap-1 rounded bg-white px-2 py-1 text-xs text-slate-700">
                 <input
+                  aria-label={`Apply effect ${effect.label} to next roll`}
                   checked={selectedEffectIds.includes(effect.id)}
                   onChange={(event) =>
                     setSelectedEffectIds((current) =>
@@ -729,24 +805,35 @@ export function ActionRollPanel({
                   }
                   type="checkbox"
                 />
-                {effect.label}
+                <span className="font-medium text-slate-900">{effect.label}</span>
+                <StatusBadge
+                  className="ml-1"
+                  label={effect.durationType}
+                  status={effect.durationType === "until-used" || effect.durationType === "one-roll" ? "pending" : "info"}
+                />
               </label>
             ))}
           </div>
         </div>
       ) : null}
 
-      <RequestGrid title="Ability Checks" requests={rollView.abilityChecks} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
-      <RequestGrid title="Saving Throws" requests={rollView.savingThrows} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
-      <RequestGrid title="Skill Checks" requests={rollView.skillChecks} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
+      <RequestGrid title="Ability Checks" requests={filteredAbilityChecks} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
+      <RequestGrid title="Saving Throws" requests={filteredSavingThrows} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
+      <RequestGrid title="Skill Checks" requests={filteredSkillChecks} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
 
-      <div>
-        <p className="mb-2 text-xs font-medium uppercase text-slate-500">Action Rolls</p>
-        {rollView.actionRolls.length === 0 ? (
-          <p className="text-sm text-slate-500">No action entries resolved.</p>
+      <section className="space-y-2">
+        <SectionHeader
+          actions={<StatusBadge label={`${filteredActionRolls.length}`} status="info" />}
+          title="Action Rolls"
+        />
+        {filteredActionRolls.length === 0 ? (
+          <EmptyState
+            title="Action Rolls"
+            description={normalizedActionSearch ? "No action entries match current search." : "No action entries resolved."}
+          />
         ) : (
           <ul className="space-y-2">
-            {rollView.actionRolls.map((descriptor) => (
+            {filteredActionRolls.map((descriptor) => (
               <ActionDescriptorRow
                 key={descriptor.id}
                 descriptor={descriptor}
@@ -765,16 +852,26 @@ export function ActionRollPanel({
             ))}
           </ul>
         )}
-      </div>
+      </section>
 
       {showSpellRolls ? (
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase text-slate-500">Spell Rolls</p>
-          {actionableSpells.length === 0 ? (
-            <p className="text-sm text-slate-500">Spell roll actions appear when a selected spell has an attack, save, or damage context.</p>
+        <section className="space-y-2">
+          <SectionHeader
+            actions={<StatusBadge label={`${filteredSpellRolls.length}`} status="info" />}
+            title="Spell Rolls"
+          />
+          {filteredSpellRolls.length === 0 ? (
+            <EmptyState
+              title="Spell Rolls"
+              description={
+                normalizedActionSearch
+                  ? "No spell action entries match current search."
+                  : "Spell roll actions appear when a selected spell has an attack, save, or damage context."
+              }
+            />
           ) : (
             <ul className="space-y-2">
-              {actionableSpells.map((descriptor) => (
+              {filteredSpellRolls.map((descriptor) => (
                 <ActionDescriptorRow
                   key={descriptor.id}
                   descriptor={descriptor}
@@ -793,7 +890,7 @@ export function ActionRollPanel({
               ))}
             </ul>
           )}
-        </div>
+        </section>
       ) : null}
     </div>
   );

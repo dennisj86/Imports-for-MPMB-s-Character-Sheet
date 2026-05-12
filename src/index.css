@@ -2,12 +2,117 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --sheet-space-1: 0.25rem;
+  --sheet-space-2: 0.5rem;
+  --sheet-space-3: 0.75rem;
+  --sheet-space-4: 1rem;
+  --sheet-space-5: 1.25rem;
+  --sheet-space-6: 1.5rem;
+
+  --sheet-radius-sm: 0.375rem;
+  --sheet-radius-md: 0.5rem;
+  --sheet-radius-lg: 0.75rem;
+
+  --sheet-font-xs: 0.75rem;
+  --sheet-font-sm: 0.875rem;
+  --sheet-font-md: 1rem;
+  --sheet-font-lg: 1.125rem;
+  --sheet-font-xl: 1.5rem;
+
+  --sheet-color-bg: #f1f5f9;
+  --sheet-color-surface: #ffffff;
+  --sheet-color-surface-muted: #f8fafc;
+  --sheet-color-border: #d6dde7;
+  --sheet-color-text: #0f172a;
+  --sheet-color-text-muted: #475569;
+  --sheet-color-accent: #4f46e5;
+  --sheet-color-accent-soft: #e0e7ff;
+
+  --sheet-shadow-1: 0 1px 2px rgb(15 23 42 / 0.06);
+  --sheet-shadow-2: 0 10px 25px -14px rgb(15 23 42 / 0.4);
+
+  --sheet-status-complete-bg: #ecfdf5;
+  --sheet-status-complete-fg: #065f46;
+  --sheet-status-pending-bg: #fffbeb;
+  --sheet-status-pending-fg: #92400e;
+  --sheet-status-unsupported-bg: #f1f5f9;
+  --sheet-status-unsupported-fg: #334155;
+  --sheet-status-blocked-bg: #fef2f2;
+  --sheet-status-blocked-fg: #9f1239;
+
+  --sheet-hover-surface: #f8fafc;
+  --sheet-focus-ring: 0 0 0 3px rgb(99 102 241 / 0.35);
+}
+
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  color: #111827;
+  color: var(--sheet-color-text);
+  background: var(--sheet-color-bg);
+  overflow-x: hidden;
+}
+
+#root {
+  overflow-x: clip;
 }
 
 * {
   box-sizing: border-box;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.7);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .sheet-card {
+    border: 1px solid var(--sheet-color-border);
+    border-radius: var(--sheet-radius-lg);
+    background: var(--sheet-color-surface);
+    box-shadow: var(--sheet-shadow-1);
+  }
+
+  .sheet-elevation-2 {
+    box-shadow: var(--sheet-shadow-2);
+  }
+
+  .sheet-focus-ring {
+    transition: box-shadow 140ms ease, background-color 140ms ease;
+  }
+
+  .sheet-focus-ring:hover:not(:disabled) {
+    background-color: var(--sheet-hover-surface);
+  }
+
+  .sheet-focus-ring:focus-visible {
+    outline: none;
+    box-shadow: var(--sheet-focus-ring);
+  }
+
+  .sheet-focus-ring:disabled {
+    pointer-events: none;
+  }
+
+  .sheet-no-overflow {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --sheet-space-4: 0.875rem;
+    --sheet-space-5: 1rem;
+  }
+
+  .sheet-card {
+    border-radius: var(--sheet-radius-md);
+  }
 }

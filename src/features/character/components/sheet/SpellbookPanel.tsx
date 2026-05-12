@@ -4,6 +4,7 @@ import type { RollMode, RollRequest } from "../../../../domain/rolls";
 import type { SpellbookViewModel, SpellCardViewModel } from "../../viewModels/spellbookViewModel";
 import type { CastSpellOptions, PlaySpellSlotCounter } from "../../../../services/playState";
 import { createActiveEffectFromSpell } from "../../../../services/rules";
+import { EmptyState, SectionHeader, SpellCardShell, StatusBadge } from "./SheetDesignSystem";
 
 interface SpellbookPanelProps {
   viewModel: SpellbookViewModel;
@@ -34,21 +35,35 @@ function SpellSlotOverview({
   onRestoreSlot,
 }: Pick<SpellbookPanelProps, "slots" | "onSpendSlot" | "onRestoreSlot">) {
   if (slots.length === 0) {
-    return <p className="rounded border border-slate-200 bg-slate-50 p-2 text-sm text-slate-500">No spell slots available.</p>;
+    return <EmptyState title="Spell Slots" description="No spell slots available." />;
   }
   return (
     <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
       {slots.map((slot) => (
-        <div key={slot.slotKey} className="rounded border border-slate-200 p-2 text-sm">
-          <p className="text-xs uppercase text-slate-500">Slot L{slot.level}</p>
-          <p className="font-semibold">
+        <div key={slot.slotKey} className="sheet-card p-2 text-sm">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Slot L{slot.level}</p>
+          <p className="font-semibold text-slate-900">
             {slot.remaining} / {slot.max}
           </p>
           <div className="mt-2 flex gap-1">
-            <button className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800" onClick={() => onRestoreSlot(slot.slotKey, 1)} type="button">
+            <button
+              aria-label={`Restore one level ${slot.level} spell slot`}
+              className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+              disabled={slot.remaining >= slot.max}
+              onClick={() => onRestoreSlot(slot.slotKey, 1)}
+              title={slot.remaining >= slot.max ? "Slot pool already full." : undefined}
+              type="button"
+            >
               +1
             </button>
-            <button className="rounded bg-slate-700 px-2 py-1 text-xs text-white" onClick={() => onSpendSlot(slot.slotKey, 1)} type="button">
+            <button
+              aria-label={`Spend one level ${slot.level} spell slot`}
+              className="sheet-focus-ring rounded bg-slate-700 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              disabled={slot.remaining <= 0}
+              onClick={() => onSpendSlot(slot.slotKey, 1)}
+              title={slot.remaining <= 0 ? "No remaining slots in this pool." : undefined}
+              type="button"
+            >
               -1
             </button>
           </div>
@@ -70,11 +85,35 @@ export function SpellbookPanel({
   const [ritualCastBySpellId, setRitualCastBySpellId] = useState<Record<string, boolean>>({});
   const [selfTargetBySpellId, setSelfTargetBySpellId] = useState<Record<string, boolean>>({});
   const [rollMode, setRollMode] = useState<RollMode>("normal");
+  const [spellSearch, setSpellSearch] = useState("");
+  const [levelFilter, setLevelFilter] = useState<"all" | "cantrip" | "leveled">("all");
+  const [concentrationFilter, setConcentrationFilter] = useState<"all" | "concentration" | "no-concentration">("all");
   const slotsByLevel = useMemo(() => new Map(slots.map((slot) => [slot.level, slot])), [slots]);
+  const normalizedSpellSearch = spellSearch.trim().toLowerCase();
+  const filteredSpells = useMemo(
+    () =>
+      viewModel.spells.filter((spell) => {
+        const searchMatch = normalizedSpellSearch.length === 0 || `${spell.name} ${spell.summary} ${spell.details ?? ""}`.toLowerCase().includes(normalizedSpellSearch);
+        const levelMatch =
+          levelFilter === "all"
+            ? true
+            : levelFilter === "cantrip"
+              ? spell.level === 0
+              : spell.level > 0;
+        const concentrationMatch =
+          concentrationFilter === "all"
+            ? true
+            : concentrationFilter === "concentration"
+              ? spell.concentration
+              : !spell.concentration;
+        return searchMatch && levelMatch && concentrationMatch;
+      }),
+    [concentrationFilter, levelFilter, normalizedSpellSearch, viewModel.spells],
+  );
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-2 rounded border border-slate-200 bg-slate-50 p-3 text-sm sm:grid-cols-4">
+      <div className="sheet-card grid gap-2 border-indigo-200 bg-indigo-50/60 p-3 text-sm sm:grid-cols-4">
         <div>
           <p className="text-xs uppercase text-slate-500">Ability</p>
           <p className="font-medium">{viewModel.abilityLabel}</p>
@@ -96,10 +135,15 @@ export function SpellbookPanel({
       <SpellSlotOverview slots={slots} onRestoreSlot={onRestoreSlot} onSpendSlot={onSpendSlot} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase text-slate-500">Prepared / Known Spells</p>
+        <SectionHeader
+          actions={<StatusBadge label={`${filteredSpells.length} shown`} status="info" />}
+          subtitle="Prepared and known spell list"
+          title="Spells"
+        />
         <label className="text-sm text-slate-700">
           Roll Mode{" "}
           <select
+            aria-label="Select spell roll mode"
             className="ml-2 rounded border border-slate-300 bg-white px-2 py-1 text-sm"
             onChange={(event) => setRollMode(event.target.value as RollMode)}
             value={rollMode}
@@ -111,11 +155,44 @@ export function SpellbookPanel({
         </label>
       </div>
 
+      <div className="sheet-card grid gap-2 p-3 md:grid-cols-[minmax(0,2fr),repeat(2,minmax(0,1fr))]">
+        <input
+          aria-label="Search spells"
+          className="sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+          onChange={(event) => setSpellSearch(event.target.value)}
+          placeholder="Search spells, summaries, details..."
+          type="search"
+          value={spellSearch}
+        />
+        <select
+          aria-label="Filter spells by level"
+          className="sheet-no-overflow rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+          onChange={(event) => setLevelFilter(event.target.value as "all" | "cantrip" | "leveled")}
+          value={levelFilter}
+        >
+          <option value="all">All Levels</option>
+          <option value="cantrip">Cantrips</option>
+          <option value="leveled">Leveled</option>
+        </select>
+        <select
+          aria-label="Filter spells by concentration requirement"
+          className="sheet-no-overflow rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+          onChange={(event) => setConcentrationFilter(event.target.value as "all" | "concentration" | "no-concentration")}
+          value={concentrationFilter}
+        >
+          <option value="all">All Concentration States</option>
+          <option value="concentration">Concentration</option>
+          <option value="no-concentration">No Concentration</option>
+        </select>
+      </div>
+
       {viewModel.spells.length === 0 ? (
-        <p className="text-sm text-slate-500">No spells selected.</p>
+        <EmptyState title="Spellbook" description="No spells selected." />
+      ) : filteredSpells.length === 0 ? (
+        <EmptyState title="Spell Search" description="No spells match the current filters." />
       ) : (
         <ul className="space-y-3">
-          {viewModel.spells.map((spell) => {
+          {filteredSpells.map((spell) => {
             const availableSlots = slots.filter((slot) => slot.level >= spell.level && slot.remaining > 0);
             const storedLevel = slotSelectionBySpellId[spell.id];
             const selectedLevel = storedLevel && availableSlots.some((slot) => slot.level === storedLevel)
@@ -139,132 +216,141 @@ export function SpellbookPanel({
             const selfTarget = selfTargetBySpellId[spell.id] ?? true;
             const castMode = spell.level <= 0 ? "cantrip" : ritual ? "ritual" : "slot";
             const canCast = castMode === "cantrip" || castMode === "ritual" || Boolean(selectedSlot && selectedSlot.remaining > 0);
+            const castDisabledReason =
+              castMode === "slot" && !canCast
+                ? "No available spell slot for this spell level."
+                : undefined;
             const rollRequest = spell.rollDescriptor?.rollRequest;
             const damageRequest = spell.rollDescriptor?.damageRequest;
             return (
-              <li key={spell.id} className="rounded border border-slate-200 p-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold">{spell.name}</p>
-                    <p className="text-xs text-slate-600">
-                      {spell.levelLabel}
-                      {spell.school ? ` · ${spell.school}` : ""}
-                      {spell.castingTime ? ` · ${spell.castingTime}` : ""}
-                      {spell.range ? ` · ${spell.range}` : ""}
-                      {spell.duration ? ` · ${spell.duration}` : ""}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
+              <li key={spell.id}>
+                <SpellCardShell
+                  title={spell.name}
+                  subtitle={`${spell.levelLabel}${spell.school ? ` · ${spell.school}` : ""}${spell.castingTime ? ` · ${spell.castingTime}` : ""}${spell.range ? ` · ${spell.range}` : ""}${spell.duration ? ` · ${spell.duration}` : ""}`}
+                  tags={
+                    <>
                       {spell.categories.map((category) => (
-                        <span key={category} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-                          {category}
-                        </span>
+                        <StatusBadge key={category} label={category} status="info" />
                       ))}
-                    </div>
-                    <p className="text-sm text-slate-700">{spell.summary}</p>
-                    <div className="flex flex-wrap gap-2 text-xs text-slate-700">
-                      {spell.spellAttackModifier !== undefined ? <span>Spell Attack {modifierLabel(spell.spellAttackModifier)}</span> : null}
-                      {spell.spellSaveDc ? <span>Save DC {spell.spellSaveDc}{spell.saveAbility ? ` · ${spell.saveAbility.toUpperCase()}` : ""}</span> : null}
-                      {spell.damageFormula ? <span>Damage {spell.damageFormula}</span> : null}
-                      {spell.healingFormula ? <span>Healing {spell.healingFormula}</span> : null}
-                    </div>
-                  </div>
-
-                  <div className="min-w-40 space-y-2">
-                    {spell.level > 0 ? (
-                      <div className="grid gap-2">
-                        <select
-                          className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
-                          disabled={ritual || availableSlots.length === 0}
-                          onChange={(event) =>
-                            setSlotSelectionBySpellId((current) => ({
-                              ...current,
-                              [spell.id]: Number(event.target.value),
-                            }))
-                          }
-                          value={selectedLevel ?? ""}
-                        >
-                          {availableSlots.length === 0 ? <option value="">No slots available</option> : null}
-                          {availableSlots.map((slot) => (
-                            <option key={slot.slotKey} value={slot.level}>
-                              Slot L{slot.level} ({slot.remaining}/{slot.max})
-                            </option>
-                          ))}
-                        </select>
-                        {spell.ritual ? (
-                          <label className="flex items-center gap-1 text-xs text-slate-700">
-                            <input
-                              checked={ritual}
-                              onChange={(event) =>
-                                setRitualCastBySpellId((current) => ({
-                                  ...current,
-                                  [spell.id]: event.target.checked,
-                                }))
-                              }
-                              type="checkbox"
-                            />
-                            Ritual
-                          </label>
+                      {spell.concentration ? <StatusBadge label="concentration" status="pending" /> : null}
+                      {spell.ritual ? <StatusBadge label="ritual" status="complete" /> : null}
+                      <StatusBadge label={canApplyEffectToSelf ? "effect mapped" : "no mapped effect"} status={canApplyEffectToSelf ? "complete" : "unsupported"} />
+                    </>
+                  }
+                  controls={
+                    <>
+                      {spell.level > 0 ? (
+                        <div className="grid gap-2">
+                          <select
+                            aria-label={`Choose spell slot level for ${spell.name}`}
+                            className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
+                            disabled={ritual || availableSlots.length === 0}
+                            title={ritual ? "Ritual casting does not consume a slot." : availableSlots.length === 0 ? "No slot available for this spell." : undefined}
+                            onChange={(event) =>
+                              setSlotSelectionBySpellId((current) => ({
+                                ...current,
+                                [spell.id]: Number(event.target.value),
+                              }))
+                            }
+                            value={selectedLevel ?? ""}
+                          >
+                            {availableSlots.length === 0 ? <option value="">No slots available</option> : null}
+                            {availableSlots.map((slot) => (
+                              <option key={slot.slotKey} value={slot.level}>
+                                Slot L{slot.level} ({slot.remaining}/{slot.max})
+                              </option>
+                            ))}
+                          </select>
+                          {spell.ritual ? (
+                            <label className="flex items-center gap-1 text-xs text-slate-700">
+                              <input
+                                aria-label={`Toggle ritual cast for ${spell.name}`}
+                                checked={ritual}
+                                onChange={(event) =>
+                                  setRitualCastBySpellId((current) => ({
+                                    ...current,
+                                    [spell.id]: event.target.checked,
+                                  }))
+                                }
+                                type="checkbox"
+                              />
+                              Ritual Cast
+                            </label>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {canApplyEffectToSelf ? (
+                        <label className="flex items-center gap-1 text-xs text-slate-700">
+                          <input
+                            aria-label={`Apply ${spell.name} active effect to self`}
+                            checked={selfTarget}
+                            onChange={(event) =>
+                              setSelfTargetBySpellId((current) => ({
+                                ...current,
+                                [spell.id]: event.target.checked,
+                              }))
+                            }
+                            type="checkbox"
+                          />
+                          Apply effect to self
+                        </label>
+                      ) : null}
+                      <button
+                        aria-label={`Cast ${spell.name}`}
+                        className="sheet-focus-ring w-full rounded bg-indigo-700 px-3 py-1.5 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                        disabled={!canCast}
+                        title={castDisabledReason}
+                        onClick={() =>
+                          onCastSpell(spell.id, {
+                            slotLevel: selectedLevel,
+                            ritualCast: ritual,
+                            activeEffectTarget: canApplyEffectToSelf && selfTarget ? "self" : undefined,
+                            concentrationNotes: canApplyEffectToSelf && selfTarget ? "Target: Self" : undefined,
+                          })
+                        }
+                        type="button"
+                      >
+                        Cast
+                      </button>
+                      <div className="flex flex-wrap gap-1">
+                        {rollRequest ? (
+                          <button
+                            aria-label={`Roll spell attack for ${spell.name}`}
+                            className="sheet-focus-ring rounded bg-slate-700 px-2 py-1 text-xs text-white"
+                            onClick={() => onRoll({ ...rollRequest, rollMode })}
+                            type="button"
+                          >
+                            Roll Attack
+                          </button>
+                        ) : null}
+                        {damageRequest ? (
+                          <button
+                            aria-label={`Roll spell damage for ${spell.name}`}
+                            className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"
+                            onClick={() => onRoll({ ...damageRequest, rollMode: "normal" })}
+                            type="button"
+                          >
+                            Roll Damage
+                          </button>
                         ) : null}
                       </div>
-                    ) : null}
-                    {canApplyEffectToSelf ? (
-                      <label className="flex items-center gap-1 text-xs text-slate-700">
-                        <input
-                          checked={selfTarget}
-                          onChange={(event) =>
-                            setSelfTargetBySpellId((current) => ({
-                              ...current,
-                              [spell.id]: event.target.checked,
-                            }))
-                          }
-                          type="checkbox"
-                        />
-                        Apply effect to self
-                      </label>
-                    ) : null}
-                    <button
-                      className="w-full rounded bg-indigo-700 px-3 py-1.5 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                      disabled={!canCast}
-                      onClick={() =>
-                        onCastSpell(spell.id, {
-                          slotLevel: selectedLevel,
-                          ritualCast: ritual,
-                          activeEffectTarget: canApplyEffectToSelf && selfTarget ? "self" : undefined,
-                          concentrationNotes: canApplyEffectToSelf && selfTarget ? "Target: Self" : undefined,
-                        })
-                      }
-                      type="button"
-                    >
-                      Cast
-                    </button>
-                    <div className="flex flex-wrap gap-1">
-                      {rollRequest ? (
-                        <button
-                          className="rounded bg-slate-700 px-2 py-1 text-xs text-white"
-                          onClick={() => onRoll({ ...rollRequest, rollMode })}
-                          type="button"
-                        >
-                          Roll Attack
-                        </button>
-                      ) : null}
-                      {damageRequest ? (
-                        <button
-                          className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"
-                          onClick={() => onRoll({ ...damageRequest, rollMode: "normal" })}
-                          type="button"
-                        >
-                          Roll Damage
-                        </button>
-                      ) : null}
-                    </div>
+                    </>
+                  }
+                >
+                  <p className="text-sm text-slate-700">{spell.summary}</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-700">
+                    {spell.spellAttackModifier !== undefined ? <span>Spell Attack {modifierLabel(spell.spellAttackModifier)}</span> : null}
+                    {spell.spellSaveDc ? <span>Save DC {spell.spellSaveDc}{spell.saveAbility ? ` · ${spell.saveAbility.toUpperCase()}` : ""}</span> : null}
+                    {spell.damageFormula ? <span>Damage {spell.damageFormula}</span> : null}
+                    {spell.healingFormula ? <span>Healing {spell.healingFormula}</span> : null}
                   </div>
-                </div>
-                {spell.details ? (
-                  <details className="mt-2 text-xs text-slate-600">
-                    <summary className="cursor-pointer text-slate-700">Details</summary>
-                    <p className="mt-1 whitespace-pre-wrap">{spell.details}</p>
-                  </details>
-                ) : null}
+                  {spell.details ? (
+                    <details className="mt-2 text-xs text-slate-600">
+                      <summary aria-label={`Show details for ${spell.name}`} className="cursor-pointer text-slate-700">Details</summary>
+                      <p className="mt-1 whitespace-pre-wrap">{spell.details}</p>
+                    </details>
+                  ) : null}
+                </SpellCardShell>
               </li>
             );
           })}

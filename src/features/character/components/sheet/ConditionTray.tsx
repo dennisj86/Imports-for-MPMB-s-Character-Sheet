@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ActiveConditionState } from "../../../../domain/playState";
 import { inputClassName } from "../../../../components/ui/FormField";
 import { findConditionDefinition, STANDARD_CONDITION_DEFINITIONS } from "../../../../services/playState";
+import { EmptyState, StatusBadge } from "./SheetDesignSystem";
 
 interface ConditionTrayProps {
   activeConditions: ActiveConditionState[];
@@ -22,6 +23,7 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
   return (
     <div className="space-y-3">
       <input
+        aria-label="Filter active condition options"
         className={inputClassName()}
         onChange={(event) => setFilter(event.target.value)}
         placeholder="Filter conditions"
@@ -34,7 +36,8 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
             <button
               key={condition.id}
               title={condition.shortRulesHint}
-              className={`rounded px-2 py-1 text-xs ${active ? "bg-indigo-700 text-white" : "bg-slate-200 text-slate-800"}`}
+              aria-label={`Toggle condition ${condition.label}`}
+              className={`sheet-focus-ring rounded px-2 py-1 text-xs ${active ? "bg-indigo-700 text-white" : "bg-slate-200 text-slate-800"}`}
               onClick={() => onToggleCondition(condition.id)}
               type="button"
             >
@@ -46,13 +49,15 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
 
       <div className="flex gap-2">
         <input
+          aria-label="Custom condition name"
           className={inputClassName()}
           onChange={(event) => setCustomCondition(event.target.value)}
           placeholder="Custom condition"
           value={customCondition}
         />
         <button
-          className="rounded bg-slate-700 px-3 py-2 text-sm text-white"
+          aria-label="Toggle custom condition"
+          className="sheet-focus-ring rounded bg-slate-700 px-3 py-2 text-sm text-white"
           onClick={() => {
             const trimmed = customCondition.trim();
             if (!trimmed) {
@@ -68,11 +73,11 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
       </div>
 
       {activeConditions.length === 0 ? (
-        <p className="text-sm text-slate-500">No active conditions.</p>
+        <EmptyState title="Conditions" description="No active conditions." />
       ) : (
         <ul className="space-y-1 text-sm">
           {activeConditions.map((condition) => (
-            <li key={condition.id} className="flex items-center justify-between rounded border border-slate-200 p-2">
+            <li key={condition.id} className="sheet-card flex items-center justify-between p-2">
               <span>
                 {condition.name}
                 {condition.source ? <span className="ml-2 text-xs text-slate-500">({condition.source})</span> : null}
@@ -80,9 +85,17 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
                   <span className="block text-xs text-slate-500">{findConditionDefinition(condition.id)?.shortRulesHint}</span>
                 ) : null}
               </span>
-              <button className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800" onClick={() => onToggleCondition(condition.id)} type="button">
-                Remove
-              </button>
+              <div className="flex items-center gap-2">
+                <StatusBadge label="active" status="pending" />
+                <button
+                  aria-label={`Remove condition ${condition.name}`}
+                  className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"
+                  onClick={() => onToggleCondition(condition.id)}
+                  type="button"
+                >
+                  Remove
+                </button>
+              </div>
             </li>
           ))}
         </ul>

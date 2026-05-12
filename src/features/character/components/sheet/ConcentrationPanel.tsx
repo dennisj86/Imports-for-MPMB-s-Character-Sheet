@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ConcentrationState } from "../../../../domain/playState";
 import { inputClassName } from "../../../../components/ui/FormField";
+import { EmptyState, StatusBadge } from "./SheetDesignSystem";
 
 interface ConcentrationPanelProps {
   concentration: ConcentrationState | null;
@@ -14,27 +15,37 @@ export function ConcentrationPanel({ concentration, onStart, onEnd }: Concentrat
   return (
     <div className="space-y-3">
       {concentration ? (
-        <div className="rounded border border-indigo-300 bg-indigo-50 p-3">
-          <p className="text-sm font-medium text-indigo-900">{concentration.name}</p>
+        <div className="sheet-card border-indigo-300 bg-indigo-50 p-3">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-indigo-900">{concentration.name}</p>
+            <StatusBadge label="concentrating" status="complete" />
+          </div>
           <p className="text-xs text-indigo-800">Started: {new Date(concentration.startedAt).toLocaleTimeString()}</p>
           {concentration.notes ? <p className="text-xs text-indigo-800">{concentration.notes}</p> : null}
-          <button className="mt-2 rounded bg-indigo-700 px-3 py-1.5 text-xs text-white" onClick={() => onEnd("manual")} type="button">
+          <button
+            aria-label={`End concentration on ${concentration.name}`}
+            className="sheet-focus-ring mt-2 rounded bg-indigo-700 px-3 py-1.5 text-xs text-white"
+            onClick={() => onEnd("manual")}
+            type="button"
+          >
             End Concentration
           </button>
         </div>
       ) : (
-        <p className="text-sm text-slate-500">No active concentration.</p>
+        <EmptyState title="Concentration" description="No active concentration." />
       )}
 
       <div className="flex gap-2">
         <input
+          aria-label="Manual concentration name"
           className={inputClassName()}
           onChange={(event) => setManualName(event.target.value)}
           placeholder="Start concentration manually"
           value={manualName}
         />
         <button
-          className="rounded bg-slate-700 px-3 py-2 text-sm text-white"
+          aria-label="Start manual concentration"
+          className="sheet-focus-ring rounded bg-slate-700 px-3 py-2 text-sm text-white"
           onClick={() => {
             const trimmed = manualName.trim();
             if (!trimmed) {

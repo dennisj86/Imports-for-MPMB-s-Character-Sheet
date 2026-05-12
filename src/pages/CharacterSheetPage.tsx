@@ -12,6 +12,18 @@ import { InventoryPanel } from "../features/character/components/sheet/Inventory
 import { PlayLogPanel } from "../features/character/components/sheet/PlayLogPanel";
 import { ResourceTracker } from "../features/character/components/sheet/ResourceTracker";
 import { RestControls } from "../features/character/components/sheet/RestControls";
+import {
+  CharacterHeroHeader,
+  CoreStatCard,
+  DiagnosticsDrawer,
+  EmptyState,
+  ResourceBadge,
+  RollResultCard,
+  SectionHeader,
+  StatPill,
+  StatusBadge,
+  type StatusTone,
+} from "../features/character/components/sheet/SheetDesignSystem";
 import { SpellbookPanel } from "../features/character/components/sheet/SpellbookPanel";
 import {
   SHEET_TAB_LABELS,
@@ -47,7 +59,7 @@ function AbilitySummary({
       {abilities.map((ability) => {
         const score = derivedStats.abilityScores[ability];
         return (
-          <div key={ability} className="rounded border border-slate-200 p-2 text-center text-sm">
+          <div key={ability} className="sheet-card p-2 text-center text-sm">
             <p className="text-xs uppercase text-slate-500">{ability}</p>
             <p className="text-lg font-semibold">{score.finalScore}</p>
             <p className="text-xs text-slate-600">{modifierLabel(score.modifier)}</p>
@@ -60,14 +72,15 @@ function AbilitySummary({
 
 function ArmorBreakdown({ armorClass }: { armorClass: ReturnType<typeof buildCombatViewModel>["armorClass"] }) {
   return (
-    <div className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
-      <p className="text-xs uppercase text-slate-500">AC Breakdown</p>
+    <div className="sheet-card border-indigo-200 bg-indigo-50/60 p-3 text-sm">
+      <SectionHeader subtitle="Armor, shield and bonus contributions" title="AC Breakdown" />
       <p className="mt-1">
         Base {armorClass.armorBase}
         {armorClass.armorName ? ` (${armorClass.armorName})` : ""} · Dex {modifierLabel(armorClass.dexApplied)} · Shield +{armorClass.shieldBonus} · Bonus +
         {armorClass.bonus}
       </p>
       {armorClass.shieldName ? <p className="text-xs text-slate-600">Shield: {armorClass.shieldName}</p> : null}
+      {armorClass.modifierSources?.length ? <p className="text-xs text-slate-600">Sources: {armorClass.modifierSources.join(", ")}</p> : null}
     </div>
   );
 }
@@ -76,11 +89,7 @@ function CoreStatGrid({ cards }: { cards: ReturnType<typeof buildCombatViewModel
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
-        <div key={card.id} className="rounded border border-slate-200 bg-white p-3">
-          <p className="text-xs uppercase text-slate-500">{card.label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{card.value}</p>
-          {card.sublabel ? <p className="text-xs text-slate-600">{card.sublabel}</p> : null}
-        </div>
+        <CoreStatCard key={card.id} highlight={card.id === "ac" || card.id === "hp"} label={card.label} sublabel={card.sublabel} value={card.value} />
       ))}
     </div>
   );
@@ -96,18 +105,31 @@ function ProficiencySummary({
   proficiencies: ReturnType<typeof resolveCombinedRuleProficiencies>;
 }) {
   return (
-    <div className="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
-      <p className="text-xs uppercase text-slate-500">Proficiencies</p>
-      <div className="mt-2 space-y-1 text-slate-700">
-        <p>Skills: {listLabel(proficiencies.skills)}</p>
-        <p>Expertise: {listLabel(proficiencies.expertiseSkills)}</p>
-        <p>Tools: {listLabel(proficiencies.tools)}</p>
-        <p>Languages: {listLabel(proficiencies.languages)}</p>
-        <p>Weapons: {listLabel(proficiencies.weapons)}</p>
-        <p>Armor: {listLabel(proficiencies.armor)}</p>
+    <div className="sheet-card bg-slate-50 p-3 text-sm">
+      <SectionHeader title="Proficiencies" />
+      <div className="mt-2 flex flex-wrap gap-2">
+        <StatPill label="Skills" value={listLabel(proficiencies.skills)} />
+        <StatPill label="Expertise" value={listLabel(proficiencies.expertiseSkills)} />
+        <StatPill label="Tools" value={listLabel(proficiencies.tools)} />
+        <StatPill label="Languages" value={listLabel(proficiencies.languages)} />
+        <StatPill label="Weapons" value={listLabel(proficiencies.weapons)} />
+        <StatPill label="Armor" value={listLabel(proficiencies.armor)} />
       </div>
     </div>
   );
+}
+
+function choiceTone(status: "complete" | "missing" | "unsupported" | "needs-builder"): StatusTone {
+  if (status === "complete") return "complete";
+  if (status === "unsupported") return "unsupported";
+  if (status === "needs-builder") return "blocked";
+  return "pending";
+}
+
+function choiceLabel(status: "complete" | "missing" | "unsupported" | "needs-builder"): string {
+  if (status === "missing") return "pending";
+  if (status === "needs-builder") return "blocked";
+  return status;
 }
 
 export function CharacterSheetPage() {
@@ -191,32 +213,38 @@ export function CharacterSheetPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-950">{draft.name}</h1>
-            <p className="text-sm text-slate-700">{combat.characterLine}</p>
-            <p className="text-sm text-slate-600">{combat.originLine}</p>
-          </div>
-          <div className="flex gap-2">
-            <Link className="rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800" to={`/builder/${draft.id}`}>
+    <div className="min-w-0 space-y-4">
+      <CharacterHeroHeader
+        actions={
+          <>
+            <Link className="sheet-focus-ring rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800" to={`/builder/${draft.id}`}>
               Edit Builder
             </Link>
-            <Link className="rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800" to="/">
+            <Link className="sheet-focus-ring rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800" to="/">
               Back
             </Link>
-          </div>
-        </div>
-        <CoreStatGrid cards={combat.coreStats} />
-      </header>
+          </>
+        }
+        characterLine={combat.characterLine}
+        footer={<CoreStatGrid cards={combat.coreStats} />}
+        name={draft.name}
+        originLine={combat.originLine}
+      />
 
-      <nav className="flex gap-1 overflow-x-auto rounded border border-slate-200 bg-white p-1">
+      <nav
+        aria-label="Character sheet tabs"
+        className="sheet-card sticky top-2 z-20 flex flex-nowrap gap-1 overflow-x-auto p-1"
+        role="tablist"
+      >
         {SHEET_TABS.map((tab) => (
           <button
+            aria-controls={`${tab}-panel`}
+            aria-selected={activeTab === tab}
             key={tab}
-            className={`rounded px-3 py-2 text-sm ${activeTab === tab ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+            className={`sheet-focus-ring sheet-no-overflow shrink-0 whitespace-nowrap rounded px-3 py-2 text-sm ${activeTab === tab ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+            id={`${tab}-tab`}
             onClick={() => setActiveTab(tab)}
+            role="tab"
             type="button"
           >
             {SHEET_TAB_LABELS[tab]}
@@ -225,9 +253,10 @@ export function CharacterSheetPage() {
       </nav>
 
       {activeTab === "overview" ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr),minmax(320px,1fr)]">
+        <div aria-labelledby="overview-tab" className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,2fr),minmax(320px,1fr)]" id="overview-panel" role="tabpanel">
           <div className="space-y-4">
-            <Panel title="Vitals">
+            <section className="sheet-card p-4">
+              <SectionHeader title="Vitals" />
               <HitPointControls
                 currentHp={playState.currentHp}
                 deathSaves={playState.deathSaves}
@@ -240,18 +269,25 @@ export function CharacterSheetPage() {
                 onSetTempHp={playStateView.setTempHp}
                 tempHp={playState.tempHp}
               />
-            </Panel>
+            </section>
 
-            <Panel title="Core Combat">
+            <section className="sheet-card p-4">
+              <SectionHeader title="Core Combat" />
               <div className="space-y-3">
                 <ArmorBreakdown armorClass={combat.armorClass} />
                 <AbilitySummary derivedStats={engine.derivedStats} />
-                <p className="text-sm text-slate-700">{combat.passiveSummary}</p>
+                <div className="flex flex-wrap gap-2">
+                  <StatPill label="Initiative" value={String(combat.coreStats.find((entry) => entry.id === "initiative")?.value ?? "Pending")} />
+                  <StatPill label="Speed" value={String(combat.coreStats.find((entry) => entry.id === "speed")?.value ?? "Pending")} />
+                  <StatPill label="Proficiency" value={String(combat.coreStats.find((entry) => entry.id === "proficiency")?.value ?? "Pending")} />
+                  <StatPill label="Passives" value={combat.passiveSummary} />
+                </div>
                 <ProficiencySummary proficiencies={combinedProficiencies} />
               </div>
-            </Panel>
+            </section>
 
-            <Panel title="Conditions & Concentration">
+            <section className="sheet-card p-4">
+              <SectionHeader subtitle="Track battlefield state and concentration quickly" title="Conditions & Concentration" />
               <div className="grid gap-4 lg:grid-cols-2">
                 <ConditionTray activeConditions={playState.activeConditions} onToggleCondition={playStateView.toggleCondition} />
                 <ConcentrationPanel
@@ -260,57 +296,62 @@ export function CharacterSheetPage() {
                   onStart={playStateView.startConcentration}
                 />
               </div>
-            </Panel>
+            </section>
           </div>
 
           <div className="space-y-4">
-            <Panel title="Resources">
+            <section className="sheet-card p-4">
+              <SectionHeader subtitle="Most-used resources stay in quick reach" title="Resources" />
+              <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                {playStateView.resourceCounters.slice(0, 4).map((resource) => (
+                  <ResourceBadge
+                    key={`overview-badge-${resource.id}`}
+                    label={resource.name}
+                    max={resource.max}
+                    rechargeLabel={resource.rechargeLabel}
+                    remaining={resource.remaining}
+                    source={resource.sourceName}
+                  />
+                ))}
+              </div>
               <ResourceTracker
                 onRestore={playStateView.restoreResource}
                 onSpend={playStateView.spendResource}
                 resources={playStateView.resourceCounters.slice(0, 6)}
               />
-            </Panel>
+            </section>
 
-            <Panel title="Rest">
+            <section className="sheet-card p-4">
+              <SectionHeader subtitle="Short and long rest controls" title="Quick Actions" />
               <div className="space-y-2 text-sm">
                 <p className="text-slate-700">Hit Dice {combat.hitDiceSummary}</p>
                 <div className="flex flex-wrap gap-2">
-                  <button className="rounded bg-slate-700 px-3 py-2 text-sm text-white" onClick={playStateView.applyShortRest} type="button">
+                  <button className="sheet-focus-ring rounded bg-slate-700 px-3 py-2 text-sm text-white" onClick={playStateView.applyShortRest} type="button">
                     Short Rest
                   </button>
-                  <button className="rounded bg-indigo-700 px-3 py-2 text-sm text-white" onClick={playStateView.applyLongRest} type="button">
+                  <button className="sheet-focus-ring rounded bg-indigo-700 px-3 py-2 text-sm text-white" onClick={playStateView.applyLongRest} type="button">
                     Long Rest
                   </button>
-                  <button className="rounded bg-slate-200 px-3 py-2 text-sm text-slate-800" onClick={() => setActiveTab("manage")} type="button">
+                  <button className="sheet-focus-ring rounded bg-slate-200 px-3 py-2 text-sm text-slate-800" onClick={() => setActiveTab("manage")} type="button">
                     Rest Details
                   </button>
                 </div>
               </div>
-            </Panel>
+            </section>
 
-            <Panel title="Last Roll">
-              {lastRoll ? (
-                <div className="rounded border border-indigo-200 bg-indigo-50 p-3 text-sm">
-                  <p className="font-semibold">{lastRoll.label}</p>
-                  <p>
-                    {lastRoll.diceExpression} {modifierLabel(lastRoll.modifier)} = <span className="font-semibold">{lastRoll.total}</span>
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-500">No rolls yet.</p>
-              )}
-            </Panel>
+            <RollResultCard result={lastRoll} />
 
-            <Panel title="Play Log">
+            <section className="sheet-card p-4">
+              <SectionHeader title="Play Log" />
               <PlayLogPanel events={playState.playEvents} />
-            </Panel>
+            </section>
           </div>
         </div>
       ) : null}
 
       {activeTab === "actions" ? (
-        <Panel title="Actions & Rolls">
+        <section aria-labelledby="actions-tab" className="sheet-card min-w-0 p-4" id="actions-panel" role="tabpanel">
+          <SectionHeader subtitle="Attack, damage and profile cards with active buffs" title="Actions & Rolls" />
           <ActionRollPanel
             activeEffectCatalog={activeEffectCatalog}
             lastRoll={lastRoll}
@@ -323,11 +364,12 @@ export function CharacterSheetPage() {
             rollView={rollView}
             showSpellRolls={false}
           />
-        </Panel>
+        </section>
       ) : null}
 
       {activeTab === "spells" ? (
-        <Panel title="Spellbook">
+        <section aria-labelledby="spells-tab" className="sheet-card min-w-0 p-4" id="spells-panel" role="tabpanel">
+          <SectionHeader subtitle="Readable spell cards with cast controls and effect hints" title="Spellbook" />
           <SpellbookPanel
             onCastSpell={playStateView.castSpell}
             onRestoreSlot={playStateView.restoreSpellSlot}
@@ -336,25 +378,28 @@ export function CharacterSheetPage() {
             slots={playStateView.spellSlotCounters}
             viewModel={spellbook}
           />
-        </Panel>
+        </section>
       ) : null}
 
       {activeTab === "inventory" ? (
-        <Panel title="Inventory & Equipment">
+        <section aria-labelledby="inventory-tab" className="sheet-card min-w-0 p-4" id="inventory-panel" role="tabpanel">
+          <SectionHeader subtitle="Equipped state, armor/shield/weapon cards and AC readability" title="Inventory & Equipment" />
           <InventoryPanel onEquipItem={equipInventoryItem} onUnequipItem={unequipInventoryItem} viewModel={inventory} />
-        </Panel>
+        </section>
       ) : null}
 
       {activeTab === "features" ? (
-        <Panel title="Features & Traits">
+        <section aria-labelledby="features-tab" className="sheet-card min-w-0 p-4" id="features-panel" role="tabpanel">
+          <SectionHeader subtitle="Compact feature cards with applied choice summaries" title="Features & Traits" />
           <FeatureCardsPanel groups={featureGroups} />
-        </Panel>
+        </section>
       ) : null}
 
       {activeTab === "manage" ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Panel title="Level Progression">
-            <div className="space-y-3 text-sm">
+        <div aria-labelledby="manage-tab" className="grid min-w-0 gap-4 xl:grid-cols-2" id="manage-panel" role="tabpanel">
+          <section className="sheet-card p-4">
+            <SectionHeader subtitle="Progression and rule-choice completion state" title="Level Progression" />
+            <div className="mt-3 space-y-3 text-sm">
               <p>
                 Level {progression.currentLevel} · {progression.className}
                 {progression.subclassName ? ` (${progression.subclassName})` : ""}
@@ -362,12 +407,21 @@ export function CharacterSheetPage() {
               <p className="text-xs text-slate-600">
                 {progression.levelUpPendingChoiceCount} open level-up progression choice(s) · {progression.rulePendingChoiceCount} open rule choice(s)
               </p>
+              <div className="flex flex-wrap gap-2">
+                <StatusBadge label="complete" status="complete" />
+                <StatusBadge label="pending" status="pending" />
+                <StatusBadge label="unsupported" status="unsupported" />
+                <StatusBadge label="blocked" status="blocked" />
+              </div>
               {progression.pendingChoices.length ? (
                 <ul className="space-y-2">
                   {progression.pendingChoices.map((choice) => (
-                    <li key={choice.id} className="rounded border border-amber-300 bg-amber-50 p-2 text-amber-900">
-                      <p className="font-medium">{choice.label}</p>
-                      <p className="text-xs">{choice.detail}</p>
+                    <li key={choice.id} className="sheet-card p-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-medium">{choice.label}</p>
+                        <StatusBadge label={choiceLabel(choice.status)} status={choiceTone(choice.status)} />
+                      </div>
+                      <p className="text-xs text-slate-600">{choice.detail}</p>
                     </li>
                   ))}
                 </ul>
@@ -378,35 +432,27 @@ export function CharacterSheetPage() {
               )}
               {progression.ruleChoices.length ? (
                 <div className="space-y-2">
-                  <p className="font-medium">Rule Choices</p>
+                  <SectionHeader title="Rule Choices" />
                   {progression.ruleChoices.map((choice) => (
-                    <div
-                      key={choice.id}
-                      className={`rounded border p-2 ${
-                        choice.status === "complete"
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                          : choice.status === "unsupported"
-                            ? "border-slate-200 bg-slate-50 text-slate-700"
-                            : "border-amber-300 bg-amber-50 text-amber-900"
-                      }`}
-                    >
+                    <div key={choice.id} className="sheet-card p-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-medium">{choice.label}</p>
-                        <span className="rounded bg-white/70 px-2 py-0.5 text-xs">{choice.status}</span>
+                        <StatusBadge label={choiceLabel(choice.status)} status={choiceTone(choice.status)} />
                       </div>
-                      <p className="text-xs">{choice.detail}</p>
+                      <p className="text-xs text-slate-600">{choice.detail}</p>
                     </div>
                   ))}
                 </div>
               ) : null}
-              <Link className="inline-block rounded bg-slate-800 px-3 py-2 text-sm text-white" to={`/builder/${draft.id}`}>
+              <Link className="sheet-focus-ring inline-block rounded bg-slate-800 px-3 py-2 text-sm text-white" to={`/builder/${draft.id}`}>
                 Open Builder Choices
               </Link>
             </div>
-          </Panel>
+          </section>
 
-          <Panel title="Level-Up Choice Surface">
-            <div className="space-y-3 text-sm">
+          <section className="sheet-card p-4">
+            <SectionHeader subtitle="HP gains, ASI/Feat controls and unresolved blockers" title="Level-Up Choice Surface" />
+            <div className="mt-3 space-y-3 text-sm">
               <div>
                 <p className="mb-1 font-medium">Max HP Gain Method</p>
                 {progression.hpGainChoices.length === 0 ? (
@@ -414,7 +460,7 @@ export function CharacterSheetPage() {
                     {progression.hpGainMethods.map((method) => (
                       <button
                         key={method}
-                        className={`rounded border px-2 py-1 text-xs ${
+                        className={`sheet-focus-ring rounded border px-2 py-1 text-xs ${
                           progression.selectedHpGainMethod === method ? "border-indigo-700 bg-indigo-50 text-indigo-800" : "border-slate-200 text-slate-700"
                         }`}
                         onClick={() => chooseHpGainMethod(method)}
@@ -427,16 +473,16 @@ export function CharacterSheetPage() {
                 ) : (
                   <div className="space-y-2">
                     {progression.hpGainChoices.map((choice) => (
-                      <div key={choice.level} className="rounded border border-slate-200 p-2">
+                      <div key={choice.level} className="sheet-card p-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-xs font-medium">Level {choice.level}</p>
-                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{choice.status}</span>
+                          <StatusBadge label={choice.status === "missing" ? "pending" : choice.status} status={choice.status === "missing" ? "pending" : "complete"} />
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {progression.hpGainMethods.map((method) => (
                             <button
                               key={`${choice.level}-${method}`}
-                              className={`rounded border px-2 py-1 text-xs ${
+                              className={`sheet-focus-ring rounded border px-2 py-1 text-xs ${
                                 choice.selectedMethod === method ? "border-indigo-700 bg-indigo-50 text-indigo-800" : "border-slate-200 text-slate-700"
                               }`}
                               onClick={() => chooseHpGainMethodForLevel(choice.level, method, choice.value)}
@@ -449,13 +495,13 @@ export function CharacterSheetPage() {
                             <input
                               className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
                               min={1}
-                              type="number"
-                              value={choice.value ?? ""}
-                              placeholder="Value"
                               onChange={(event) => {
                                 const value = Number(event.target.value);
                                 chooseHpGainMethodForLevel(choice.level, choice.selectedMethod, Number.isFinite(value) && value > 0 ? value : undefined);
                               }}
+                              placeholder="Value"
+                              type="number"
+                              value={choice.value ?? ""}
                             />
                           ) : null}
                         </div>
@@ -471,23 +517,23 @@ export function CharacterSheetPage() {
               <div>
                 <p className="mb-1 font-medium">ASI / Feat Choices</p>
                 {progression.asiOrFeatChoices.length === 0 ? (
-                  <p className="text-xs text-slate-600">No structured ASI/Feat choice is exposed for the current level.</p>
+                  <EmptyState title="ASI / Feat" description="No structured ASI/Feat choice is exposed for the current level." />
                 ) : (
                   <ul className="space-y-2">
                     {progression.asiOrFeatChoices.map((choice) => (
-                      <li key={choice.id} className="rounded border border-slate-200 p-2">
+                      <li key={choice.id} className="sheet-card p-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
                             <p className="font-medium">Level {choice.level} ASI / Feat</p>
                             <p className="text-xs text-slate-600">{choice.detail}</p>
                           </div>
-                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{choice.status}</span>
+                          <StatusBadge label={choiceLabel(choice.status)} status={choiceTone(choice.status)} />
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {choice.options.map((option) => (
                             <button
                               key={option}
-                              className={`rounded border px-2 py-1 text-xs ${
+                              className={`sheet-focus-ring rounded border px-2 py-1 text-xs ${
                                 choice.selectedOption === option ? "border-indigo-700 bg-indigo-50 text-indigo-800" : "border-slate-200 text-slate-700"
                               }`}
                               onClick={() => chooseAsiOrFeatOption(choice.id, option)}
@@ -502,18 +548,26 @@ export function CharacterSheetPage() {
                   </ul>
                 )}
               </div>
-              <ul className="space-y-2">
-                {progression.missingCapabilities.map((entry) => (
-                  <li key={entry.id} className="rounded border border-slate-200 p-2">
-                    <p className="font-medium">{entry.label}</p>
-                    <p className="text-xs text-slate-600">{entry.detail}</p>
-                  </li>
-                ))}
-              </ul>
+              {progression.missingCapabilities.length ? (
+                <ul className="space-y-2">
+                  {progression.missingCapabilities.map((entry) => (
+                    <li key={entry.id} className="sheet-card p-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">{entry.label}</p>
+                          <p className="text-xs text-slate-600">{entry.detail}</p>
+                        </div>
+                        <StatusBadge label={choiceLabel(entry.status)} status={choiceTone(entry.status)} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
-          </Panel>
+          </section>
 
-          <Panel title="Rest & Hit Dice">
+          <section className="sheet-card p-4">
+            <SectionHeader title="Rest & Hit Dice" />
             <RestControls
               constitutionModifier={playStateView.runtime.constitutionModifier}
               currentHp={playState.currentHp}
@@ -525,18 +579,17 @@ export function CharacterSheetPage() {
               onShortRest={playStateView.applyShortRest}
               plan={playStateView.runtime.restPlan}
             />
-          </Panel>
+          </section>
 
-          <Panel
+          <DiagnosticsDrawer
+            hideLabel="Hide Diagnostics"
+            onToggle={() => setShowDiagnostics((value) => !value)}
+            open={showDiagnostics}
+            showLabel="Show Diagnostics"
             title="Diagnostics"
-            rightSlot={
-              <button className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800" onClick={() => setShowDiagnostics((value) => !value)} type="button">
-                {showDiagnostics ? "Hide Diagnostics" : "Show Diagnostics"}
-              </button>
-            }
           >
-            {showDiagnostics ? <DiagnosticsPanel engine={engine} inventory={inventory} /> : <p className="text-sm text-slate-600">Diagnostics are hidden for regular play.</p>}
-          </Panel>
+            <DiagnosticsPanel engine={engine} inventory={inventory} />
+          </DiagnosticsDrawer>
         </div>
       ) : null}
     </div>
