@@ -1,20 +1,23 @@
 import { useMemo, useState } from "react";
 import type { CharacterEngineState } from "../../../../services/characterEngine";
 import type { InventoryViewModel } from "../../viewModels/inventoryViewModel";
+import type { CharacterRollViewDiagnostics } from "../../../../domain/rolls";
 import { StatusBadge } from "./SheetDesignSystem";
 
 interface DiagnosticsPanelProps {
   engine: CharacterEngineState;
   inventory?: InventoryViewModel;
+  rollDiagnostics?: CharacterRollViewDiagnostics;
 }
 
-export function DiagnosticsPanel({ engine, inventory }: DiagnosticsPanelProps) {
+export function DiagnosticsPanel({ engine, inventory, rollDiagnostics }: DiagnosticsPanelProps) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const summaryText = useMemo(() => {
     const lines = [
       `Derived data status: ${engine.derivedStats.dataStatus}`,
       `Action resource status: ${engine.actionResources.dataStatus}`,
       `Rule pipeline status: ${engine.ruleEngine.dataStatus}`,
+      `Action roll hidden duplicates: ${rollDiagnostics?.hiddenActionDuplicates.length ?? 0}`,
       `Rules context: ${engine.context.provider} / ${engine.context.rulesMode}`,
       `Rule sources: ${engine.ruleEngine.sources.length}`,
       `Raw choices: ${engine.ruleEngine.choiceSurface.rawChoiceCount}`,
@@ -101,6 +104,20 @@ export function DiagnosticsPanel({ engine, inventory }: DiagnosticsPanelProps) {
           <ul className="list-disc space-y-0.5 pl-4">
             {engine.actionResources.pending.map((entry) => (
               <li key={entry.id}>{entry.description}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {rollDiagnostics?.hiddenActionDuplicates.length ? (
+        <div className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+          <p className="mb-1 font-medium">Action Card Dedupe</p>
+          <ul className="list-disc space-y-0.5 pl-4">
+            {rollDiagnostics.hiddenActionDuplicates.map((duplicate) => (
+              <li key={`${duplicate.id}:${duplicate.canonicalKey}`}>
+                {duplicate.label}
+                {duplicate.sourceSummary ? ` (${duplicate.sourceSummary})` : ""}; hidden by {duplicate.hiddenBy}
+              </li>
             ))}
           </ul>
         </div>

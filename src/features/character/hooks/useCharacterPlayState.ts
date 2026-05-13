@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import type { CharacterDraft } from "../../../domain/character";
-import type { CharacterPlayState } from "../../../domain/playState";
+import type { CharacterAutomationSettings, CharacterPlayState } from "../../../domain/playState";
 import type { RollRequest, RollResult } from "../../../domain/rolls";
 import type { ActiveEffectDefinition } from "../../../domain/rules";
 import type { CharacterEngineState } from "../../../services/characterEngine";
@@ -19,11 +19,13 @@ import {
   endConcentration,
   ensureCharacterPlayState,
   getLatestHitDieSpendResult,
+  recordAttackResolution,
   recordDeathSave,
   replaceTempHp,
   resolveHitDiceCounters,
   resolveResourceCounters,
   resolveSpellSlotCounters,
+  setAutomationSettings,
   restoreResource,
   restoreSpellSlot,
   rollAndRecord,
@@ -48,6 +50,7 @@ type CharacterUpdater = (id: string, updater: (current: CharacterDraft) => Chara
 export interface CharacterPlayStateViewState {
   playState: CharacterPlayState;
   runtime: PlayStateRuntimeContext;
+  automationSettings: CharacterAutomationSettings;
   resourceCounters: PlayResourceCounter[];
   spellSlotCounters: PlaySpellSlotCounter[];
   hitDiceCounters: PlayHitDicePoolCounter[];
@@ -63,7 +66,24 @@ export interface CharacterPlayStateViewState {
   spendSpellSlot: (slotKey: string, amount?: number) => void;
   restoreSpellSlot: (slotKey: string, amount?: number) => void;
   spendHitDie: (poolId: string) => void;
-  roll: (request: RollRequest, options?: { spendResourceKey?: string; resourceLabel?: string }) => RollResult | undefined;
+  roll: (
+    request: RollRequest,
+    options?: { spendResourceKey?: string; resourceLabel?: string; spendResourceMode?: "manual" | "auto-safe" | "auto-unsafe" },
+  ) => RollResult | undefined;
+  updateAutomationSettings: (settings: Partial<CharacterAutomationSettings>) => void;
+  recordAttackResolution: (
+    actionLabel: string,
+    decision: "hit" | "miss" | "cancel",
+    options?: {
+      actionId?: string;
+      attackRequestId?: string;
+      attackRollResultId?: string;
+      flowId?: string;
+      weaponMasteryName?: string;
+      selectedRiderLabels?: string[];
+      note?: string;
+    },
+  ) => void;
   castSpell: (spellId: string, options?: CastSpellOptions) => void;
   addActiveEffect: (effect: ActiveEffectDefinition, options?: { external?: boolean; sourceCasterName?: string; note?: string; diceExpression?: string }) => void;
   addActiveEffectFromSpell: (spellId: string, options?: { external?: boolean }) => void;
@@ -155,7 +175,11 @@ export function useCharacterPlayState(
   );
 
   const applyDamageAction = useCallback((amount: number) => {
-    commit((current) => applyDamage(current, amount));
+    commit((current) =>
+      applyDamage(current, amount, {
+        concentrationBehavior: current.automationSettings.concentration,
+      }),
+    );
   }, [commit]);
 
   const applyHealingAction = useCallback((amount: number) => {
@@ -219,18 +243,41 @@ export function useCharacterPlayState(
     commit((current) => spendHitDie(current, runtime, poolId));
   }, [commit, runtime]);
 
-  const rollAction = useCallback((request: RollRequest, options: { spendResourceKey?: string; resourceLabel?: string } = {}) => {
+  const rollAction = useCallback((request: RollRequest, options: { spendResourceKey?: string; resourceLabel?: string; spendResourceMode?: "manual" | "auto-safe" | "auto-unsafe" } = {}) => {
     if (!runtime) {
       return undefined;
     }
     let result: RollResult | undefined;
     commit((current) => {
-      const rolled = rollAndRecord(current, runtime, request, options);
+      const rolled = rollAndRecord(current, runtime, request, {
+        ...options,
+        automationSettings: current.automationSettings,
+      });
       result = rolled.result;
       return rolled.playState;
     });
     return result;
   }, [commit, runtime]);
+
+  const updateAutomationSettingsAction = useCallback((settings: Partial<CharacterAutomationSettings>) => {
+    commit((current) => setAutomationSettings(current, settings));
+  }, [commit]);
+
+  const recordAttackResolutionAction = useCallback((
+    actionLabel: string,
+    decision: "hit" | "miss" | "cancel",
+    options: {
+      actionId?: string;
+      attackRequestId?: string;
+      attackRollResultId?: string;
+      flowId?: string;
+      weaponMasteryName?: string;
+      selectedRiderLabels?: string[];
+      note?: string;
+    } = {},
+  ) => {
+    commit((current) => recordAttackResolution(current, actionLabel, decision, options));
+  }, [commit]);
 
   const castSpellAction = useCallback((spellId: string, options: CastSpellOptions = {}) => {
     if (!runtime || !engine) {
@@ -321,6 +368,7 @@ export function useCharacterPlayState(
   return {
     playState,
     runtime,
+    automationSettings: playState.automationSettings,
     resourceCounters,
     spellSlotCounters,
     hitDiceCounters,
@@ -337,6 +385,8 @@ export function useCharacterPlayState(
     restoreSpellSlot: restoreSpellSlotAction,
     spendHitDie: spendHitDieAction,
     roll: rollAction,
+    updateAutomationSettings: updateAutomationSettingsAction,
+    recordAttackResolution: recordAttackResolutionAction,
     castSpell: castSpellAction,
     addActiveEffect: addActiveEffectAction,
     addActiveEffectFromSpell: addActiveEffectFromSpellAction,

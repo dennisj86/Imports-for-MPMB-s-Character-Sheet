@@ -27,6 +27,7 @@ function modifierBreakdown(modifiers: RollRequest["permanentModifiers"] | RollRe
   return (modifiers ?? []).map((modifier) => ({
     id: modifier.id,
     sourceName: modifier.sourceName,
+    sourceType: modifier.sourceType,
     value: modifier.value,
     valueType: modifier.valueType,
     applied: modifier.valueType === "flat" || modifier.valueType === "dice",
@@ -168,6 +169,12 @@ export function createRollPlayEvent(result: RollResult): CharacterPlayEvent {
   const activeEffects = result.activeEffects?.map((entry) => entry.label).join(", ");
   const permanent = result.permanentModifierBreakdown?.filter((entry) => entry.applied).map((entry) => `${entry.sourceName} ${entry.value}`).join(", ");
   const temporary = result.temporaryModifierBreakdown?.filter((entry) => entry.applied).map((entry) => `${entry.sourceName} ${entry.value}`).join(", ");
+  const selectedOrigins = result.activeEffects
+    ?.map((entry) => {
+      const origin = entry.origin ? ` (${entry.origin})` : "";
+      return `${entry.label}${origin}`;
+    })
+    .join(", ");
   return createPlayEvent({
     timestamp: result.timestamp,
     type: "roll",
@@ -176,7 +183,7 @@ export function createRollPlayEvent(result: RollResult): CharacterPlayEvent {
       rollResult: result,
       summary: [
         `${result.diceExpression} ${formatModifier(result.modifier)}`,
-        activeEffects ? `effects ${activeEffects}` : undefined,
+        activeEffects ? `effects ${selectedOrigins ?? activeEffects}` : undefined,
         bonusDice ? `bonus ${bonusDice}` : undefined,
         permanent ? `permanent ${permanent}` : undefined,
         temporary ? `temporary ${temporary}` : undefined,

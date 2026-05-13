@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react";
-import type { ActiveEffectCatalogEntry, ActiveEffectDefinition } from "../../../../domain/rules";
+import type { CharacterAutomationSettings } from "../../../../domain/playState";
+import type { ActiveEffectCatalogEntry, ActiveEffectDefinition, RuleModifier } from "../../../../domain/rules";
 import type { CharacterRollView, RollActionDescriptor, RollMode, RollRequest, RollResult, RollType } from "../../../../domain/rolls";
 import type { PlayResourceCounter } from "../../../../services/playState";
 import { searchActiveEffectCatalog, type ActiveEffectCatalogEffectFilter, type ActiveEffectCatalogSourceFilter } from "../../../../services/rules";
 import { ActionCard, EmptyState, InfoPopover, SectionHeader, StatusBadge } from "./SheetDesignSystem";
+import { RuleDetailDrawer } from "./RuleDetailDrawer";
+import { defaultManualInstructionForStatus, normalizeRuleAutomationStatus, ruleAutomationTone, type RuleAutomationStatus } from "./ruleAutomationStatus";
+import { normalizeWeaponMasteryToken, weaponMasteryInfoForToken, weaponPropertySummary } from "./weaponMasteryInfo";
 import { ruleInfo } from "./rulesInfo";
 
 interface ActionRollPanelProps {
@@ -12,9 +16,26 @@ interface ActionRollPanelProps {
   rollMode: RollMode;
   onRollModeChange: (mode: RollMode) => void;
   resources: PlayResourceCounter[];
+  automationSettings: CharacterAutomationSettings;
   activeEffectCatalog?: ActiveEffectCatalogEntry[];
   showSpellRolls?: boolean;
-  onRoll: (request: RollRequest, options?: { spendResourceKey?: string; resourceLabel?: string }) => void;
+  onRoll: (
+    request: RollRequest,
+    options?: { spendResourceKey?: string; resourceLabel?: string; spendResourceMode?: "manual" | "auto-safe" | "auto-unsafe" },
+  ) => RollResult | undefined;
+  onRecordAttackResolution?: (
+    actionLabel: string,
+    decision: "hit" | "miss" | "cancel",
+    options?: {
+      actionId?: string;
+      attackRequestId?: string;
+      attackRollResultId?: string;
+      flowId?: string;
+      weaponMasteryName?: string;
+      selectedRiderLabels?: string[];
+      note?: string;
+    },
+  ) => void;
   onSpendResource: (resourceKey: string, amount?: number, label?: string) => void;
   onActivateEffect?: (effect: ActiveEffectDefinition, options?: { external?: boolean; sourceCasterName?: string; note?: string; diceExpression?: string }) => void;
   onCreateCustomEffect?: (options: {
@@ -42,7 +63,7 @@ const DIE_SIZE_OPTIONS = ["1d4", "1d6", "1d8", "1d10", "1d12"];
 type ActionGroupId = "attacks" | "actions" | "bonus-actions" | "reactions" | "resources";
 type RollListGroupId = "ability-checks" | "saving-throws" | "skill-checks" | "spell-rolls";
 type ActionPanelGroupId = ActionGroupId | RollListGroupId;
-type MasteryAutomationStatus = "automated" | "manual" | "unsupported";
+const DEFAULT_MASTERY_MANUAL_REMINDER = "Manual: remember this effect when resolving the attack.";
 
 const ACTION_GROUP_CONFIG: Record<ActionGroupId, { title: string; subtitle: string }> = {
   attacks: { title: "Attacks", subtitle: "Primary combat attacks and damage profiles." },
@@ -50,49 +71,6 @@ const ACTION_GROUP_CONFIG: Record<ActionGroupId, { title: string; subtitle: stri
   "bonus-actions": { title: "Bonus Actions", subtitle: "Quick options with bonus-action timing." },
   reactions: { title: "Reactions", subtitle: "Reaction-triggered actions." },
   resources: { title: "Resources", subtitle: "Resource-linked actions and utility entries." },
-};
-
-const MASTERY_INFO_BY_KEY: Record<string, { name: string; summary: string; automation: MasteryAutomationStatus }> = {
-  cleave: {
-    name: "Cleave",
-    summary: "On a hit, the weapon can spill damage to a nearby second target.",
-    automation: "manual",
-  },
-  graze: {
-    name: "Graze",
-    summary: "On a miss, still deal ability-modifier damage to the target.",
-    automation: "manual",
-  },
-  nick: {
-    name: "Nick",
-    summary: "Enables a faster off-hand style strike during your attack sequence.",
-    automation: "manual",
-  },
-  push: {
-    name: "Push",
-    summary: "Can move the target away from you after a successful hit.",
-    automation: "manual",
-  },
-  sap: {
-    name: "Sap",
-    summary: "Can weaken the target's next offensive pressure.",
-    automation: "manual",
-  },
-  slow: {
-    name: "Slow",
-    summary: "Can reduce the target's speed for the round.",
-    automation: "manual",
-  },
-  topple: {
-    name: "Topple",
-    summary: "Can force a target prone after a successful hit.",
-    automation: "manual",
-  },
-  vex: {
-    name: "Vex",
-    summary: "Can set up advantage pressure for a follow-up attack.",
-    automation: "manual",
-  },
 };
 
 function modifierLabel(value: number): string {
@@ -163,24 +141,6 @@ function rollTypeLabel(rollType: RollType): string {
 
 function normalizeSearch(value: string): string {
   return value.trim().toLowerCase();
-}
-
-function normalizeMasteryToken(value: string | undefined): string {
-  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-function masteryInfoForToken(token: string | undefined) {
-  return token ? MASTERY_INFO_BY_KEY[token] : undefined;
-}
-
-function masteryStatusTone(status: MasteryAutomationStatus): "complete" | "pending" | "unsupported" {
-  if (status === "automated") {
-    return "complete";
-  }
-  if (status === "manual") {
-    return "pending";
-  }
-  return "unsupported";
 }
 
 type WeaponProfileMetadata = {
@@ -277,6 +237,142 @@ function GroupHeader({
   );
 }
 
+type RiderAutomationStatus = "partial" | "manual" | "unsupported";
+
+export interface OnHitRiderOption {
+  id: string;
+  label: string;
+  diceExpression?: string;
+  resourceCostLabel?: string;
+  automationStatus: RiderAutomationStatus;
+  manualInstructions?: string;
+  safeResourceId?: string;
+  safeResourceLabel?: string;
+}
+
+interface AttackResolutionFlowState {
+  flowId: string;
+  actionId: string;
+  actionLabel: string;
+  attackRequestId: string;
+  attackResult: RollResult;
+  availableRiders: OnHitRiderOption[];
+  selectedRiderIds: string[];
+  status: "awaiting-confirmation" | "hit-confirmed";
+}
+
+function descriptorTimingLabel(value: RollActionDescriptor["activationType"]): string {
+  if (value === "bonus-action") return "bonus action";
+  if (value === "reaction") return "reaction";
+  if (value === "free") return "free";
+  if (value === "utility") return "resource";
+  if (value === "special") return "special";
+  return "action";
+}
+
+function descriptorSourceLabel(descriptor: RollActionDescriptor): string {
+  if (descriptor.sourceDetailType) {
+    return descriptor.sourceDetailType;
+  }
+  if (descriptor.sourceType === "weapon") return "item";
+  if (descriptor.sourceType === "feature") return "feature";
+  if (descriptor.sourceType === "spell") return "spell";
+  if (descriptor.sourceType === "item") return "item";
+  return "custom";
+}
+
+function riderStatusTone(status: RiderAutomationStatus): "pending" | "blocked" | "unsupported" {
+  if (status === "partial") return "pending";
+  if (status === "manual") return "blocked";
+  return "unsupported";
+}
+
+function normalizedLabelToken(value: string): string {
+  return value.toLowerCase().replace(/[`'.]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function extractRiderDiceExpression(value: string | undefined): string | undefined {
+  const compact = String(value ?? "").replace(/\s+/g, " ");
+  const match = compact.match(/\b\d*d\d+\s*(?:[+-]\s*\d+)?/i);
+  return match?.[0]?.replace(/\s+/g, "");
+}
+
+export function detectOnHitRiders(
+  candidates: RollActionDescriptor[],
+  resourceById: Map<string, PlayResourceCounter>,
+): OnHitRiderOption[] {
+  const byKey = new Map<string, OnHitRiderOption>();
+  for (const candidate of candidates) {
+    const searchable = `${candidate.label} ${candidate.description ?? ""} ${candidate.notes.join(" ")}`.toLowerCase();
+    const normalized = normalizedLabelToken(candidate.label);
+    const isDivineSmite = /divine-smite|paladins-smite|paladin-s-smite/.test(normalized) || /divine smite|paladin's smite|paladins smite/.test(searchable);
+    const isSneakAttack = normalized.includes("sneak-attack") || searchable.includes("sneak attack");
+    if (!isDivineSmite && !isSneakAttack) {
+      continue;
+    }
+    const key = isDivineSmite ? "rider:divine-smite" : "rider:sneak-attack";
+    if (byKey.has(key)) {
+      continue;
+    }
+    const diceExpression =
+      extractRiderDiceExpression(candidate.description)
+      ?? extractRiderDiceExpression(candidate.notes.join(" "))
+      ?? (isDivineSmite ? "2d8" : "1d6");
+    const safeResourceId =
+      candidate.resourceIds.length === 1 && resourceById.has(candidate.resourceIds[0]!)
+        ? candidate.resourceIds[0]
+        : undefined;
+    const safeResource = safeResourceId ? resourceById.get(safeResourceId) : undefined;
+    const resourceCostLabel = safeResource
+      ? `${safeResource.name} -1`
+      : candidate.resourceIds.length > 0
+        ? "Resource/slot spend manual"
+        : undefined;
+    const automationStatus: RiderAutomationStatus = safeResource || candidate.resourceIds.length === 0 ? "partial" : "manual";
+    const manualInstructions = safeResource
+      ? "Apply only when hit conditions are valid."
+      : candidate.resourceIds.length > 0
+        ? "Spend the correct slot/resource manually when applying this rider."
+        : "Confirm table conditions manually before applying.";
+    byKey.set(key, {
+      id: key,
+      label: isDivineSmite ? candidate.label : "Sneak Attack",
+      diceExpression,
+      resourceCostLabel,
+      automationStatus,
+      manualInstructions,
+      safeResourceId,
+      safeResourceLabel: safeResource?.name,
+    });
+  }
+  return Array.from(byKey.values());
+}
+
+export function riderDiceModifiers(selected: OnHitRiderOption[]): RuleModifier[] {
+  return selected
+    .filter((rider) => rider.diceExpression)
+    .map((rider, index) => ({
+      id: `on-hit-rider:${rider.id}:${index}`,
+      sourceDescriptorId: rider.id,
+      sourceName: rider.label,
+      sourceType: "custom",
+      target: "weapon-damage",
+      valueType: "dice",
+      value: rider.diceExpression ?? "1d1",
+      condition: "manual",
+      diagnostics: ["On-hit rider was selected in attack resolution flow."],
+    }));
+}
+
+export function resolveSafeRiderSpends(selected: OnHitRiderOption[]): Array<{ resourceId: string; label: string }> {
+  return selected
+    .filter((rider) => rider.safeResourceId && rider.safeResourceLabel)
+    .map((rider) => ({
+      resourceId: rider.safeResourceId!,
+      label: rider.safeResourceLabel!,
+    }));
+}
+
 function RollButton({
   request,
   rollMode,
@@ -310,25 +406,35 @@ function ActionDescriptorRow({
   descriptor,
   lastRoll,
   rollMode,
+  automationSettings,
   resourceById,
+  riderCandidates,
   versatileMode,
   onChangeVersatileMode,
   onRoll,
+  onRecordAttackResolution,
   onSpendResource,
 }: {
   descriptor: RollActionDescriptor;
   lastRoll?: RollResult;
   rollMode: RollMode;
+  automationSettings: CharacterAutomationSettings;
   resourceById: Map<string, PlayResourceCounter>;
+  riderCandidates: RollActionDescriptor[];
   versatileMode?: "one-hand" | "two-hand";
   onChangeVersatileMode: (mode: "one-hand" | "two-hand") => void;
   onRoll: ActionRollPanelProps["onRoll"];
+  onRecordAttackResolution?: ActionRollPanelProps["onRecordAttackResolution"];
   onSpendResource: ActionRollPanelProps["onSpendResource"];
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [attackFlow, setAttackFlow] = useState<AttackResolutionFlowState | undefined>();
   const singleResourceId = descriptor.resourceIds.length === 1 ? descriptor.resourceIds[0] : undefined;
   const resource = singleResourceId ? resourceById.get(singleResourceId) : undefined;
   const canSpend = Boolean(resource && resource.remaining > 0);
   const ambiguousResources = descriptor.resourceIds.length > 1;
+  const aliases = descriptor.aliasLabels ?? [];
+  const sourceSummaries = descriptor.sourceSummaries ?? (descriptor.sourceSummary ? [descriptor.sourceSummary] : []);
   const rollRequest = descriptor.rollRequest;
   const weaponProfile = (rollRequest?.metadata?.weaponProfile ?? descriptor.damageRequest?.metadata?.weaponProfile) as
     | WeaponProfileMetadata
@@ -337,11 +443,13 @@ function ActionDescriptorRow({
   const weaponMasteryBadges = weaponProfile?.masteryBadges ?? [];
   const descriptorMasteryBadges = descriptor.mappingBadges ?? [];
   const masteryBadges = Array.from(new Set([...weaponMasteryBadges, ...descriptorMasteryBadges]));
-  const masteryToken = normalizeMasteryToken(weaponProfile?.mastery);
-  const masteryInfo = masteryInfoForToken(masteryToken);
+  const masteryToken = normalizeWeaponMasteryToken(weaponProfile?.mastery);
+  const masteryInfo = weaponMasteryInfoForToken(masteryToken);
   const masteryName = masteryInfo?.name ?? (weaponProfile?.mastery ? weaponProfile.mastery : masteryBadges.length ? "Mastery selected" : undefined);
-  const masteryAutomation: MasteryAutomationStatus | undefined = masteryInfo?.automation ?? (masteryName ? "unsupported" : undefined);
+  const masteryAutomation: RuleAutomationStatus | undefined = masteryInfo?.automationStatus ?? (masteryName ? "unsupported" : undefined);
   const masterySummary = masteryInfo?.summary ?? (masteryName ? "Mastery selected, details unavailable." : undefined);
+  const masteryManualReminder = masteryInfo?.manualReminder ? `Manual: ${masteryInfo.manualReminder}` : DEFAULT_MASTERY_MANUAL_REMINDER;
+  const masteryKnownLimitations = masteryInfo?.knownLimitations ?? masterySummary;
   const masteryDiagnostics = weaponProfile?.diagnostics?.find((entry) => entry.toLowerCase().includes("mastery"));
   const versatileDamageDice = weaponProfile?.versatileDamageDice;
   const hasVersatileMode = Boolean(versatileDamageDice && descriptor.damageRequest?.diceExpression);
@@ -352,6 +460,33 @@ function ActionDescriptorRow({
       ? `One-handed ${versatileBaseDice} · Two-handed ${versatileDamageDice}`
       : undefined;
   const spendDisabledReason = resource ? `${resource.name} is depleted.` : "Resource unavailable.";
+  const onHitRiders = useMemo(() => detectOnHitRiders(riderCandidates, resourceById), [riderCandidates, resourceById]);
+  const visibleOnHitRiders = automationSettings.onHitRiders === "manualOnly" ? [] : onHitRiders;
+  const defaultSuggestedRiderIds =
+    automationSettings.onHitRiders === "autoSuggest"
+      ? visibleOnHitRiders.filter((rider) => rider.automationStatus === "partial").map((rider) => rider.id)
+      : [];
+  const actionAutomation = normalizeRuleAutomationStatus(descriptor.automationStatus, "unknown");
+  const timingLabel = descriptorTimingLabel(descriptor.activationType);
+  const sourceLabel = descriptorSourceLabel(descriptor);
+  const resourceDetails = descriptor.resourceIds.map((resourceId) => {
+    const entry = resourceById.get(resourceId);
+    if (!entry) {
+      return `${resourceId} (manual tracking)`;
+    }
+    return `${entry.name} ${entry.remaining}/${entry.max} · ${entry.rechargeLabel}`;
+  });
+  const propertyDetails = weaponProperties.map((property) => `${property}: ${weaponPropertySummary(property)}`);
+  const manualInstructions = descriptor.manualInstructions || defaultManualInstructionForStatus(actionAutomation);
+  const knownLimitations = Array.from(
+    new Set(
+      [
+        masteryKnownLimitations,
+        ...(masteryDiagnostics ? [masteryDiagnostics] : []),
+        ...descriptor.notes.filter((note) => /manual|unsupported|pending|future/i.test(note)),
+      ].filter((entry): entry is string => Boolean(entry)),
+    ),
+  ).join(" · ");
 
   const withWeaponUsage = (request: RollRequest | undefined): RollRequest | undefined => {
     if (!request || !hasVersatileMode) {
@@ -386,13 +521,130 @@ function ActionDescriptorRow({
   const linkedPermanentModifiers = linkedResult?.permanentModifierBreakdown?.filter((entry) => entry.applied) ?? [];
   const linkedEffectsLabel = linkedEffects.length > 0 ? linkedEffects.join(", ") : "None";
   const linkedModifierContributions = [...linkedPermanentModifiers, ...linkedTemporaryModifiers];
-  const rollAttackAndDamage = () => {
-    if (effectiveRollRequest) {
-      onRoll({ ...effectiveRollRequest, rollMode });
+
+  const startAttackResolutionFlow = () => {
+    if (!effectiveRollRequest || !effectiveDamageRequest) {
+      return;
     }
-    if (effectiveDamageRequest) {
-      onRoll({ ...effectiveDamageRequest, rollMode: "normal" });
+    const flowId = `attack-flow:${descriptor.id}:${Date.now()}`;
+    const request: RollRequest = {
+      ...effectiveRollRequest,
+      rollMode,
+      metadata: {
+        ...(effectiveRollRequest.metadata ?? {}),
+        attackFlowId: flowId,
+        flowStep: "attack-roll",
+        actionId: descriptor.id,
+        actionLabel: descriptor.label,
+        weaponMasteryName: masteryName,
+      },
+    };
+    const attackResult = onRoll(request);
+    if (!attackResult) {
+      return;
     }
+    setAttackFlow({
+      flowId,
+      actionId: descriptor.id,
+      actionLabel: descriptor.label,
+      attackRequestId: request.id,
+      attackResult,
+      availableRiders: visibleOnHitRiders,
+      selectedRiderIds: defaultSuggestedRiderIds,
+      status: "awaiting-confirmation",
+    });
+  };
+
+  const resolveAttackDecision = (decision: "hit" | "miss" | "cancel") => {
+    if (!attackFlow) {
+      return;
+    }
+    if (decision === "hit") {
+      onRecordAttackResolution?.(descriptor.label, "hit", {
+        actionId: descriptor.id,
+        attackRequestId: attackFlow.attackRequestId,
+        attackRollResultId: attackFlow.attackResult.id,
+        flowId: attackFlow.flowId,
+        weaponMasteryName: masteryName,
+      });
+      setAttackFlow({
+        ...attackFlow,
+        status: "hit-confirmed",
+      });
+      return;
+    }
+    onRecordAttackResolution?.(descriptor.label, decision, {
+      actionId: descriptor.id,
+      attackRequestId: attackFlow.attackRequestId,
+      attackRollResultId: attackFlow.attackResult.id,
+      flowId: attackFlow.flowId,
+      weaponMasteryName: masteryName,
+      note: decision === "miss" ? "Damage roll skipped." : "Attack flow cancelled.",
+    });
+    setAttackFlow(undefined);
+  };
+
+  const toggleRiderSelection = (riderId: string, enabled: boolean) => {
+    setAttackFlow((current) => {
+      if (!current) {
+        return current;
+      }
+      const selected = enabled
+        ? Array.from(new Set([...current.selectedRiderIds, riderId]))
+        : current.selectedRiderIds.filter((entry) => entry !== riderId);
+      return {
+        ...current,
+        selectedRiderIds: selected,
+      };
+    });
+  };
+
+  const rollDamageFromConfirmedHit = () => {
+    if (!attackFlow || !effectiveDamageRequest) {
+      return;
+    }
+    const selectedRiders = attackFlow.availableRiders.filter((rider) => attackFlow.selectedRiderIds.includes(rider.id));
+    const temporaryRiderModifiers = riderDiceModifiers(selectedRiders);
+    const safeSpends = resolveSafeRiderSpends(selectedRiders);
+    const manualResourceRiders = selectedRiders.filter((rider) => !rider.safeResourceId && rider.resourceCostLabel);
+    const [primarySpend, ...secondarySpends] = safeSpends;
+    const autoSpendEnabled = automationSettings.resourceSpending === "autoSpendWhenSafe";
+    const damageRequest: RollRequest = {
+      ...effectiveDamageRequest,
+      rollMode: "normal",
+      temporaryModifiers: [...(effectiveDamageRequest.temporaryModifiers ?? []), ...temporaryRiderModifiers],
+      metadata: {
+        ...(effectiveDamageRequest.metadata ?? {}),
+        attackFlowId: attackFlow.flowId,
+        attackRequestId: attackFlow.attackRequestId,
+        attackRollResultId: attackFlow.attackResult.id,
+        attackResolution: "hit",
+        onHitRiderLabels: selectedRiders.map((rider) => rider.label),
+        weaponMasteryName: masteryName,
+        onHitRiderSelectionMode: automationSettings.onHitRiders,
+        resourceSpendSetting: automationSettings.resourceSpending,
+        unsupportedNotes: [
+          ...(autoSpendEnabled || !primarySpend ? [] : [`${primarySpend.label} not auto-spent (${automationSettings.resourceSpending}).`]),
+          ...manualResourceRiders.map((rider) => `${rider.label} requires manual resource spending.`),
+        ],
+      },
+    };
+    onRoll(
+      damageRequest,
+      primarySpend
+        ? {
+            spendResourceKey: primarySpend.resourceId,
+            resourceLabel: primarySpend.label,
+            spendResourceMode: "auto-safe",
+          }
+        : undefined,
+    );
+    if (autoSpendEnabled) {
+      for (const spend of secondarySpends) {
+        onSpendResource(spend.resourceId, 1, spend.label);
+      }
+    }
+    setAttackFlow(undefined);
   };
 
   return (
@@ -403,7 +655,7 @@ function ActionDescriptorRow({
         badges={
           <>
             {masteryName ? <StatusBadge label={`Mastery ${masteryName}`} status="info" /> : null}
-            {masteryAutomation ? <StatusBadge label={masteryAutomation} status={masteryStatusTone(masteryAutomation)} /> : null}
+            {masteryAutomation ? <StatusBadge label={masteryAutomation} status={ruleAutomationTone(masteryAutomation)} /> : null}
             {weaponProperties.map((property) => (
               <StatusBadge key={`${descriptor.id}:${property}`} label={property} status="info" />
             ))}
@@ -426,12 +678,12 @@ function ActionDescriptorRow({
             ) : null}
             {effectiveRollRequest && effectiveDamageRequest ? (
               <button
-                aria-label={`Roll attack and damage for ${descriptor.label}`}
+                aria-label={`Start attack resolution flow for ${descriptor.label}`}
                 className="sheet-focus-ring rounded bg-indigo-700 px-3 py-2 text-sm text-white"
-                onClick={rollAttackAndDamage}
+                onClick={startAttackResolutionFlow}
                 type="button"
               >
-                Attack + Damage
+                Attack Flow
               </button>
             ) : null}
             {effectiveRollRequest && singleResourceId ? (
@@ -440,7 +692,11 @@ function ActionDescriptorRow({
                 className="sheet-focus-ring rounded bg-indigo-700 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                 disabled={!canSpend}
                 title={!canSpend ? spendDisabledReason : undefined}
-                onClick={() => onRoll({ ...effectiveRollRequest, rollMode }, { spendResourceKey: singleResourceId, resourceLabel: resource?.name })}
+                onClick={() =>
+                  onRoll(
+                    { ...effectiveRollRequest, rollMode },
+                    { spendResourceKey: singleResourceId, resourceLabel: resource?.name, spendResourceMode: "manual" },
+                  )}
                 type="button"
               >
                 Roll + Spend
@@ -458,9 +714,19 @@ function ActionDescriptorRow({
                 Spend
               </button>
             ) : null}
+            <button
+              aria-expanded={detailsOpen}
+              aria-label={`Toggle details for ${descriptor.label}`}
+              className="sheet-focus-ring rounded border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-800"
+              onClick={() => setDetailsOpen((current) => !current)}
+              type="button"
+            >
+              Details
+            </button>
           </>
         }
       >
+        {descriptor.shortDescription ? <p className="text-xs text-slate-700">{descriptor.shortDescription}</p> : null}
         {descriptor.spellSaveDc ? (
           <p className="text-xs text-slate-700">
             Save DC {descriptor.spellSaveDc}{descriptor.spellSaveAbility ? ` · ${descriptor.spellSaveAbility.toUpperCase()}` : ""}
@@ -472,15 +738,105 @@ function ActionDescriptorRow({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-medium text-slate-900">Weapon Mastery: {masteryName}</p>
               <div className="flex items-center gap-1">
-                {masteryAutomation ? <StatusBadge label={masteryAutomation} status={masteryStatusTone(masteryAutomation)} /> : null}
+                {masteryAutomation ? <StatusBadge label={masteryAutomation} status={ruleAutomationTone(masteryAutomation)} /> : null}
                 <InfoPopover title="Weapon Mastery" description={ruleInfo("weapon-mastery")} />
               </div>
             </div>
             {masterySummary ? <p className="mt-1">{masterySummary}</p> : null}
             {masteryAutomation !== "automated" ? (
-              <p className="mt-1 text-[11px] text-slate-600">Manual: remember this effect when resolving the attack.</p>
+              <p className="mt-1 text-[11px] text-slate-600">{masteryManualReminder}</p>
             ) : null}
             {masteryDiagnostics ? <p className="mt-1 text-[11px] text-slate-500">Diagnostics: {masteryDiagnostics}</p> : null}
+          </div>
+        ) : null}
+        {attackFlow?.status === "awaiting-confirmation" ? (
+          <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-xs text-slate-800">
+            <p className="font-medium text-emerald-900">Attack Result: {attackFlow.attackResult.total}</p>
+            <p className="mt-1">
+              d20 {attackFlow.attackResult.naturalRoll ?? attackFlow.attackResult.dice.keptRoll ?? attackFlow.attackResult.dice.rawRolls[0] ?? "-"} ·
+              outcome {attackFlow.attackResult.outcomeLabel ?? "normal"}
+            </p>
+            {masteryName ? (
+              <p className="mt-1">
+                Mastery Hint: {masteryName}{masterySummary ? ` · ${masterySummary}` : ""}
+              </p>
+            ) : null}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                aria-label={`Confirm hit for ${descriptor.label}`}
+                className="sheet-focus-ring rounded bg-emerald-700 px-2 py-1 text-xs text-white"
+                onClick={() => resolveAttackDecision("hit")}
+                type="button"
+              >
+                Hit
+              </button>
+              <button
+                aria-label={`Confirm miss for ${descriptor.label}`}
+                className="sheet-focus-ring rounded bg-amber-700 px-2 py-1 text-xs text-white"
+                onClick={() => resolveAttackDecision("miss")}
+                type="button"
+              >
+                Miss
+              </button>
+              <button
+                aria-label={`Cancel attack resolution for ${descriptor.label}`}
+                className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
+                onClick={() => resolveAttackDecision("cancel")}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {attackFlow?.status === "hit-confirmed" ? (
+          <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-xs text-slate-800">
+            <p className="font-medium text-emerald-900">Hit Confirmed</p>
+            {attackFlow.availableRiders.length ? (
+              <div className="mt-2 space-y-1">
+                {attackFlow.availableRiders.map((rider) => (
+                  <label key={`${descriptor.id}:${rider.id}`} className="block rounded border border-emerald-200 bg-white p-2">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <input
+                        aria-label={`Apply on-hit rider ${rider.label}`}
+                        checked={attackFlow.selectedRiderIds.includes(rider.id)}
+                        onChange={(event) => toggleRiderSelection(rider.id, event.target.checked)}
+                        type="checkbox"
+                      />
+                      <span className="font-medium text-slate-900">{rider.label}</span>
+                      {rider.diceExpression ? <span className="text-slate-700">{rider.diceExpression}</span> : null}
+                      {rider.resourceCostLabel ? <span className="text-slate-600">{rider.resourceCostLabel}</span> : null}
+                      <StatusBadge label={rider.automationStatus} status={riderStatusTone(rider.automationStatus)} />
+                    </span>
+                    {rider.manualInstructions ? <span className="mt-1 block text-[11px] text-slate-600">{rider.manualInstructions}</span> : null}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-1 text-slate-700">
+                {automationSettings.onHitRiders === "manualOnly"
+                  ? "On-hit rider automation is set to manualOnly."
+                  : "No local on-hit riders detected for this profile."}
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                aria-label={`Roll damage for confirmed hit on ${descriptor.label}`}
+                className="sheet-focus-ring rounded bg-emerald-700 px-2 py-1 text-xs text-white"
+                onClick={rollDamageFromConfirmedHit}
+                type="button"
+              >
+                Roll Damage
+              </button>
+              <button
+                aria-label={`Cancel confirmed hit flow for ${descriptor.label}`}
+                className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
+                onClick={() => setAttackFlow(undefined)}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         ) : null}
         {weaponProperties.length ? (
@@ -537,6 +893,31 @@ function ActionDescriptorRow({
             </dl>
           </div>
         ) : null}
+        {detailsOpen ? (
+          <RuleDetailDrawer
+            detail={{
+              name: descriptor.label,
+              source: `${sourceLabel}${sourceSummaries.length ? ` · ${sourceSummaries.join(", ")}` : ""}${aliases.length ? ` · Aliases: ${aliases.join(", ")}` : ""}`,
+              timing: timingLabel,
+              rangeOrTarget: weaponProfile?.range ? `${weaponProfile.range}${hasVersatileMode ? ` · ${selectedVersatileMode}` : ""}` : undefined,
+              duration: attackFlow ? "Current attack flow pending" : undefined,
+              cost: resourceDetails.length ? resourceDetails.join(" · ") : undefined,
+              description: descriptor.description,
+              gameplaySummary: descriptor.shortDescription ?? descriptor.notes[0],
+              automationStatus: actionAutomation,
+              manualInstructions,
+              knownLimitations: knownLimitations || undefined,
+              fields: [
+                { label: "Automation Status", value: actionAutomation },
+                { label: "Damage Profile", value: effectiveDamageRequest?.diceExpression },
+                { label: "Spell Save", value: descriptor.spellSaveDc ? `DC ${descriptor.spellSaveDc}${descriptor.spellSaveAbility ? ` (${descriptor.spellSaveAbility.toUpperCase()})` : ""}` : undefined },
+                { label: "Weapon Mastery", value: masteryName ? `${masteryName}${masterySummary ? ` · ${masterySummary}` : ""}` : undefined },
+                { label: "Weapon Properties", value: propertyDetails.length ? propertyDetails.join(" · ") : undefined },
+              ],
+            }}
+            heading="Action Details"
+          />
+        ) : null}
       </ActionCard>
     </li>
   );
@@ -575,9 +956,11 @@ export function ActionRollPanel({
   rollMode,
   onRollModeChange,
   resources,
+  automationSettings,
   activeEffectCatalog = [],
   showSpellRolls = true,
   onRoll,
+  onRecordAttackResolution,
   onSpendResource,
   onActivateEffect,
   onCreateCustomEffect,
@@ -602,6 +985,10 @@ export function ActionRollPanel({
   const [collapsedGroups, setCollapsedGroups] = useState<Record<ActionPanelGroupId, boolean>>(initialCollapsedGroups);
 
   const resourceById = useMemo(() => new Map(resources.map((resource) => [resource.id, resource])), [resources]);
+  const riderCandidates = useMemo(
+    () => [...rollView.actionRolls, ...rollView.spellRolls],
+    [rollView.actionRolls, rollView.spellRolls],
+  );
   const actionableSpells = useMemo(
     () => rollView.spellRolls.filter((entry) => entry.rollRequest || entry.damageRequest || entry.spellSaveDc),
     [rollView.spellRolls],
@@ -617,7 +1004,7 @@ export function ActionRollPanel({
   const filterDescriptors = (entries: RollActionDescriptor[]): RollActionDescriptor[] => (
     normalizedActionSearch
       ? entries.filter((entry) =>
-        matchesActionSearch(`${entry.label} ${entry.sourceSummary ?? ""} ${entry.notes.join(" ")} ${(entry.mappingBadges ?? []).join(" ")}`))
+        matchesActionSearch(`${entry.label} ${(entry.aliasLabels ?? []).join(" ")} ${entry.sourceSummary ?? ""} ${(entry.sourceSummaries ?? []).join(" ")} ${entry.description ?? ""} ${entry.notes.join(" ")} ${(entry.mappingBadges ?? []).join(" ")}`))
       : entries
   );
   const filteredAbilityChecks = filterRollRequests(rollView.abilityChecks);
@@ -739,11 +1126,14 @@ export function ActionRollPanel({
               {group.map((descriptor) => (
                 <ActionDescriptorRow
                   key={descriptor.id}
+                  automationSettings={automationSettings}
                   descriptor={descriptor}
                   lastRoll={lastRoll}
+                  onRecordAttackResolution={onRecordAttackResolution}
                   onRoll={onRoll}
                   onSpendResource={onSpendResource}
                   resourceById={resourceById}
+                  riderCandidates={riderCandidates}
                   rollMode={rollMode}
                   versatileMode={weaponUsageByActionId[descriptor.id]}
                   onChangeVersatileMode={(mode) =>
@@ -849,11 +1239,14 @@ export function ActionRollPanel({
                 {filteredSpellRolls.map((descriptor) => (
                   <ActionDescriptorRow
                     key={descriptor.id}
+                    automationSettings={automationSettings}
                     descriptor={descriptor}
                     lastRoll={lastRoll}
+                    onRecordAttackResolution={onRecordAttackResolution}
                     onRoll={onRoll}
                     onSpendResource={onSpendResource}
                     resourceById={resourceById}
+                    riderCandidates={riderCandidates}
                     rollMode={rollMode}
                     versatileMode={weaponUsageByActionId[descriptor.id]}
                     onChangeVersatileMode={(mode) =>

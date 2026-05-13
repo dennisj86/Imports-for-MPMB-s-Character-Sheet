@@ -26,6 +26,58 @@ export interface ConcentrationState {
   notes?: string;
 }
 
+export type RollBonusesAutomationSetting = "manual" | "suggest" | "autoApply";
+export type ActiveEffectsAutomationSetting = "manual" | "suggest" | "autoApply";
+export type ResourceSpendingAutomationSetting = "ask" | "autoSpendWhenSafe" | "neverAutoSpend";
+export type OnHitRidersAutomationSetting = "ask" | "autoSuggest" | "manualOnly";
+export type ConcentrationAutomationSetting = "manual" | "suggestCheck" | "autoPromptOnDamage";
+export type DeathSavesAutomationSetting = "autoApplyResult" | "askBeforeApply";
+
+export interface CharacterAutomationSettings {
+  rollBonuses: RollBonusesAutomationSetting;
+  activeEffects: ActiveEffectsAutomationSetting;
+  resourceSpending: ResourceSpendingAutomationSetting;
+  onHitRiders: OnHitRidersAutomationSetting;
+  concentration: ConcentrationAutomationSetting;
+  deathSaves: DeathSavesAutomationSetting;
+}
+
+export const DEFAULT_CHARACTER_AUTOMATION_SETTINGS: CharacterAutomationSettings = {
+  rollBonuses: "suggest",
+  activeEffects: "suggest",
+  resourceSpending: "ask",
+  onHitRiders: "autoSuggest",
+  concentration: "suggestCheck",
+  deathSaves: "askBeforeApply",
+};
+
+export function normalizeCharacterAutomationSettings(
+  value: Partial<CharacterAutomationSettings> | undefined,
+): CharacterAutomationSettings {
+  const next = value ?? {};
+  return {
+    rollBonuses: next.rollBonuses === "manual" || next.rollBonuses === "suggest" || next.rollBonuses === "autoApply"
+      ? next.rollBonuses
+      : DEFAULT_CHARACTER_AUTOMATION_SETTINGS.rollBonuses,
+    activeEffects: next.activeEffects === "manual" || next.activeEffects === "suggest" || next.activeEffects === "autoApply"
+      ? next.activeEffects
+      : DEFAULT_CHARACTER_AUTOMATION_SETTINGS.activeEffects,
+    resourceSpending:
+      next.resourceSpending === "ask" || next.resourceSpending === "autoSpendWhenSafe" || next.resourceSpending === "neverAutoSpend"
+        ? next.resourceSpending
+        : DEFAULT_CHARACTER_AUTOMATION_SETTINGS.resourceSpending,
+    onHitRiders: next.onHitRiders === "ask" || next.onHitRiders === "autoSuggest" || next.onHitRiders === "manualOnly"
+      ? next.onHitRiders
+      : DEFAULT_CHARACTER_AUTOMATION_SETTINGS.onHitRiders,
+    concentration: next.concentration === "manual" || next.concentration === "suggestCheck" || next.concentration === "autoPromptOnDamage"
+      ? next.concentration
+      : DEFAULT_CHARACTER_AUTOMATION_SETTINGS.concentration,
+    deathSaves: next.deathSaves === "autoApplyResult" || next.deathSaves === "askBeforeApply"
+      ? next.deathSaves
+      : DEFAULT_CHARACTER_AUTOMATION_SETTINGS.deathSaves,
+  };
+}
+
 export type HitDieSize = 6 | 8 | 10 | 12;
 
 export interface HitDicePool {
@@ -69,7 +121,10 @@ export type CharacterPlayEventType =
   | "hit-die-spend-blocked"
   | "hit-dice-recovered"
   | "rest-short"
-  | "rest-long";
+  | "rest-long"
+  | "attack-resolution"
+  | "automation-settings-update"
+  | "concentration-check-prompt";
 
 export interface CharacterPlayEvent {
   id: string;
@@ -91,6 +146,7 @@ export interface CharacterPlayState {
   activeConditions: ActiveConditionState[];
   activeEffects: ActiveEffectState[];
   concentration: ConcentrationState | null;
+  automationSettings: CharacterAutomationSettings;
   playEvents: CharacterPlayEvent[];
   lastRestAt?: string;
   updatedAt: string;
@@ -132,6 +188,7 @@ export function createDefaultCharacterPlayState(
     activeConditions: [],
     activeEffects: [],
     concentration: null,
+    automationSettings: normalizeCharacterAutomationSettings(undefined),
     playEvents: [],
     updatedAt: now,
   };

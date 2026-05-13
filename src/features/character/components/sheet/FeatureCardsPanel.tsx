@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import type { FeatureGroupId, FeatureGroupViewModel } from "../../viewModels/featuresViewModel";
 import { EmptyState, FeatureCardShell, SectionHeader, StatusBadge } from "./SheetDesignSystem";
+import { RuleDetailDrawer } from "./RuleDetailDrawer";
+import { normalizeRuleAutomationStatus, ruleAutomationTone } from "./ruleAutomationStatus";
 
 interface FeatureCardsPanelProps {
   groups: FeatureGroupViewModel[];
@@ -10,6 +12,7 @@ export function FeatureCardsPanel({ groups }: FeatureCardsPanelProps) {
   const [featureSearch, setFeatureSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState<"all" | FeatureGroupId>("all");
   const [actionFilter, setActionFilter] = useState<"all" | "actionable" | "passive">("all");
+  const [detailsOpenById, setDetailsOpenById] = useState<Record<string, boolean>>({});
 
   const normalizedFeatureSearch = featureSearch.trim().toLowerCase();
   const filteredGroups = useMemo(
@@ -94,6 +97,12 @@ export function FeatureCardsPanel({ groups }: FeatureCardsPanelProps) {
                   <>
                     {feature.actionType ? <StatusBadge status="info" label={feature.actionType} /> : null}
                     {feature.usesLabel ? <StatusBadge status="pending" label={feature.usesLabel} /> : null}
+                    {feature.automationStatus ? (
+                      <StatusBadge
+                        label={feature.automationStatus}
+                        status={ruleAutomationTone(normalizeRuleAutomationStatus(feature.automationStatus, "unknown"))}
+                      />
+                    ) : null}
                     {feature.ruleChoiceLabels.map((label) => (
                       <StatusBadge key={label} label={label} status="complete" />
                     ))}
@@ -104,13 +113,42 @@ export function FeatureCardsPanel({ groups }: FeatureCardsPanelProps) {
                 }
               >
                 <p className="text-sm text-slate-700">{feature.summary}</p>
-                {feature.details ? (
-                  <details className="mt-2 text-xs text-slate-600">
-                    <summary aria-label={`Show details for ${feature.name}`} className="sheet-focus-ring cursor-pointer text-slate-700">
-                      Details
-                    </summary>
-                    <p className="mt-1 whitespace-pre-wrap">{feature.details}</p>
-                  </details>
+                <button
+                  aria-controls={`feature-detail-${feature.id}`}
+                  aria-expanded={detailsOpenById[feature.id] ?? false}
+                  aria-label={`Toggle details for ${feature.name}`}
+                  className="sheet-focus-ring mt-2 rounded border border-slate-300 bg-slate-100 px-2 py-1 text-xs text-slate-800"
+                  onClick={() =>
+                    setDetailsOpenById((current) => ({
+                      ...current,
+                      [feature.id]: !(current[feature.id] ?? false),
+                    }))
+                  }
+                  type="button"
+                >
+                  Details
+                </button>
+                {detailsOpenById[feature.id] ? (
+                  <RuleDetailDrawer
+                    detail={{
+                      name: feature.name,
+                      source: `${feature.sourceLabel}${feature.level ? ` · Level ${feature.level}` : ""}`,
+                      timing: feature.timing ?? feature.actionType?.toLowerCase() ?? "passive",
+                      cost: feature.resourceCostLabel ?? feature.usesLabel,
+                      description: feature.details,
+                      gameplaySummary: feature.summary,
+                      automationStatus: feature.automationStatus ?? "unknown",
+                      manualInstructions: feature.manualInstructions,
+                      knownLimitations: feature.knownLimitations,
+                      fields: [
+                        { label: "Recovery", value: feature.recoveryLabel },
+                        { label: "Rule Choices", value: feature.ruleChoiceLabels.join(" · ") || undefined },
+                        { label: "Applied", value: feature.appliedSummaryLabels.join(" · ") || undefined },
+                      ],
+                    }}
+                    heading="Feature Details"
+                    id={`feature-detail-${feature.id}`}
+                  />
                 ) : null}
               </FeatureCardShell>
             ))}

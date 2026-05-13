@@ -1,6 +1,6 @@
 import type { CharacterDraft } from "../../../domain/character";
 import type { CharacterEngineState } from "../../../services/characterEngine";
-import { hpGainKey } from "../../../services/levelUp";
+import { buildCharacterXpProgressState, hpGainKey } from "../../../services/levelUp";
 
 export interface ProgressionChoiceViewModel {
   id: string;
@@ -43,6 +43,19 @@ export interface ProgressionViewModel {
   levelUpPendingChoiceCount: number;
   rulePendingChoiceCount: number;
   pendingChoiceCount: number;
+  xp: {
+    currentXp: number;
+    levelSource: "xp" | "manual";
+    milestoneMode: boolean;
+    levelFromXp: number;
+    currentLevelThreshold: number;
+    nextLevel: number | null;
+    nextLevelThreshold: number | null;
+    remainingToNextLevel: number;
+    progressToNextLevel: number;
+    levelUpAvailable: boolean;
+    diagnostics: string[];
+  };
 }
 
 function hasPendingChoice(engine: CharacterEngineState, search: RegExp): boolean {
@@ -50,6 +63,7 @@ function hasPendingChoice(engine: CharacterEngineState, search: RegExp): boolean
 }
 
 export function buildProgressionViewModel(draft: CharacterDraft, engine: CharacterEngineState): ProgressionViewModel {
+  const xpProgress = buildCharacterXpProgressState(draft);
   const pendingChoices: ProgressionChoiceViewModel[] = engine.progression.pendingChoices.map((choice) => ({
     id: choice.id,
     label: choice.description,
@@ -158,5 +172,6 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
     levelUpPendingChoiceCount,
     rulePendingChoiceCount,
     pendingChoiceCount: levelUpPendingChoiceCount + rulePendingChoiceCount,
+    xp: xpProgress,
   };
 }

@@ -96,6 +96,7 @@ export type PlayStateAction =
       type: "apply-damage";
       amount: number;
       event?: CharacterPlayEvent;
+      extraEvents?: CharacterPlayEvent[];
       timestamp?: string;
     }
   | {
@@ -204,6 +205,12 @@ export type PlayStateAction =
       timestamp?: string;
     }
   | {
+      type: "set-automation-settings";
+      automationSettings: CharacterPlayState["automationSettings"];
+      event?: CharacterPlayEvent;
+      timestamp?: string;
+    }
+  | {
       type: "spend-hit-die";
       hitDicePools: HitDicePool[];
       currentHp: number;
@@ -247,7 +254,7 @@ export function reduceCharacterPlayState(
       tempHp: clampNonNegative(state.tempHp - tempReduced),
       currentHp: clampNonNegative(state.currentHp - remainingDamage),
     };
-    return withEvent(next, action.event, action.timestamp);
+    return withEvents(next, [action.event, ...(action.extraEvents ?? [])].filter((event): event is CharacterPlayEvent => Boolean(event)), action.timestamp);
   }
 
   if (action.type === "apply-healing") {
@@ -454,6 +461,17 @@ export function reduceCharacterPlayState(
 
   if (action.type === "record-event") {
     return withEvent(state, action.event, action.timestamp);
+  }
+
+  if (action.type === "set-automation-settings") {
+    return withEvent(
+      {
+        ...state,
+        automationSettings: action.automationSettings,
+      },
+      action.event,
+      action.timestamp,
+    );
   }
 
   if (action.type === "spend-hit-die") {

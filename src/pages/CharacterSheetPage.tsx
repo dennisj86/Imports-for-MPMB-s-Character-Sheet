@@ -35,9 +35,21 @@ import {
   buildSpellbookViewModel,
   type SheetTabId,
 } from "../features/character/viewModels";
-import type { RollMode, RollRequest, RollResult } from "../domain/rolls";
+import type { CharacterAutomationSettings, CharacterPlayEvent } from "../domain/playState";
+import type { RollEffectSelectionOrigin, RollMode, RollRequest, RollResult } from "../domain/rolls";
+import { resolveCharacterEngineState } from "../services/characterEngine";
 import { adjustCurrencyAmount as adjustInventoryCurrencyAmount, equipItem, setCurrencyAmount as setInventoryCurrencyAmount, setHpGainMethod, unequipItem } from "../services/equipment";
-import { setAsiOrFeatOption } from "../services/levelUp";
+import {
+  addCharacterXp,
+  applyLevelUpWithSnapshot,
+  buildLevelUpPreviewDiff,
+  canUndoLastLevelUp,
+  setAsiOrFeatOption,
+  setCharacterLevelSource,
+  setCharacterMilestoneMode,
+  setCharacterXp,
+  undoLastLevelUp,
+} from "../services/levelUp";
 import { buildCharacterRollView, getLatestRollResult } from "../services/rolls";
 import { activeEffectsForRollType, buildActiveEffectCatalog, resolveCombinedRuleProficiencies } from "../services/rules";
 import { useCharacterStore } from "../store/characterStore";
@@ -113,6 +125,34 @@ function choiceLabel(status: "complete" | "missing" | "unsupported" | "needs-bui
   return status;
 }
 
+function previewChoiceTone(status: "pending" | "complete" | "unsupported" | "blocked"): StatusTone {
+  if (status === "complete") return "complete";
+  if (status === "unsupported") return "unsupported";
+  if (status === "blocked") return "blocked";
+  return "pending";
+}
+
+function signedNumber(value: number): string {
+  if (value === 0) {
+    return "0";
+  }
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function resolveRollEffectStrategy(settings: CharacterAutomationSettings): "manual" | "suggest" | "autoApply" {
+  if (settings.rollBonuses === "manual" || settings.activeEffects === "manual") {
+    return "manual";
+  }
+  if (settings.rollBonuses === "autoApply" && settings.activeEffects === "autoApply") {
+    return "autoApply";
+  }
+  return "suggest";
+}
+
+function latestConcentrationPrompt(events: CharacterPlayEvent[]): CharacterPlayEvent | undefined {
+  return [...events].reverse().find((event) => event.type === "concentration-check-prompt");
+}
+
 export function CharacterSheetPage() {
   const generation = useSourceStore((state) => state.generation);
   const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
@@ -123,6 +163,12 @@ export function CharacterSheetPage() {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [rollMode, setRollMode] = useState<RollMode>("normal");
   const [selectedEffectIds, setSelectedEffectIds] = useState<string[]>([]);
+  const [xpDeltaInput, setXpDeltaInput] = useState("300");
+  const [xpSetInput, setXpSetInput] = useState("");
+  const [levelUpPreviewOpen, setLevelUpPreviewOpen] = useState(false);
+  const [pendingDeathSave, setPendingDeathSave] = useState<
+    { rollId: string; resolution: "success" | "failure" | "critical-success" | "critical-failure"; total: number } | undefined
+  >();
   const draft = characters.find((entry) => entry.id === id);
   const engineView = useCharacterEngine(draft, activeSourceKeys, generation);
   const playStateView = useCharacterPlayState(draft, engineView?.engine, updateCharacter);
@@ -177,6 +223,26 @@ export function CharacterSheetPage() {
   const inventory = buildInventoryViewModel(draft, engine, playState);
   const featureGroups = buildFeatureGroupsViewModel(engine);
   const progression = buildProgressionViewModel(draft, engine);
+  const levelUpPreview = useMemo(() => {
+    const targetLevel = Math.min(20, draft.classSelection.level + 1);
+    if (targetLevel <= draft.classSelection.level) {
+      return undefined;
+    }
+    const leveledDraft = {
+      ...draft,
+      classSelection: {
+        ...draft.classSelection,
+        level: targetLevel,
+      },
+    };
+    const afterEngine = resolveCharacterEngineState(engineView.snapshot, leveledDraft, engineView.context);
+    return buildLevelUpPreviewDiff(engine, afterEngine);
+  }, [draft, engine, engineView.context, engineView.snapshot]);
+  useEffect(() => {
+    if (!progression.xp.levelUpAvailable) {
+      setLevelUpPreviewOpen(false);
+    }
+  }, [progression.xp.levelUpAvailable]);
   const rollEffects = rollView.activeEffects ?? [];
   const selectableRollEffects = useMemo(
     () =>
@@ -193,30 +259,83 @@ export function CharacterSheetPage() {
     () => buildOverviewResourceHighlights(playStateView.resourceCounters, playStateView.spellSlotCounters, 5),
     [playStateView.resourceCounters, playStateView.spellSlotCounters],
   );
+  const concentrationPromptEvent = useMemo(
+    () => latestConcentrationPrompt(playState.playEvents),
+    [playState.playEvents],
+  );
+  const concentrationPromptDc = typeof concentrationPromptEvent?.payload.dc === "number" ? concentrationPromptEvent.payload.dc : undefined;
+  const concentrationSaveRequest = useMemo(
+    () => rollView.savingThrows.find((entry) => entry.ability === "con"),
+    [rollView.savingThrows],
+  );
   const rollWithSelectedEffects = useCallback(
-    (request: RollRequest, options?: { spendResourceKey?: string; resourceLabel?: string }): RollResult | undefined => {
-      const applicable = activeEffectsForRollType(selectableRollEffects, request.type).filter((effect) => selectedEffectIds.includes(effect.id));
-      const temporaryModifiers = applicable.flatMap((effect) => effect.modifiers);
+    (
+      request: RollRequest,
+      options?: { spendResourceKey?: string; resourceLabel?: string; spendResourceMode?: "manual" | "auto-safe" | "auto-unsafe" },
+    ): RollResult | undefined => {
+      const allApplicable = activeEffectsForRollType(selectableRollEffects, request.type);
+      const manuallySelected = allApplicable.filter((effect) => selectedEffectIds.includes(effect.id));
+      const effectStrategy = resolveRollEffectStrategy(playStateView.automationSettings);
+      const autoCandidates = allApplicable.filter((effect) => allApplicable.length === 1 || !effect.requiresPrompt);
+      const appliedEffects =
+        effectStrategy === "autoApply"
+          ? Array.from(new Map([...manuallySelected, ...autoCandidates].map((entry) => [entry.id, entry])).values())
+          : manuallySelected;
+      const suggestedEffects =
+        effectStrategy === "suggest"
+          ? allApplicable.filter((effect) => !manuallySelected.some((selected) => selected.id === effect.id))
+          : [];
+      const temporaryModifiers = appliedEffects.flatMap((effect) => effect.modifiers);
+      const activeEffectOrigins = new Map<string, RollEffectSelectionOrigin>();
+      for (const effect of manuallySelected) {
+        activeEffectOrigins.set(effect.id, "manual");
+      }
+      if (effectStrategy === "autoApply") {
+        for (const effect of autoCandidates) {
+          if (!activeEffectOrigins.has(effect.id)) {
+            activeEffectOrigins.set(effect.id, "auto");
+          }
+        }
+      }
       const requestWithSelectedEffects: RollRequest = {
         ...request,
         temporaryModifiers: [...(request.temporaryModifiers ?? []), ...temporaryModifiers],
-        selectedActiveEffectIds: Array.from(new Set([...(request.selectedActiveEffectIds ?? []), ...applicable.map((effect) => effect.id)])),
+        selectedActiveEffectIds: Array.from(new Set([...(request.selectedActiveEffectIds ?? []), ...appliedEffects.map((effect) => effect.id)])),
         selectedActiveEffects: Array.from(
           new Map(
-            [...(request.selectedActiveEffects ?? []), ...applicable.map((effect) => ({
+            [...(request.selectedActiveEffects ?? []), ...appliedEffects.map((effect) => ({
               id: effect.id,
               label: effect.label,
               sourceName: effect.sourceName,
+              origin: activeEffectOrigins.get(effect.id),
             }))].map((entry) => [entry.id, entry]),
           ).values(),
         ),
+        metadata: {
+          ...(request.metadata ?? {}),
+          effectSelectionMode: effectStrategy,
+          suggestedActiveEffects: suggestedEffects.map((effect) => ({
+            id: effect.id,
+            label: effect.label,
+            sourceName: effect.sourceName,
+          })),
+        },
       };
       const rollResult = playStateView.roll(requestWithSelectedEffects, options);
       if (requestWithSelectedEffects.type === "death-save" && rollResult && playState.currentHp <= 0 && !playState.deathSaves.dead) {
         const resolution = resolveDeathSaveRollResolution(rollResult);
-        playStateView.recordDeathSave(resolution);
-        if (resolution === "critical-success") {
-          playStateView.applyHealing(1);
+        if (playStateView.automationSettings.deathSaves === "autoApplyResult") {
+          playStateView.recordDeathSave(resolution);
+          if (resolution === "critical-success") {
+            playStateView.applyHealing(1);
+          }
+          setPendingDeathSave(undefined);
+        } else {
+          setPendingDeathSave({
+            rollId: rollResult.id,
+            resolution,
+            total: rollResult.total,
+          });
         }
       }
       return rollResult;
@@ -238,6 +357,36 @@ export function CharacterSheetPage() {
       },
     });
   }, [rollMode, rollWithSelectedEffects]);
+  const rollConcentrationSave = useCallback(() => {
+    if (!concentrationSaveRequest) {
+      return;
+    }
+    const metadata = {
+      ...(concentrationSaveRequest.metadata ?? {}),
+      utility: "concentration-check",
+      concentrationPromptId: concentrationPromptEvent?.id,
+      concentrationDc: concentrationPromptDc,
+    };
+    rollWithSelectedEffects({
+      ...concentrationSaveRequest,
+      label: concentrationPromptDc ? `Concentration Save (DC ${concentrationPromptDc})` : "Concentration Save",
+      metadata,
+      rollMode,
+    });
+  }, [concentrationPromptDc, concentrationPromptEvent?.id, concentrationSaveRequest, rollMode, rollWithSelectedEffects]);
+  const applyPendingDeathSaveResult = useCallback(() => {
+    if (!pendingDeathSave) {
+      return;
+    }
+    playStateView.recordDeathSave(pendingDeathSave.resolution);
+    if (pendingDeathSave.resolution === "critical-success") {
+      playStateView.applyHealing(1);
+    }
+    setPendingDeathSave(undefined);
+  }, [pendingDeathSave, playStateView]);
+  const dismissPendingDeathSaveResult = useCallback(() => {
+    setPendingDeathSave(undefined);
+  }, []);
   const equipInventoryItem = (itemInstanceId: string, slot?: Parameters<typeof equipItem>[3]) => {
     updateCharacter(draft.id, (current) => equipItem(current, engine.equipmentCatalog, itemInstanceId, slot).draft);
   };
@@ -266,6 +415,30 @@ export function CharacterSheetPage() {
     updateCharacter(draft.id, (current) =>
       setAsiOrFeatOption(current, choiceId, optionId === "feat" ? "feat" : optionId === "ability-score-improvement" ? "ability-score-improvement" : undefined),
     );
+  };
+  const setXpValue = () => {
+    const parsed = Number(xpSetInput);
+    if (!Number.isFinite(parsed)) {
+      return;
+    }
+    updateCharacter(draft.id, (current) => setCharacterXp(current, parsed));
+    setXpSetInput(String(Math.max(0, Math.floor(parsed))));
+  };
+  const addXpValue = () => {
+    const parsed = Number(xpDeltaInput);
+    if (!Number.isFinite(parsed) || parsed === 0) {
+      return;
+    }
+    updateCharacter(draft.id, (current) => addCharacterXp(current, parsed));
+  };
+  const confirmLevelUp = () => {
+    updateCharacter(draft.id, (current) => applyLevelUpWithSnapshot(current, {
+      targetLevel: Math.min(20, current.classSelection.level + 1),
+    }));
+    setLevelUpPreviewOpen(false);
+  };
+  const undoLevelUpStep = () => {
+    updateCharacter(draft.id, (current) => undoLastLevelUp(current));
   };
 
   return (
@@ -329,6 +502,51 @@ export function CharacterSheetPage() {
                     tempHp={playState.tempHp}
                   />
                 </div>
+                {pendingDeathSave ? (
+                  <div className="mt-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-slate-800">
+                    <p className="font-medium text-amber-900">Death Save Result Pending</p>
+                    <p className="mt-1">
+                      Roll total {pendingDeathSave.total} · resolution {pendingDeathSave.resolution}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        aria-label="Apply pending death save result"
+                        className="sheet-focus-ring rounded bg-amber-700 px-2 py-1 text-xs text-white"
+                        onClick={applyPendingDeathSaveResult}
+                        type="button"
+                      >
+                        Apply Result
+                      </button>
+                      <button
+                        aria-label="Dismiss pending death save result"
+                        className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
+                        onClick={dismissPendingDeathSaveResult}
+                        type="button"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {playState.concentration && concentrationPromptEvent ? (
+                  <div className="mt-3 rounded border border-indigo-300 bg-indigo-50 p-2 text-xs text-slate-800">
+                    <p className="font-medium text-indigo-900">
+                      Concentration Check {concentrationPromptDc ? `DC ${concentrationPromptDc}` : ""}
+                    </p>
+                    <p className="mt-1">After taking damage while concentrating on {playState.concentration.name}, roll your CON save.</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        aria-label="Roll concentration save"
+                        className="sheet-focus-ring rounded bg-indigo-700 px-2 py-1 text-xs text-white"
+                        disabled={!concentrationSaveRequest}
+                        onClick={rollConcentrationSave}
+                        type="button"
+                      >
+                        Roll Concentration Save
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </section>
 
               <section className="sheet-card p-3">
@@ -423,9 +641,11 @@ export function CharacterSheetPage() {
               lastRoll={lastRoll}
               onActivateEffect={playStateView.addActiveEffect}
               onCreateCustomEffect={playStateView.addCustomActiveEffect}
+              onRecordAttackResolution={playStateView.recordAttackResolution}
               onRoll={rollWithSelectedEffects}
               onRollModeChange={setRollMode}
               onSpendResource={playStateView.spendResource}
+              automationSettings={playStateView.automationSettings}
               resources={playStateView.resourceCounters}
               rollMode={rollMode}
               rollView={rollView}
@@ -471,8 +691,303 @@ export function CharacterSheetPage() {
         {activeTab === "manage" ? (
           <div aria-labelledby="manage-tab" className="grid min-w-0 gap-4 lg:grid-cols-2" id="manage-panel" role="tabpanel">
             <section className="sheet-card p-4">
+              <SectionHeader subtitle="Control how rolls, effects, resources and death saves are handled." title="Automation Settings" />
+              <div className="mt-3 space-y-3 text-sm">
+                <label className="block">
+                  <span className="font-medium">Roll Bonuses</span>
+                  <select
+                    aria-label="Automation setting for roll bonuses"
+                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                    onChange={(event) => playStateView.updateAutomationSettings({ rollBonuses: event.target.value as CharacterAutomationSettings["rollBonuses"] })}
+                    value={playStateView.automationSettings.rollBonuses}
+                  >
+                    <option value="manual">manual</option>
+                    <option value="suggest">suggest</option>
+                    <option value="autoApply">autoApply</option>
+                  </select>
+                  <p className="mt-1 text-xs text-slate-600">Manual keeps bonus selection explicit; suggest highlights candidates; autoApply uses unambiguous bonuses automatically.</p>
+                </label>
+
+                <label className="block">
+                  <span className="font-medium">Active Effects</span>
+                  <select
+                    aria-label="Automation setting for active effects"
+                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                    onChange={(event) => playStateView.updateAutomationSettings({ activeEffects: event.target.value as CharacterAutomationSettings["activeEffects"] })}
+                    value={playStateView.automationSettings.activeEffects}
+                  >
+                    <option value="manual">manual</option>
+                    <option value="suggest">suggest</option>
+                    <option value="autoApply">autoApply</option>
+                  </select>
+                  <p className="mt-1 text-xs text-slate-600">Controls whether matching active effects are only selected manually, suggested, or auto-applied.</p>
+                </label>
+
+                <label className="block">
+                  <span className="font-medium">Resource Spending</span>
+                  <select
+                    aria-label="Automation setting for resource spending"
+                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                    onChange={(event) => playStateView.updateAutomationSettings({ resourceSpending: event.target.value as CharacterAutomationSettings["resourceSpending"] })}
+                    value={playStateView.automationSettings.resourceSpending}
+                  >
+                    <option value="ask">ask</option>
+                    <option value="autoSpendWhenSafe">autoSpendWhenSafe</option>
+                    <option value="neverAutoSpend">neverAutoSpend</option>
+                  </select>
+                  <p className="mt-1 text-xs text-slate-600">Auto spend only runs on safe deterministic paths; ask and neverAutoSpend keep costs manual.</p>
+                </label>
+
+                <label className="block">
+                  <span className="font-medium">On-Hit Riders</span>
+                  <select
+                    aria-label="Automation setting for on-hit riders"
+                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                    onChange={(event) => playStateView.updateAutomationSettings({ onHitRiders: event.target.value as CharacterAutomationSettings["onHitRiders"] })}
+                    value={playStateView.automationSettings.onHitRiders}
+                  >
+                    <option value="ask">ask</option>
+                    <option value="autoSuggest">autoSuggest</option>
+                    <option value="manualOnly">manualOnly</option>
+                  </select>
+                  <p className="mt-1 text-xs text-slate-600">Choose whether rider options are prompted, pre-suggested, or hidden for fully manual handling.</p>
+                </label>
+
+                <label className="block">
+                  <span className="font-medium">Concentration</span>
+                  <select
+                    aria-label="Automation setting for concentration checks"
+                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                    onChange={(event) => playStateView.updateAutomationSettings({ concentration: event.target.value as CharacterAutomationSettings["concentration"] })}
+                    value={playStateView.automationSettings.concentration}
+                  >
+                    <option value="manual">manual</option>
+                    <option value="suggestCheck">suggestCheck</option>
+                    <option value="autoPromptOnDamage">autoPromptOnDamage</option>
+                  </select>
+                  <p className="mt-1 text-xs text-slate-600">When you take damage while concentrating, suggestCheck and autoPromptOnDamage emit a concentration-check prompt.</p>
+                </label>
+
+                <label className="block">
+                  <span className="font-medium">Death Saves</span>
+                  <select
+                    aria-label="Automation setting for death saves"
+                    className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                    onChange={(event) => playStateView.updateAutomationSettings({ deathSaves: event.target.value as CharacterAutomationSettings["deathSaves"] })}
+                    value={playStateView.automationSettings.deathSaves}
+                  >
+                    <option value="autoApplyResult">autoApplyResult</option>
+                    <option value="askBeforeApply">askBeforeApply</option>
+                  </select>
+                  <p className="mt-1 text-xs text-slate-600">autoApplyResult writes roll outcomes immediately; askBeforeApply keeps a confirmation prompt.</p>
+                </label>
+              </div>
+            </section>
+
+            <section className="sheet-card p-4">
               <SectionHeader subtitle="Progression and rule-choice completion state" title="Level Progression" />
               <div className="mt-3 space-y-3 text-sm">
+                <div className="sheet-card border-indigo-200 bg-indigo-50/60 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900">XP Management</p>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    <label className="text-xs text-slate-700">
+                      Level Source
+                      <select
+                        aria-label="Select level source"
+                        className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                        onChange={(event) =>
+                          updateCharacter(draft.id, (current) =>
+                            setCharacterLevelSource(current, event.target.value === "manual" ? "manual" : "xp"),
+                          )
+                        }
+                        value={progression.xp.levelSource}
+                      >
+                        <option value="xp">xp</option>
+                        <option value="manual">manual</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-2 pt-5 text-xs text-slate-700">
+                      <input
+                        checked={progression.xp.milestoneMode}
+                        onChange={(event) =>
+                          updateCharacter(draft.id, (current) => setCharacterMilestoneMode(current, event.target.checked))
+                        }
+                        type="checkbox"
+                      />
+                      milestone mode
+                    </label>
+                  </div>
+                  <div className="mt-2 grid gap-2 md:grid-cols-[minmax(0,1fr),auto]">
+                    <input
+                      aria-label="Set current XP"
+                      className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                      min={0}
+                      onChange={(event) => setXpSetInput(event.target.value)}
+                      placeholder={`Current XP (${progression.xp.currentXp})`}
+                      type="number"
+                      value={xpSetInput}
+                    />
+                    <button
+                      className="sheet-focus-ring rounded bg-slate-800 px-3 py-1.5 text-xs text-white"
+                      onClick={setXpValue}
+                      type="button"
+                    >
+                      Set XP
+                    </button>
+                  </div>
+                  <div className="mt-2 grid gap-2 md:grid-cols-[minmax(0,1fr),auto]">
+                    <input
+                      aria-label="Add XP delta"
+                      className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                      onChange={(event) => setXpDeltaInput(event.target.value)}
+                      type="number"
+                      value={xpDeltaInput}
+                    />
+                    <button
+                      className="sheet-focus-ring rounded bg-indigo-700 px-3 py-1.5 text-xs text-white"
+                      onClick={addXpValue}
+                      type="button"
+                    >
+                      Add XP
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-700">
+                    Current XP {progression.xp.currentXp.toLocaleString()} · Level from XP {progression.xp.levelFromXp}
+                    {progression.xp.nextLevelThreshold !== null ? ` · Next level at ${progression.xp.nextLevelThreshold.toLocaleString()} XP` : " · Max level reached"}
+                  </p>
+                  <div className="mt-2 h-2 rounded bg-indigo-100">
+                    <div
+                      className="h-2 rounded bg-indigo-600"
+                      style={{ width: `${Math.round(progression.xp.progressToNextLevel * 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {progression.xp.nextLevelThreshold === null
+                      ? "No further level thresholds."
+                      : `${progression.xp.remainingToNextLevel.toLocaleString()} XP remaining to next level.`}
+                  </p>
+                  {progression.xp.diagnostics.length ? (
+                    <p className="mt-1 text-xs text-slate-600">{progression.xp.diagnostics.join(" ")}</p>
+                  ) : null}
+                  {progression.xp.levelUpAvailable ? (
+                    <div className="mt-2 rounded border border-emerald-300 bg-emerald-50 p-2 text-xs text-emerald-900">
+                      <p>Level-up available from XP.</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          className="sheet-focus-ring rounded bg-emerald-700 px-2 py-1 text-xs text-white"
+                          onClick={() => setLevelUpPreviewOpen((value) => !value)}
+                          type="button"
+                        >
+                          {levelUpPreviewOpen ? "Hide Level-Up Preview" : "Open Level-Up Preview"}
+                        </button>
+                        <button
+                          className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 disabled:opacity-60"
+                          disabled={!canUndoLastLevelUp(draft)}
+                          onClick={undoLevelUpStep}
+                          type="button"
+                        >
+                          Undo Last Level-Up
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-600">
+                      {progression.xp.levelSource === "manual"
+                        ? "Level source is manual; XP does not auto-enable level-up."
+                        : progression.xp.milestoneMode
+                          ? "Milestone mode is active; XP threshold checks are informational."
+                          : "No XP-triggered level-up available yet."}
+                    </p>
+                  )}
+                  {!progression.xp.levelUpAvailable ? (
+                    <div className="mt-2">
+                      <button
+                        className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 disabled:opacity-60"
+                        disabled={!canUndoLastLevelUp(draft)}
+                        onClick={undoLevelUpStep}
+                        type="button"
+                      >
+                        Undo Last Level-Up
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                {levelUpPreviewOpen && levelUpPreview ? (
+                  <div className="sheet-card border-emerald-200 bg-emerald-50/70 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-emerald-900">
+                        Level-Up Preview L{levelUpPreview.fromLevel} {"->"} L{levelUpPreview.toLevel}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          className="sheet-focus-ring rounded bg-emerald-700 px-2 py-1 text-xs text-white"
+                          onClick={confirmLevelUp}
+                          type="button"
+                        >
+                          Confirm Level-Up
+                        </button>
+                        <button
+                          className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
+                          onClick={() => setLevelUpPreviewOpen(false)}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-700">
+                      HP {levelUpPreview.hpBefore} {"->"} {levelUpPreview.hpAfter} ({signedNumber(levelUpPreview.hpDelta)})
+                      {" · "}Proficiency Bonus {levelUpPreview.proficiencyBonusBefore} {"->"} {levelUpPreview.proficiencyBonusAfter}
+                      {" "}({signedNumber(levelUpPreview.proficiencyBonusDelta)})
+                      {levelUpPreview.hitDiceGain ? ` · Hit Dice ${levelUpPreview.hitDiceGain}` : ""}
+                    </p>
+                    {levelUpPreview.newFeatures.length ? (
+                      <p className="mt-1 text-xs text-slate-700">New Features: {levelUpPreview.newFeatures.join(", ")}</p>
+                    ) : (
+                      <p className="mt-1 text-xs text-slate-700">New Features: none detected in structured content.</p>
+                    )}
+                    {levelUpPreview.spellSlotChanges.length ? (
+                      <p className="mt-1 text-xs text-slate-700">
+                        Spell Slots: {levelUpPreview.spellSlotChanges.map((slot) => `L${slot.level} ${slot.before}->${slot.after}`).join(" · ")}
+                      </p>
+                    ) : null}
+                    {levelUpPreview.spellPreparationChanges.length ? (
+                      <p className="mt-1 text-xs text-slate-700">
+                        Spell Prep/Known: {levelUpPreview.spellPreparationChanges.join(" · ")}
+                      </p>
+                    ) : null}
+                    {levelUpPreview.resourceChanges.length ? (
+                      <p className="mt-1 text-xs text-slate-700">
+                        Resources: {levelUpPreview.resourceChanges.map((entry) => `${entry.name} ${entry.before ?? 0}->${entry.after ?? 0}`).join(" · ")}
+                      </p>
+                    ) : null}
+                    {levelUpPreview.choiceStatuses.length ? (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-medium text-slate-800">Choice Status</p>
+                        {levelUpPreview.choiceStatuses.map((choice) => (
+                          <div key={choice.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-emerald-200 bg-white/80 px-2 py-1">
+                            <p className="text-xs text-slate-700">{choice.label}</p>
+                            <StatusBadge label={choice.status} status={previewChoiceTone(choice.status)} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    {levelUpPreview.warnings.length ? (
+                      <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                        {levelUpPreview.warnings.map((warning) => (
+                          <p key={warning}>{warning}</p>
+                        ))}
+                      </div>
+                    ) : null}
+                    {levelUpPreview.unsupportedNotes.length ? (
+                      <div className="mt-2 rounded border border-slate-300 bg-white p-2 text-xs text-slate-700">
+                        {levelUpPreview.unsupportedNotes.slice(0, 4).map((note) => (
+                          <p key={note}>{note}</p>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 <p>
                   Level {progression.currentLevel} · {progression.className}
                   {progression.subclassName ? ` (${progression.subclassName})` : ""}
@@ -661,7 +1176,7 @@ export function CharacterSheetPage() {
               showLabel="Show Diagnostics"
               title="Diagnostics"
             >
-              <DiagnosticsPanel engine={engine} inventory={inventory} />
+              <DiagnosticsPanel engine={engine} inventory={inventory} rollDiagnostics={rollView.diagnostics} />
             </DiagnosticsDrawer>
           </div>
         ) : null}

@@ -7,6 +7,11 @@ describe("character persistence", () => {
     const character = createCharacterDraft("character-1", "Persisted");
     character.classSelection.level = 3;
     character.featIds = ["feat:test"];
+    character.xp = {
+      currentXp: 900,
+      levelSource: "xp",
+      milestoneMode: false,
+    };
     const payload = serializeCharacters([character]);
     const loaded = deserializeCharacters(payload);
     expect(loaded.length).toBe(1);
@@ -16,6 +21,7 @@ describe("character persistence", () => {
     expect(loaded[0].version).toBe(2);
     expect(loaded[0].provider).toBe("mpmb");
     expect(loaded[0].rulesMode).toBe("2024");
+    expect(loaded[0].xp?.currentXp).toBe(900);
     expect(loaded[0].playState.schemaVersion).toBe(1);
     expect(loaded[0].playState.characterId).toBe("character-1");
   });

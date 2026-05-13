@@ -3,6 +3,7 @@ import type { ActiveConditionState } from "../../../../domain/playState";
 import { inputClassName } from "../../../../components/ui/FormField";
 import { findConditionDefinition, STANDARD_CONDITION_DEFINITIONS } from "../../../../services/playState";
 import { EmptyState, InfoPopover, StatusBadge } from "./SheetDesignSystem";
+import { RuleDetailDrawer, type RuleDetailModel } from "./RuleDetailDrawer";
 import { ruleInfo } from "./rulesInfo";
 
 interface ConditionTrayProps {
@@ -13,6 +14,7 @@ interface ConditionTrayProps {
 export function ConditionTray({ activeConditions, onToggleCondition }: ConditionTrayProps) {
   const [customCondition, setCustomCondition] = useState("");
   const [filter, setFilter] = useState("");
+  const [selectedDetail, setSelectedDetail] = useState<RuleDetailModel | undefined>();
   const normalizedFilter = filter.trim().toLowerCase();
   const conditionOptions = STANDARD_CONDITION_DEFINITIONS.filter((condition) => {
     if (!normalizedFilter) {
@@ -46,6 +48,30 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
                 {condition.label}
               </button>
               <InfoPopover title={condition.label} description={explanation} />
+              <button
+                aria-label={`Open details for condition ${condition.label}`}
+                className="sheet-focus-ring rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700"
+                onClick={() =>
+                  setSelectedDetail({
+                    name: condition.label,
+                    source: condition.source ?? "basic-rules",
+                    timing: "condition",
+                    duration: "until removed",
+                    description: condition.shortRulesHint,
+                    gameplaySummary: explanation,
+                    automationStatus: "manual",
+                    manualInstructions: "Apply penalties, immunities, and expiry manually unless another system handles it.",
+                    knownLimitations: "No full encounter target engine is active.",
+                    fields: [
+                      { label: "Category", value: condition.category ?? "standard" },
+                      { label: "Rest Clear", value: condition.clearableOnRest ?? "manual" },
+                    ],
+                  })
+                }
+                type="button"
+              >
+                Details
+              </button>
             </div>
           );
         })}
@@ -93,6 +119,31 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
                 <StatusBadge label="active" status="pending" />
                 <InfoPopover title={condition.name} description={findConditionDefinition(condition.id)?.shortRulesHint ?? ruleInfo(condition.name)} />
                 <button
+                  aria-label={`Open active condition details for ${condition.name}`}
+                  className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
+                  onClick={() => {
+                    const definition = findConditionDefinition(condition.id) ?? findConditionDefinition(condition.name);
+                    setSelectedDetail({
+                      name: condition.name,
+                      source: condition.source ?? definition?.source ?? "manual",
+                      timing: "condition",
+                      duration: "while active",
+                      description: condition.notes ?? definition?.shortRulesHint,
+                      gameplaySummary: definition?.shortRulesHint ?? ruleInfo(condition.name),
+                      automationStatus: "manual",
+                      manualInstructions: "Track who is affected and remove when conditions end.",
+                      knownLimitations: "Condition interactions with enemy targets are manual.",
+                      fields: [
+                        { label: "Category", value: condition.category ?? definition?.category ?? "custom" },
+                        { label: "Added", value: condition.addedAt },
+                      ],
+                    });
+                  }}
+                  type="button"
+                >
+                  Details
+                </button>
+                <button
                   aria-label={`Remove condition ${condition.name}`}
                   className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"
                   onClick={() => onToggleCondition(condition.id)}
@@ -105,6 +156,12 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
           ))}
         </ul>
       )}
+      {selectedDetail ? (
+        <RuleDetailDrawer
+          detail={selectedDetail}
+          heading="Condition Details"
+        />
+      ) : null}
     </div>
   );
 }

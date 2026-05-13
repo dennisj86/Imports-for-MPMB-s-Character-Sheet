@@ -49,6 +49,11 @@ export function createCharacterDraft(id: string, name: string): CharacterDraft {
         pp: 0,
       },
     },
+    xp: {
+      currentXp: 0,
+      milestoneMode: false,
+      levelSource: "xp",
+    },
     levelUp: {
       hpGainByLevel: {},
       abilityScoreIncreases: {},

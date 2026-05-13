@@ -5,6 +5,8 @@ import type { SpellbookViewModel, SpellCardViewModel } from "../../viewModels/sp
 import type { CastSpellOptions, PlaySpellSlotCounter } from "../../../../services/playState";
 import { createActiveEffectFromSpell } from "../../../../services/rules";
 import { EmptyState, InfoPopover, SectionHeader, SpellCardShell, StatusBadge } from "./SheetDesignSystem";
+import { RuleDetailDrawer } from "./RuleDetailDrawer";
+import { defaultManualInstructionForStatus, normalizeRuleAutomationStatus } from "./ruleAutomationStatus";
 import { ruleInfo } from "./rulesInfo";
 
 interface SpellbookPanelProps {
@@ -39,6 +41,61 @@ function spellTagInfo(label: string): string {
     return ruleInfo("no-mapped-effect");
   }
   return ruleInfo(normalized);
+}
+
+function firstSentence(value: string | undefined): string | undefined {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!text) {
+    return undefined;
+  }
+  const sentence = text.split(/(?<=[.!?])\s+/)[0] ?? text;
+  return sentence.length > 200 ? `${sentence.slice(0, 197).trim()}...` : sentence;
+}
+
+function spellTimingLabel(castingTime: string | undefined): string {
+  const normalized = String(castingTime ?? "").trim().toLowerCase();
+  if (!normalized) {
+    return "action";
+  }
+  if (normalized.includes("bonus action")) return "bonus action";
+  if (normalized.includes("reaction")) return "reaction";
+  if (normalized.includes("minute") || normalized.includes("hour")) return castingTime ?? "special";
+  return castingTime ?? "action";
+}
+
+function spellCostLabel(spell: SpellCardViewModel): string {
+  if (spell.level <= 0) {
+    return "No slot cost (cantrip).";
+  }
+  if (spell.ritual) {
+    return `Spell slot level ${spell.level}+ or ritual cast.`;
+  }
+  return `Spell slot level ${spell.level}+`;
+}
+
+function spellComponentsFromDescription(description: string | undefined): string | undefined {
+  const text = String(description ?? "");
+  const explicit = text.match(/(?:^|\n)\s*components?\s*:\s*([^\n]+)/i)?.[1]?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  const materialMention = text.match(/\bmaterial components?\b[^.\n]*/i)?.[0]?.trim();
+  return materialMention || undefined;
+}
+
+function spellUpcastText(description: string | undefined): string | undefined {
+  const text = String(description ?? "");
+  const atHigherLevels = text.match(/at higher levels?\.?\s*([\s\S]+)/i);
+  if (!atHigherLevels) {
+    return undefined;
+  }
+  return atHigherLevels[1]?.split(/\n{2,}/)[0]?.replace(/\s+/g, " ").trim();
+}
+
+function spellMaterialHint(description: string | undefined): string | undefined {
+  const text = String(description ?? "");
+  const hint = text.match(/\b(material (?:component|components)[^.\n]*)/i)?.[1]?.trim();
+  return hint || undefined;
 }
 
 function SpellSlotOverview({
@@ -100,6 +157,7 @@ export function SpellbookPanel({
   const [spellSearch, setSpellSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<"all" | "cantrip" | "leveled">("all");
   const [concentrationFilter, setConcentrationFilter] = useState<"all" | "concentration" | "no-concentration">("all");
+  const [detailsOpenBySpellId, setDetailsOpenBySpellId] = useState<Record<string, boolean>>({});
   const slotsByLevel = useMemo(() => new Map(slots.map((slot) => [slot.level, slot])), [slots]);
   const normalizedSpellSearch = spellSearch.trim().toLowerCase();
   const filteredSpells = useMemo(
@@ -212,6 +270,7 @@ export function SpellbookPanel({
               : defaultSlotLevel(spell, slots);
             const selectedSlot = selectedLevel ? slotsByLevel.get(selectedLevel) : undefined;
             const ritual = ritualCastBySpellId[spell.id] ?? false;
+            const detailsOpen = detailsOpenBySpellId[spell.id] ?? false;
             const spellForEffect: SpellDefinition = {
               id: spell.id,
               key: spell.id,
@@ -234,6 +293,18 @@ export function SpellbookPanel({
                 : undefined;
             const rollRequest = spell.rollDescriptor?.rollRequest;
             const damageRequest = spell.rollDescriptor?.damageRequest;
+            const automationStatus = normalizeRuleAutomationStatus(spell.rollDescriptor?.automationStatus, canApplyEffectToSelf ? "partial" : "unknown");
+            const manualInstructions = spell.rollDescriptor?.manualInstructions || defaultManualInstructionForStatus(automationStatus);
+            const components = spellComponentsFromDescription(spell.details);
+            const upcastText = spellUpcastText(spell.details);
+            const materialHint = spellMaterialHint(spell.details);
+            const effectMapped = canApplyEffectToSelf && Boolean(activeEffect?.diagnostics?.some((entry) => /rule mapping/i.test(entry)));
+            const effectMappingStatus = effectMapped ? "mapped" : canApplyEffectToSelf ? "partial mapping" : "no mapped effect";
+            const effectMappingDetails = effectMapped
+              ? "Mapped via structured rule mapping."
+              : canApplyEffectToSelf
+                ? "Heuristic active-effect parsing is available."
+                : "No active-effect mapping found in local structured content.";
             return (
               <li key={spell.id}>
                 <SpellCardShell
@@ -365,6 +436,21 @@ export function SpellbookPanel({
                           </button>
                         ) : null}
                       </div>
+                      <button
+                        aria-controls={`spell-detail-${spell.id}`}
+                        aria-expanded={detailsOpen}
+                        aria-label={`Toggle details for spell ${spell.name}`}
+                        className="sheet-focus-ring w-full rounded border border-slate-300 bg-slate-100 px-2 py-1 text-xs text-slate-800"
+                        onClick={() =>
+                          setDetailsOpenBySpellId((current) => ({
+                            ...current,
+                            [spell.id]: !detailsOpen,
+                          }))
+                        }
+                        type="button"
+                      >
+                        Details
+                      </button>
                     </>
                   }
                 >
@@ -375,11 +461,36 @@ export function SpellbookPanel({
                     {spell.damageFormula ? <span>Damage {spell.damageFormula}</span> : null}
                     {spell.healingFormula ? <span>Healing {spell.healingFormula}</span> : null}
                   </div>
-                  {spell.details ? (
-                    <details className="mt-2 text-xs text-slate-600">
-                      <summary aria-label={`Show details for ${spell.name}`} className="cursor-pointer text-slate-700">Details</summary>
-                      <p className="mt-1 whitespace-pre-wrap">{spell.details}</p>
-                    </details>
+                  {detailsOpen ? (
+                    <RuleDetailDrawer
+                      detail={{
+                        name: spell.name,
+                        source: spell.sourceLabel ?? "Local spell content",
+                        timing: spellTimingLabel(spell.castingTime),
+                        rangeOrTarget: spell.range,
+                        duration: spell.duration ?? (spell.concentration ? "Concentration" : undefined),
+                        cost: spellCostLabel(spell),
+                        description: spell.details,
+                        gameplaySummary: firstSentence(spell.summary) ?? firstSentence(spell.details),
+                        automationStatus,
+                        manualInstructions,
+                        knownLimitations: effectMappingDetails,
+                        fields: [
+                          { label: "Spell Level", value: spell.levelLabel },
+                          { label: "School", value: spell.school },
+                          { label: "Casting Time", value: spell.castingTime },
+                          { label: "Components", value: components ?? "No structured component line in local content." },
+                          { label: "Concentration/Ritual", value: `${spell.concentration ? "Concentration" : "No concentration"} · ${spell.ritual ? "Ritual" : "No ritual"}` },
+                          { label: "Active Effect Mapping Status", value: `${effectMappingStatus} · ${effectMappingDetails}` },
+                          { label: "At Higher Levels", value: upcastText },
+                          { label: "Material Hint", value: materialHint },
+                          { label: "Spell Attack", value: spell.spellAttackModifier !== undefined ? modifierLabel(spell.spellAttackModifier) : undefined },
+                          { label: "Spell Save", value: spell.spellSaveDc ? `DC ${spell.spellSaveDc}${spell.saveAbility ? ` (${spell.saveAbility.toUpperCase()})` : ""}` : undefined },
+                        ],
+                      }}
+                      heading="Spell Details"
+                      id={`spell-detail-${spell.id}`}
+                    />
                   ) : null}
                 </SpellCardShell>
               </li>

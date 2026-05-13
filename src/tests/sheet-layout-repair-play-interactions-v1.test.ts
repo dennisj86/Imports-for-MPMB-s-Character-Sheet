@@ -153,10 +153,15 @@ describe("sheet layout repair + play interaction semantics v1", () => {
     const source = readFileSync("src/features/character/components/sheet/ActionRollPanel.tsx", "utf8");
     expect(source).toContain("Attack Roll");
     expect(source).toContain("Damage Roll");
-    expect(source).toContain("Attack + Damage");
+    expect(source).toContain("Attack Flow");
+    expect(source).toContain("Hit Confirmed");
+    expect(source).toContain("Roll Damage");
+    expect(source).toContain("Mastery Hint:");
     expect(source).toContain("Weapon Mastery:");
     expect(source).toContain("Manual: remember this effect when resolving the attack.");
     expect(source).toContain("Mastery selected, details unavailable.");
+    expect(source).toContain("Action Details");
+    expect(source).toContain("Automation Status");
     expect(source).toContain("Last Result:");
     expect(source).toContain(">d20<");
     expect(source).toContain(">Modifier<");

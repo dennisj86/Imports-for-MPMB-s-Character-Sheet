@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import type { InventoryItemViewModel, InventoryViewModel } from "../../viewModels/inventoryViewModel";
 import { EmptyState, InfoPopover, InventoryItemCard, SectionHeader, StatusBadge } from "./SheetDesignSystem";
+import { RuleDetailDrawer } from "./RuleDetailDrawer";
+import { normalizeRuleAutomationStatus, ruleAutomationTone } from "./ruleAutomationStatus";
 import { ruleInfo } from "./rulesInfo";
 
 interface InventoryPanelProps {
@@ -24,6 +26,7 @@ function ItemList({
   onEquipItem: InventoryPanelProps["onEquipItem"];
   onUnequipItem: InventoryPanelProps["onUnequipItem"];
 }) {
+  const [detailsOpenByItemId, setDetailsOpenByItemId] = useState<Record<string, boolean>>({});
   return (
     <section className="space-y-2">
       <SectionHeader title={title} />
@@ -40,33 +43,56 @@ function ItemList({
                   <>
                     {item.equipped ? <StatusBadge label="equipped" status="complete" /> : <StatusBadge label="stowed" status="pending" />}
                     {item.equipmentSlot ? <StatusBadge label={item.equipmentSlot} status="info" /> : null}
+                    <StatusBadge label={item.automationStatus} status={ruleAutomationTone(normalizeRuleAutomationStatus(item.automationStatus, "unknown"))} />
                   </>
                 }
                 actions={
-                  item.canEquip ? (
-                    item.equipped ? (
-                      <button
-                        aria-label={`Unequip ${item.name}`}
-                        className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"
-                        onClick={() => onUnequipItem(item.instanceId)}
-                        type="button"
-                      >
-                        Unequip
-                      </button>
-                    ) : (
-                      <button
-                        aria-label={`Equip ${item.name}`}
-                        className="sheet-focus-ring rounded bg-slate-800 px-2 py-1 text-xs text-white"
-                        onClick={() => onEquipItem(item.instanceId, item.equipmentSlot)}
-                        type="button"
-                      >
-                        Equip
-                      </button>
-                    )
-                  ) : undefined
+                  <div className="flex flex-wrap gap-2">
+                    {item.canEquip ? (
+                      item.equipped ? (
+                        <button
+                          aria-label={`Unequip ${item.name}`}
+                          className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"
+                          onClick={() => onUnequipItem(item.instanceId)}
+                          type="button"
+                        >
+                          Unequip
+                        </button>
+                      ) : (
+                        <button
+                          aria-label={`Equip ${item.name}`}
+                          className="sheet-focus-ring rounded bg-slate-800 px-2 py-1 text-xs text-white"
+                          onClick={() => onEquipItem(item.instanceId, item.equipmentSlot)}
+                          type="button"
+                        >
+                          Equip
+                        </button>
+                      )
+                    ) : null}
+                    <button
+                      aria-controls={`inventory-detail-${item.instanceId}`}
+                      aria-expanded={detailsOpenByItemId[item.instanceId] ?? false}
+                      aria-label={`Toggle details for ${item.name}`}
+                      className="sheet-focus-ring rounded border border-slate-300 bg-slate-100 px-2 py-1 text-xs text-slate-800"
+                      onClick={() =>
+                        setDetailsOpenByItemId((current) => ({
+                          ...current,
+                          [item.instanceId]: !(current[item.instanceId] ?? false),
+                        }))
+                      }
+                      type="button"
+                    >
+                      Details
+                    </button>
+                  </div>
                 }
               >
                 {item.relevantStats.length ? <p className="text-xs text-slate-700">{item.relevantStats.join(" · ")}</p> : null}
+                {item.damageInfo || item.armorInfo || item.weightLabel ? (
+                  <p className="text-xs text-slate-700">
+                    {[item.damageInfo ? `Damage ${item.damageInfo}` : undefined, item.armorInfo ? `Armor ${item.armorInfo}` : undefined, item.weightLabel].filter(Boolean).join(" · ")}
+                  </p>
+                ) : null}
                 {item.mappingBadges.length ? (
                   <div className="flex flex-wrap gap-1">
                     {item.mappingBadges.map((badge) => (
@@ -76,6 +102,41 @@ function ItemList({
                       </span>
                     ))}
                   </div>
+                ) : null}
+                {(item.propertyLabels.length || item.consumableStatus) ? (
+                  <p className="text-xs text-slate-600">
+                    {[
+                      item.propertyLabels.length ? `Properties: ${item.propertyLabels.join(", ")}` : undefined,
+                      item.consumableStatus ? `Status: ${item.consumableStatus}` : undefined,
+                    ].filter(Boolean).join(" · ")}
+                  </p>
+                ) : null}
+                {detailsOpenByItemId[item.instanceId] ? (
+                  <RuleDetailDrawer
+                    detail={{
+                      name: item.name,
+                      source: item.sourceLabel ? `${item.category} · ${item.sourceLabel}` : item.category,
+                      timing: item.equipped ? "equipped/passive" : "inventory/stowed",
+                      cost: item.consumableStatus,
+                      description: item.description,
+                      gameplaySummary: `${item.type ?? item.category}${item.quantity !== 1 ? ` · x${item.quantity}` : ""}`,
+                      automationStatus: item.automationStatus,
+                      manualInstructions: item.manualInstructions,
+                      knownLimitations: item.knownLimitations,
+                      fields: [
+                        { label: "Item Type", value: item.type ?? item.category },
+                        { label: "Equipped State", value: item.equipped ? `equipped${item.equipmentSlot ? ` (${item.equipmentSlot})` : ""}` : "stowed" },
+                        { label: "Weight", value: item.weightLabel },
+                        { label: "Damage", value: item.damageInfo },
+                        { label: "Armor", value: item.armorInfo },
+                        { label: "Properties", value: item.propertyLabels.join(", ") || undefined },
+                        { label: "Weapon Mastery", value: item.masteryName },
+                        { label: "Consumable/Ammo", value: item.consumableStatus },
+                      ],
+                    }}
+                    heading="Item Details"
+                    id={`inventory-detail-${item.instanceId}`}
+                  />
                 ) : null}
               </InventoryItemCard>
             </li>
@@ -94,7 +155,7 @@ export function InventoryPanel({ viewModel, onEquipItem, onUnequipItem, onSetCur
   const matchesFilters = (item: InventoryItemViewModel): boolean => {
     const searchMatch =
       normalizedSearch.length === 0
-      || `${item.name} ${item.category} ${item.type ?? ""} ${item.relevantStats.join(" ")} ${item.mappingBadges.join(" ")}`.toLowerCase().includes(normalizedSearch);
+      || `${item.name} ${item.category} ${item.type ?? ""} ${item.relevantStats.join(" ")} ${item.mappingBadges.join(" ")} ${item.propertyLabels.join(" ")} ${item.damageInfo ?? ""} ${item.armorInfo ?? ""} ${item.description ?? ""}`.toLowerCase().includes(normalizedSearch);
     const equipMatch = equipFilter === "all" ? true : equipFilter === "equipped" ? item.equipped : !item.equipped;
     return searchMatch && equipMatch;
   };

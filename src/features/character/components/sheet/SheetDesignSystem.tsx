@@ -288,6 +288,7 @@ export function RollResultCard({ result, title = "Last Roll" }: RollResultCardPr
   const permanentModifiers = result.permanentModifierBreakdown?.filter((entry) => entry.applied) ?? [];
   const temporaryModifiers = result.temporaryModifierBreakdown?.filter((entry) => entry.applied) ?? [];
   const rawRolls = result.dice.rawRolls.join(", ");
+  const trust = result.trustBreakdown;
   return (
     <article aria-live="polite" className="sheet-card sheet-elevation-2 border-indigo-200 bg-indigo-50 p-3">
       <p className="text-xs uppercase tracking-wide text-indigo-700">{title}</p>
@@ -305,6 +306,26 @@ export function RollResultCard({ result, title = "Last Roll" }: RollResultCardPr
       </div>
       <p className="mt-2 text-base font-semibold text-slate-950">Total {result.total}</p>
       {result.outcomeLabel && result.outcomeLabel !== "normal" ? <p className="text-xs text-amber-700">{result.outcomeLabel}</p> : null}
+      {trust ? (
+        <details className="mt-2 rounded border border-indigo-200 bg-white p-2 text-xs text-slate-700">
+          <summary className="cursor-pointer font-medium text-indigo-900">Roll Breakdown</summary>
+          <div className="mt-2 space-y-1">
+            <p>Base Dice: {trust.baseDice}</p>
+            <p>Base Roll: {trust.baseRoll}</p>
+            {trust.abilityModifier ? <p>Ability Modifier: {trust.abilityModifier}</p> : null}
+            {trust.proficiencyModifier ? <p>Proficiency Modifier: {trust.proficiencyModifier}</p> : null}
+            {trust.itemModifiers.length ? <p>Item Modifiers: {trust.itemModifiers.join(", ")}</p> : null}
+            {trust.featureModifiers.length ? <p>Feature Modifiers: {trust.featureModifiers.join(", ")}</p> : null}
+            {trust.activeEffects.length ? <p>Active Effects: {trust.activeEffects.join(", ")}</p> : null}
+            {trust.temporaryBuffs.length ? <p>Temporary Buffs: {trust.temporaryBuffs.join(", ")}</p> : null}
+            {trust.optionalEffectsSelected.length ? <p>Optional Effects Selected: {trust.optionalEffectsSelected.join(", ")}</p> : null}
+            {trust.resourcesSpent.length ? <p>Resources Spent: {trust.resourcesSpent.join(", ")}</p> : null}
+            {trust.resourcesNotSpent.length ? <p>Resources Not Spent: {trust.resourcesNotSpent.join(", ")}</p> : null}
+            {trust.unsupportedOrManualNotes.length ? <p>Unsupported / Manual Notes: {trust.unsupportedOrManualNotes.join(" · ")}</p> : null}
+            <p className="font-semibold text-slate-900">Final Total: {trust.finalTotal}</p>
+          </div>
+        </details>
+      ) : null}
     </article>
   );
 }

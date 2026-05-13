@@ -9,6 +9,7 @@ export interface SpellCardViewModel {
   name: string;
   level: number;
   levelLabel: string;
+  sourceLabel?: string;
   school?: string;
   castingTime?: string;
   range?: string;
@@ -70,6 +71,7 @@ export function buildSpellbookViewModel(engine: CharacterEngineState, rollDescri
           name: spell.name,
           level: spell.level,
           levelLabel: levelLabel(spell),
+          sourceLabel: spell.sourceMeta?.sourceDocumentName || spell.sourceRefs[0],
           school: spell.school,
           castingTime: spell.castingTime,
           range: spell.range,

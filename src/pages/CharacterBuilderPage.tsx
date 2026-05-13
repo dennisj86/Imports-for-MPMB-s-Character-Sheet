@@ -6,11 +6,13 @@ import type { AppliedCharacterRules } from "../domain/appliedRules";
 import type { AbilityScores, CharacterDraft, HpGainMethod } from "../domain/character";
 import type { DerivedCharacterStats } from "../domain/derivedStats";
 import type { LevelProgressionResult } from "../domain/progression";
-import type { CanonicalRuleChoice, RuleChoice } from "../domain/rules";
-import type { BackgroundDefinition, ClassDefinition, EquipmentDefinition, SpeciesDefinition, SubclassDefinition } from "../domain/content";
+import type { CanonicalRuleChoice, RuleChoice, RuleChoiceOption, RuleSourceDescriptor } from "../domain/rules";
+import type { BackgroundDefinition, ClassDefinition, EquipmentDefinition, SpeciesDefinition, SpellDefinition, SubclassDefinition } from "../domain/content";
 import { AbilityScoreEditor } from "../features/character/components/AbilityScoreEditor";
 import { InventoryEditor } from "../features/character/components/InventoryEditor";
+import { weaponMasteryInfoForToken } from "../features/character/components/sheet/weaponMasteryInfo";
 import { FeatChoiceSection } from "../features/character-builder/wizard/components/FeatChoiceSection";
+import { ChoiceOptionPicker } from "../features/character-builder/wizard/components/ChoiceOptionPicker";
 import { SpellChoiceSection } from "../features/character-builder/wizard/components/SpellChoiceSection";
 import { WizardStepRail } from "../features/character-builder/wizard/components/WizardStepRail";
 import type { SkillChoiceState, StartingEquipmentChoiceContext, WizardCompletionState, WizardStepId, WizardStepState, WizardStepValidation } from "../domain/builderWizard";
@@ -252,6 +254,8 @@ export function CharacterBuilderPage() {
             <GenericRuleChoicesStep
               choices={wizardView.engine.ruleEngine.choiceSurface.choices.filter((choice) => choice.playerVisible)}
               draft={draft}
+              ruleSources={wizardView.engine.ruleEngine.sources}
+              spellCatalog={wizardView.engine.spellCatalog}
               updateCharacter={updateCharacter}
             />
             <FeatChoiceSection
@@ -993,13 +997,137 @@ function LevelUpChoicesStep({
 function GenericRuleChoicesStep({
   choices,
   draft,
+  spellCatalog,
+  ruleSources,
   updateCharacter,
 }: {
   choices: CanonicalRuleChoice[];
   draft: CharacterDraft;
+  spellCatalog: SpellDefinition[];
+  ruleSources: RuleSourceDescriptor[];
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
 }) {
-  const [optionQueries, setOptionQueries] = useState<Record<string, string>>({});
+  const spellById = useMemo(() => new Map(spellCatalog.map((entry) => [entry.id, entry])), [spellCatalog]);
+  const sourceById = useMemo(() => new Map(ruleSources.map((source) => [source.id, source])), [ruleSources]);
+
+  const spellComponentsFromDescription = (description: string | undefined): string | undefined => {
+    const text = String(description ?? "");
+    const explicit = text.match(/(?:^|\n)\s*components?\s*:\s*([^\n]+)/i)?.[1]?.trim();
+    if (explicit) {
+      return explicit;
+    }
+    const mention = text.match(/\bcomponents?\s*:\s*[^.\n]+/i)?.[0]?.split(":")[1]?.trim();
+    return mention || undefined;
+  };
+  const spellUpcastFromDescription = (description: string | undefined): string | undefined => {
+    const text = String(description ?? "");
+    const matched = text.match(/at higher levels?\.?\s*([\s\S]+)/i);
+    if (!matched) {
+      return undefined;
+    }
+    return matched[1]?.split(/\n{2,}/)[0]?.replace(/\s+/g, " ").trim();
+  };
+  const firstSentence = (value: string | undefined): string | undefined => {
+    const text = String(value ?? "").replace(/\s+/g, " ").trim();
+    if (!text) {
+      return undefined;
+    }
+    return text.split(/(?<=[.!?])\s+/)[0];
+  };
+  const spellForOption = (option: RuleChoiceOption): SpellDefinition | undefined => {
+    const optionId = String(option.sourceId ?? option.id);
+    return spellById.get(optionId) ?? spellById.get(option.id);
+  };
+  const detailForOption = (choice: CanonicalRuleChoice, option: RuleChoiceOption) => {
+    const source = sourceById.get(choice.choice.sourceDescriptorId);
+    const spell = spellForOption(option);
+    if (spell && (choice.choiceType === "spell" || choice.choiceType === "cantrip")) {
+      const levelLabel = spell.level === 0 ? "Cantrip" : `Level ${spell.level}`;
+      return {
+        name: spell.name,
+        source: source?.sourceName ?? choice.sourceName,
+        timing: spell.castingTime ?? "action",
+        rangeOrTarget: spell.range,
+        duration: spell.duration,
+        cost: spell.level === 0 ? "No slot cost (cantrip)." : `Spell slot level ${spell.level}+`,
+        description: spell.description,
+        gameplaySummary: firstSentence(spell.description) ?? `${levelLabel}${spell.school ? ` · ${spell.school}` : ""}`,
+        automationStatus: "partial",
+        manualInstructions: "Confirm targeting, saving throw handling, and effect outcomes manually.",
+        knownLimitations: "No full spell effect automation engine is implemented.",
+        fields: [
+          { label: "Spell Level", value: levelLabel },
+          { label: "School", value: spell.school },
+          { label: "Casting Time", value: spell.castingTime },
+          { label: "Range", value: spell.range },
+          { label: "Duration", value: spell.duration },
+          { label: "Components", value: spellComponentsFromDescription(spell.description) },
+          { label: "Concentration/Ritual", value: `${spell.concentration ? "Concentration" : "No concentration"}${spell.ritual ? " · Ritual" : ""}` },
+          { label: "At Higher Levels", value: spellUpcastFromDescription(spell.description) },
+        ],
+      };
+    }
+
+    if (choice.choiceType === "weapon-mastery") {
+      const masteryToken = String(option.metadata?.mastery ?? option.metadata?.masteryLabel ?? "");
+      const masteryInfo = weaponMasteryInfoForToken(masteryToken.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+      return {
+        name: option.label,
+        source: source?.sourceName ?? choice.sourceName,
+        timing: "on-hit",
+        cost: undefined,
+        description: source?.sourceText,
+        gameplaySummary: masteryInfo?.summary ?? "Weapon mastery details require manual combat resolution.",
+        automationStatus: masteryInfo?.automationStatus ?? "manual",
+        manualInstructions: masteryInfo?.manualReminder ?? "Apply mastery effects manually when the trigger occurs.",
+        knownLimitations: masteryInfo?.knownLimitations ?? "No target/encounter automation is implemented for mastery effects.",
+        fields: [
+          { label: "Mastery Name", value: String(option.metadata?.masteryLabel ?? option.metadata?.mastery ?? "Unknown") },
+          { label: "Damage", value: String(option.metadata?.damage ?? "") || undefined },
+          { label: "Range", value: String(option.metadata?.range ?? "") || undefined },
+          { label: "Weapon Type", value: String(option.metadata?.weaponType ?? "") || undefined },
+          { label: "Properties", value: option.tags?.filter((tag) => !tag.startsWith("mastery-")).join(", ") || undefined },
+        ],
+      };
+    }
+
+    const fallbackSummary = option.diagnostics?.[0] ?? source?.diagnostics?.[0] ?? `${choice.sourceName} option.`;
+    return {
+      name: option.label,
+      source: source?.sourceName ?? choice.sourceName,
+      timing: choice.choiceType.replace(/-/g, " "),
+      description: source?.sourceText,
+      gameplaySummary: fallbackSummary,
+      automationStatus: choice.status === "unsupported" ? "unsupported" : "partial",
+      manualInstructions: choice.status === "unsupported"
+        ? "This option is recognized, but deterministic automation is unavailable."
+        : "Review the option text and apply edge-case logic manually if needed.",
+      knownLimitations: choice.status === "unsupported" ? "Structured automation data is incomplete for this option." : undefined,
+      fields: [
+        { label: "Choice Type", value: formatChoiceType(choice.choiceType) },
+        { label: "Required", value: `${choice.requiredCount}` },
+        { label: "Source", value: choice.sourceName },
+      ],
+    };
+  };
+  const summaryForOption = (choice: CanonicalRuleChoice, option: RuleChoiceOption): string | undefined => {
+    const spell = spellForOption(option);
+    if (spell) {
+      return `${spell.level === 0 ? "Cantrip" : `L${spell.level}`} · ${spell.school ?? "School?"}${spell.castingTime ? ` · ${spell.castingTime}` : ""}${spell.range ? ` · ${spell.range}` : ""}${spell.duration ? ` · ${spell.duration}` : ""}`;
+    }
+    if (choice.choiceType === "weapon-mastery") {
+      const mastery = String(option.metadata?.masteryLabel ?? option.metadata?.mastery ?? "Mastery unavailable");
+      const damage = String(option.metadata?.damage ?? "");
+      const props = option.tags?.filter((tag) => !tag.startsWith("mastery-")).join(", ");
+      return [mastery, damage, props].filter(Boolean).join(" · ");
+    }
+    const tags = option.tags?.slice(0, 3).join(", ");
+    if (tags) {
+      return tags;
+    }
+    return option.diagnostics?.[0];
+  };
+
   if (choices.length === 0) {
     return null;
   }
@@ -1015,15 +1143,6 @@ function GenericRuleChoicesStep({
       </div>
       <div className="mt-3 space-y-2">
         {choices.map((choice) => {
-          const selected = new Set(choice.selectedOptionIds);
-          const optionQuery = optionQueries[choice.id] ?? "";
-          const normalizedQuery = optionQuery.trim().toLowerCase();
-          const visibleOptions = normalizedQuery
-            ? choice.options.filter((option) => {
-                const metadataText = Object.values(option.metadata ?? {}).join(" ").toLowerCase();
-                return `${option.label} ${option.tags?.join(" ") ?? ""} ${metadataText}`.toLowerCase().includes(normalizedQuery);
-              })
-            : choice.options;
           const statusClass =
             choice.status === "complete"
               ? "bg-emerald-100 text-emerald-800"
@@ -1055,74 +1174,19 @@ function GenericRuleChoicesStep({
                 <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
                   <p>Needs structured data before this choice can be completed.</p>
                 </div>
-              ) : choice.choice.maxCount <= 1 ? (
-                <>
-                  {choice.options.length > 20 ? (
-                    <input
-                      className={`${inputClassName()} mt-2`}
-                      placeholder="Search options"
-                      value={optionQuery}
-                      onChange={(event) => setOptionQueries((current) => ({ ...current, [choice.id]: event.target.value }))}
-                    />
-                  ) : null}
-                  <select
-                    className={`${inputClassName()} mt-2`}
-                    value={choice.selectedOptionIds[0] ?? ""}
-                    onChange={(event) =>
-                      updateCharacter(draft.id, (current) => setRuleChoiceSelection(current, choice.choice, event.target.value ? [event.target.value] : []))
-                    }
-                  >
-                    <option value="">Select option</option>
-                    {visibleOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                        {option.metadata?.masteryLabel ? ` (${String(option.metadata.masteryLabel)})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </>
               ) : (
-                <>
-                  {choice.options.length > 20 || choice.choiceType === "weapon-mastery" ? (
-                    <input
-                      className={`${inputClassName()} mt-2`}
-                      placeholder={choice.choiceType === "weapon-mastery" ? "Search weapons, mastery, damage, or properties" : "Search options"}
-                      value={optionQuery}
-                      onChange={(event) => setOptionQueries((current) => ({ ...current, [choice.id]: event.target.value }))}
-                    />
-                  ) : null}
-                  <div className="mt-2 grid gap-1 sm:grid-cols-2">
-                    {visibleOptions.map((option) => {
-                      const checked = selected.has(option.id);
-                      return (
-                        <label key={option.id} className="flex items-start gap-2 rounded border border-slate-200 px-2 py-1 text-xs">
-                          <input
-                            checked={checked}
-                            className="mt-0.5"
-                            disabled={!checked && choice.selectedCount >= choice.choice.maxCount}
-                            type="checkbox"
-                            onChange={(event) => {
-                              const next = event.target.checked
-                                ? [...choice.selectedOptionIds, option.id]
-                                : choice.selectedOptionIds.filter((entry) => entry !== option.id);
-                              updateCharacter(draft.id, (current) => setRuleChoiceSelection(current, choice.choice, next));
-                            }}
-                          />
-                          <span>
-                            <span className="font-medium">{option.label}</span>
-                            {choice.choiceType === "weapon-mastery" ? (
-                              <span className="ml-1 text-slate-500">
-                                {option.metadata?.masteryLabel ? `Mastery: ${String(option.metadata.masteryLabel)}` : "Mastery: unavailable"}
-                                {option.metadata?.damage ? ` · ${String(option.metadata.damage)}` : ""}
-                                {option.tags?.length ? ` · ${option.tags.filter((tag) => !tag.startsWith("mastery-")).join(", ")}` : ""}
-                              </span>
-                            ) : null}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </>
+                <ChoiceOptionPicker
+                  buildDetail={(option) => detailForOption(choice, option)}
+                  choiceId={choice.id}
+                  choiceLabel={choice.label}
+                  maxCount={choice.choice.maxCount}
+                  onChange={(next) => updateCharacter(draft.id, (current) => setRuleChoiceSelection(current, choice.choice, next))}
+                  optionSummary={(option) => summaryForOption(choice, option)}
+                  options={choice.options}
+                  requiredCount={choice.requiredCount}
+                  searchPlaceholder={choice.choiceType === "weapon-mastery" ? "Search weapons, mastery, damage, or properties" : "Search options"}
+                  selectedOptionIds={choice.selectedOptionIds}
+                />
               )}
             </div>
           );

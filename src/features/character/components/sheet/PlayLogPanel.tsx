@@ -26,19 +26,37 @@ function describeEvent(event: CharacterPlayEvent): string | undefined {
         total?: number;
         outcomeLabel?: string;
         bonusDice?: Array<{ expression?: string; total?: number; sourceName?: string }>;
-        activeEffects?: Array<{ label?: string }>;
+        activeEffects?: Array<{ label?: string; origin?: string }>;
+        metadata?: Record<string, unknown>;
       };
       const modifier = typeof rollResult.modifier === "number" ? (rollResult.modifier >= 0 ? `+${rollResult.modifier}` : `${rollResult.modifier}`) : "";
       const outcome = rollResult.outcomeLabel && rollResult.outcomeLabel !== "normal" ? ` · ${rollResult.outcomeLabel}` : "";
       const effects = rollResult.activeEffects?.length
-        ? ` · effects ${rollResult.activeEffects.map((entry) => entry.label ?? "effect").join(", ")}`
+        ? ` · effects ${rollResult.activeEffects.map((entry) => `${entry.label ?? "effect"}${entry.origin ? ` (${entry.origin})` : ""}`).join(", ")}`
         : "";
       const bonus = rollResult.bonusDice?.length
         ? ` · bonus ${rollResult.bonusDice.map((entry) => `${entry.sourceName ? `${entry.sourceName} ` : ""}${entry.expression ?? "dice"}=${entry.total ?? "?"}`).join(", ")}`
         : "";
-      return `${rollResult.rollMode ?? "normal"} · ${rollResult.diceExpression ?? "roll"} ${modifier}${effects}${bonus} = ${rollResult.total ?? "?"}${outcome}`;
+      const metadata = rollResult.metadata ?? {};
+      const linkedAttack = typeof metadata.attackRollResultId === "string" ? ` · linked attack ${metadata.attackRollResultId}` : "";
+      const riders = Array.isArray(metadata.onHitRiderLabels) && metadata.onHitRiderLabels.length
+        ? ` · riders ${metadata.onHitRiderLabels.join(", ")}`
+        : "";
+      const mastery = typeof metadata.weaponMasteryName === "string" ? ` · mastery ${metadata.weaponMasteryName}` : "";
+      const spendOutcome = typeof metadata.resourceSpendOutcome === "string" ? ` · resource ${metadata.resourceSpendOutcome}` : "";
+      const spendReason = typeof metadata.resourceSpendReason === "string" ? ` (${metadata.resourceSpendReason})` : "";
+      return `${rollResult.rollMode ?? "normal"} · ${rollResult.diceExpression ?? "roll"} ${modifier}${effects}${bonus}${linkedAttack}${riders}${mastery}${spendOutcome}${spendReason} = ${rollResult.total ?? "?"}${outcome}`;
     }
     return typeof event.payload.summary === "string" ? event.payload.summary : "Roll result.";
+  }
+  if (event.type === "attack-resolution") {
+    const decision = typeof event.payload.decision === "string" ? event.payload.decision : "pending";
+    const riders = Array.isArray(event.payload.selectedRiderLabels) && event.payload.selectedRiderLabels.length
+      ? `Riders: ${event.payload.selectedRiderLabels.join(", ")}`
+      : undefined;
+    const mastery = typeof event.payload.weaponMasteryName === "string" ? `Mastery: ${event.payload.weaponMasteryName}` : undefined;
+    const note = typeof event.payload.note === "string" && event.payload.note ? event.payload.note : undefined;
+    return [decision, riders, mastery, note].filter(Boolean).join(" · ") || "Attack resolution recorded.";
   }
   if (event.type === "active-effect-start") {
     const rollTypes = Array.isArray(event.payload.applicableRollTypes) && event.payload.applicableRollTypes.length
@@ -58,7 +76,24 @@ function describeEvent(event: CharacterPlayEvent): string | undefined {
     return typeof event.payload.reason === "string" ? event.payload.reason : "Active effect dismissed.";
   }
   if (event.type === "resource-spend-blocked") {
-    return typeof event.payload.reason === "string" ? `Resource spend blocked: ${event.payload.reason}` : "Resource spend blocked.";
+    if (typeof event.payload.reason === "string") {
+      if (event.payload.reason === "manual-setting") {
+        return "Resource spend requires manual confirmation by automation setting.";
+      }
+      if (event.payload.reason === "unsafe-path") {
+        return "Resource spend skipped because the path is not deterministic.";
+      }
+      return `Resource spend blocked: ${event.payload.reason}`;
+    }
+    return "Resource spend blocked.";
+  }
+  if (event.type === "automation-settings-update") {
+    return "Automation preferences updated for rolls, effects, resources, and saves.";
+  }
+  if (event.type === "concentration-check-prompt") {
+    const dc = typeof event.payload.dc === "number" ? `DC ${event.payload.dc}` : undefined;
+    const concentrationName = typeof event.payload.concentrationName === "string" ? event.payload.concentrationName : undefined;
+    return [concentrationName ? `Concentration: ${concentrationName}` : undefined, dc].filter(Boolean).join(" · ");
   }
   if (event.type === "hit-die-spent") {
     const result = event.payload.result;

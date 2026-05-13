@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { CharacterDraft } from "../../domain/character";
 import { createDefaultCharacterPlayState, type CharacterHitDiceState, type HitDieSize } from "../../domain/playState";
 import { normalizeInventoryState } from "../equipment";
-import { normalizeLevelUpState } from "../levelUp";
+import { normalizeCharacterXpTrackingState, normalizeLevelUpState } from "../levelUp";
 import { ensureCharacterPlayState } from "../playState";
 
 const abilityScoresSchema = z.object({
@@ -250,6 +250,21 @@ const playStateSchema = z.object({
       notes: z.string().optional(),
     })
     .nullable(),
+  automationSettings: z.object({
+    rollBonuses: z.enum(["manual", "suggest", "autoApply"]).default("suggest"),
+    activeEffects: z.enum(["manual", "suggest", "autoApply"]).default("suggest"),
+    resourceSpending: z.enum(["ask", "autoSpendWhenSafe", "neverAutoSpend"]).default("ask"),
+    onHitRiders: z.enum(["ask", "autoSuggest", "manualOnly"]).default("autoSuggest"),
+    concentration: z.enum(["manual", "suggestCheck", "autoPromptOnDamage"]).default("suggestCheck"),
+    deathSaves: z.enum(["autoApplyResult", "askBeforeApply"]).default("askBeforeApply"),
+  }).default({
+    rollBonuses: "suggest",
+    activeEffects: "suggest",
+    resourceSpending: "ask",
+    onHitRiders: "autoSuggest",
+    concentration: "suggestCheck",
+    deathSaves: "askBeforeApply",
+  }),
   playEvents: z.array(
     z.object({
       id: z.string(),
@@ -280,6 +295,9 @@ const playStateSchema = z.object({
         "hit-dice-recovered",
         "rest-short",
         "rest-long",
+        "attack-resolution",
+        "automation-settings-update",
+        "concentration-check-prompt",
       ]),
       shortLabel: z.string(),
       payload: z.record(z.unknown()),
@@ -366,6 +384,20 @@ const levelUpStateSchema = z.object({
   ).optional(),
 }).optional();
 
+const xpTrackingStateSchema = z.object({
+  currentXp: z.number().int().nonnegative().default(0),
+  milestoneMode: z.boolean().optional().default(false),
+  levelSource: z.enum(["xp", "manual"]).default("xp"),
+  lastLevelUpSnapshot: z
+    .object({
+      capturedAt: z.string(),
+      fromLevel: z.number().int().min(1).max(20),
+      toLevel: z.number().int().min(1).max(20),
+      snapshotJson: z.string(),
+    })
+    .optional(),
+}).optional();
+
 const ruleChoiceStateSchema = z.record(
   z.object({
     choiceId: z.string(),
@@ -411,6 +443,7 @@ const characterDraftV2Schema = z.object({
     items: z.array(inventoryItemSchema),
     currency: currencySchema.optional(),
   }),
+  xp: xpTrackingStateSchema,
   levelUp: levelUpStateSchema,
   ruleChoices: ruleChoiceStateSchema,
   playState: playStateSchema.optional(),
@@ -479,6 +512,7 @@ function migrateV1ToV2(value: CharacterDraftV1): CharacterDraft {
     provider: "mpmb",
     rulesMode: "2024",
     inventory: normalizeInventoryState(value.inventory),
+    xp: normalizeCharacterXpTrackingState(undefined),
     levelUp: normalizeLevelUpState(undefined),
     ruleChoices: {},
     playState: fallbackPlayState,
@@ -489,6 +523,7 @@ function ensurePersistedPlayState(entry: CharacterDraftV2Persisted | CharacterDr
   return {
     ...entry,
     inventory: normalizeInventoryState(entry.inventory),
+    xp: normalizeCharacterXpTrackingState(entry.xp),
     levelUp: normalizeLevelUpState(entry.levelUp),
     ruleChoices: entry.ruleChoices ?? {},
     playState: ensureCharacterPlayState(entry.playState, entry.id, {

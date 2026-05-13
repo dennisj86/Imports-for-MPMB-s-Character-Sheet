@@ -92,6 +92,21 @@ export type HpGainMethod = "fixed/default" | "manual" | "rolled" | "max";
 export type LevelUpChoiceSource = "class" | "subclass" | "feat" | "species" | "background" | "rule";
 export type LevelUpChoiceStatus = "pending" | "complete" | "unsupported" | "needs-builder";
 export type AbilityScoreIncreaseMode = "+2" | "+1/+1";
+export type CharacterLevelSource = "xp" | "manual";
+
+export interface LevelUpUndoSnapshotState {
+  capturedAt: string;
+  fromLevel: number;
+  toLevel: number;
+  snapshotJson: string;
+}
+
+export interface CharacterXpTrackingState {
+  currentXp: number;
+  milestoneMode?: boolean;
+  levelSource: CharacterLevelSource;
+  lastLevelUpSnapshot?: LevelUpUndoSnapshotState;
+}
 
 export interface LevelUpHpGainState {
   level: number;
@@ -163,6 +178,7 @@ export interface CharacterDraft {
   spellSelection: SpellSelection;
   featureChoices: FeatureChoice[];
   inventory: InventoryState;
+  xp?: CharacterXpTrackingState;
   levelUp?: LevelUpState;
   ruleChoices?: Record<string, RuleChoiceState>;
   playState: CharacterPlayState;

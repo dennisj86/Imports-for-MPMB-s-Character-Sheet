@@ -1,9 +1,19 @@
 import type { CharacterActionResourceState, ResourceRechargeType } from "../../domain/actionResources";
 import type { ActiveEffectDefinition, ActiveEffectTarget } from "../../domain/rules";
-import type { ActiveConditionState, CharacterPlayState, ConcentrationState, HitDicePool } from "../../domain/playState";
-import { createDefaultCharacterPlayState, PLAY_STATE_SCHEMA_VERSION } from "../../domain/playState";
+import type {
+  ActiveConditionState,
+  CharacterAutomationSettings,
+  CharacterPlayState,
+  ConcentrationState,
+  HitDicePool,
+} from "../../domain/playState";
+import {
+  createDefaultCharacterPlayState,
+  normalizeCharacterAutomationSettings,
+  PLAY_STATE_SCHEMA_VERSION,
+} from "../../domain/playState";
 import type { SpellDefinition } from "../../domain/content";
-import type { RollRequest, RollResult } from "../../domain/rolls";
+import type { RollRequest, RollResult, RollTrustBreakdown } from "../../domain/rolls";
 import { rollDiceExpression } from "../../features/dice";
 import type { CharacterEngineState } from "../characterEngine";
 import { createRollPlayEvent, executeRollRequest } from "../rolls";
@@ -142,6 +152,7 @@ function normalizePlayStateCounters(
     hitDice,
     activeConditions,
     activeEffects: normalizeActiveEffects(playState.activeEffects),
+    automationSettings: normalizeCharacterAutomationSettings(playState.automationSettings),
   };
 }
 
@@ -202,6 +213,20 @@ function activeEffectsEqual(left: CharacterPlayState["activeEffects"], right: Ch
   });
 }
 
+function automationSettingsEqual(
+  left: CharacterAutomationSettings,
+  right: CharacterAutomationSettings,
+): boolean {
+  return (
+    left.rollBonuses === right.rollBonuses &&
+    left.activeEffects === right.activeEffects &&
+    left.resourceSpending === right.resourceSpending &&
+    left.onHitRiders === right.onHitRiders &&
+    left.concentration === right.concentration &&
+    left.deathSaves === right.deathSaves
+  );
+}
+
 export function ensureCharacterPlayState(
   playState: CharacterPlayState | undefined,
   characterId: string,
@@ -226,6 +251,7 @@ export function ensureCharacterPlayState(
     normalized.deathSaves.failures === playState.deathSaves.failures &&
     normalized.deathSaves.stable === playState.deathSaves.stable &&
     normalized.deathSaves.dead === playState.deathSaves.dead &&
+    automationSettingsEqual(normalized.automationSettings, normalizeCharacterAutomationSettings(playState.automationSettings)) &&
     activeConditionsEqual(normalized.activeConditions, playState.activeConditions) &&
     activeEffectsEqual(normalized.activeEffects, playState.activeEffects ?? []) &&
     hitDiceStatesEqual(normalized.hitDice, originalHitDice) &&
@@ -278,6 +304,7 @@ export function shouldBootstrapPlayStateFromEngine(
     playState.deathSaves.failures === 0 &&
     !playState.deathSaves.stable &&
     !playState.deathSaves.dead &&
+    automationSettingsEqual(playState.automationSettings, normalizeCharacterAutomationSettings(undefined)) &&
     noResourceUsage &&
     noSlotUsage &&
     noHitDiceUsage;
@@ -413,19 +440,45 @@ function summarizeHitDiceSpendingSinceLastRest(playState: CharacterPlayState): {
   );
 }
 
+export interface ApplyDamageOptions {
+  now?: string;
+  concentrationBehavior?: CharacterAutomationSettings["concentration"];
+}
+
 export function applyDamage(
   playState: CharacterPlayState,
   amount: number,
-  now?: string,
+  options: ApplyDamageOptions | string = {},
 ): CharacterPlayState {
+  const resolvedOptions: ApplyDamageOptions = typeof options === "string" ? { now: options } : options;
   const normalizedAmount = clampNonNegativeInteger(amount);
   const absorbedByTempHp = Math.min(playState.tempHp, normalizedAmount);
+  const timestamp = nowTimestamp(resolvedOptions.now);
+  const behavior = resolvedOptions.concentrationBehavior ?? playState.automationSettings.concentration;
+  const shouldPromptConcentration =
+    normalizedAmount > 0 &&
+    Boolean(playState.concentration) &&
+    (behavior === "suggestCheck" || behavior === "autoPromptOnDamage");
+  const concentrationDc = Math.max(10, Math.floor(normalizedAmount / 2));
+  const concentrationEvent = shouldPromptConcentration
+    ? createPlayEvent({
+        timestamp,
+        type: "concentration-check-prompt",
+        shortLabel: `Concentration Check DC ${concentrationDc}`,
+        payload: {
+          amount: normalizedAmount,
+          dc: concentrationDc,
+          concentrationName: playState.concentration?.name,
+          automationMode: behavior,
+        },
+      })
+    : undefined;
   return reduceCharacterPlayState(playState, {
     type: "apply-damage",
     amount: normalizedAmount,
-    timestamp: nowTimestamp(now),
+    timestamp,
     event: createPlayEvent({
-      timestamp: nowTimestamp(now),
+      timestamp,
       type: "hp-damage",
       shortLabel: `Damage ${normalizedAmount}`,
       payload: {
@@ -433,6 +486,7 @@ export function applyDamage(
         absorbedByTempHp,
       },
     }),
+    extraEvents: concentrationEvent ? [concentrationEvent] : undefined,
   });
 }
 
@@ -1190,6 +1244,34 @@ export function endConcentration(
   });
 }
 
+export function setAutomationSettings(
+  playState: CharacterPlayState,
+  settings: Partial<CharacterAutomationSettings>,
+  now?: string,
+): CharacterPlayState {
+  const timestamp = nowTimestamp(now);
+  const nextSettings = normalizeCharacterAutomationSettings({
+    ...playState.automationSettings,
+    ...settings,
+  });
+  if (automationSettingsEqual(playState.automationSettings, nextSettings)) {
+    return playState;
+  }
+  return reduceCharacterPlayState(playState, {
+    type: "set-automation-settings",
+    automationSettings: nextSettings,
+    timestamp,
+    event: createPlayEvent({
+      timestamp,
+      type: "automation-settings-update",
+      shortLabel: "Automation Settings Updated",
+      payload: {
+        automationSettings: nextSettings,
+      },
+    }),
+  });
+}
+
 export function recordRollResult(
   playState: CharacterPlayState,
   result: RollResult,
@@ -1201,11 +1283,53 @@ export function recordRollResult(
   });
 }
 
+export interface RecordAttackResolutionOptions {
+  actionId?: string;
+  attackRequestId?: string;
+  attackRollResultId?: string;
+  flowId?: string;
+  weaponMasteryName?: string;
+  selectedRiderLabels?: string[];
+  note?: string;
+  now?: string;
+}
+
+export function recordAttackResolution(
+  playState: CharacterPlayState,
+  actionLabel: string,
+  decision: "hit" | "miss" | "cancel",
+  options: RecordAttackResolutionOptions = {},
+): CharacterPlayState {
+  const timestamp = nowTimestamp(options.now);
+  const riderLabels = Array.from(new Set(options.selectedRiderLabels ?? []));
+  const decisionLabel = decision === "hit" ? "Hit" : decision === "miss" ? "Miss" : "Cancelled";
+  return reduceCharacterPlayState(playState, {
+    type: "record-event",
+    timestamp,
+    event: createPlayEvent({
+      timestamp,
+      type: "attack-resolution",
+      shortLabel: `${actionLabel}: ${decisionLabel}`,
+      payload: {
+        actionId: options.actionId,
+        actionLabel,
+        decision,
+        flowId: options.flowId,
+        attackRequestId: options.attackRequestId,
+        attackRollResultId: options.attackRollResultId,
+        weaponMasteryName: options.weaponMasteryName,
+        selectedRiderLabels: riderLabels,
+        note: options.note,
+      },
+    }),
+  });
+}
+
 export function recordResourceSpendBlocked(
   playState: CharacterPlayState,
   resourceKey: string,
   label: string | undefined,
-  reason: "depleted" | "unknown",
+  reason: "depleted" | "unknown" | "manual-setting" | "unsafe-path",
   now?: string,
 ): CharacterPlayState {
   const timestamp = nowTimestamp(now);
@@ -1230,6 +1354,138 @@ export interface RollAndRecordOptions {
   now?: string;
   spendResourceKey?: string;
   resourceLabel?: string;
+  spendResourceMode?: "manual" | "auto-safe" | "auto-unsafe";
+  automationSettings?: CharacterAutomationSettings;
+}
+
+interface ResourceSpendOutcome {
+  status: "spent" | "blocked";
+  reason?: "depleted" | "unknown" | "manual-setting" | "unsafe-path";
+  resourceKey: string;
+  label: string;
+}
+
+function formatSignedValue(value: unknown): string {
+  if (typeof value === "number") {
+    return value >= 0 ? `+${value}` : String(value);
+  }
+  if (typeof value === "boolean") {
+    return value ? "yes" : "no";
+  }
+  return String(value);
+}
+
+function pickAbilityModifierLabel(request: RollRequest): string | undefined {
+  const metadata = request.metadata ?? {};
+  const abilityModifier = metadata.abilityModifier;
+  if (typeof abilityModifier === "number") {
+    return formatSignedValue(abilityModifier);
+  }
+  return undefined;
+}
+
+function pickProficiencyModifierLabel(request: RollRequest): string | undefined {
+  const metadata = request.metadata ?? {};
+  const proficiencyBonus = metadata.proficiencyBonus;
+  if (typeof proficiencyBonus === "number") {
+    return formatSignedValue(proficiencyBonus);
+  }
+  return request.proficiencyApplied ? "included" : undefined;
+}
+
+function buildRollTrustBreakdown(
+  request: RollRequest,
+  result: RollResult,
+  spendOutcome: ResourceSpendOutcome | undefined,
+): RollTrustBreakdown {
+  const permanent = result.permanentModifierBreakdown?.filter((entry) => entry.applied) ?? [];
+  const temporary = result.temporaryModifierBreakdown?.filter((entry) => entry.applied) ?? [];
+  const itemModifiers = [...permanent, ...temporary]
+    .filter((entry) => entry.sourceType === "item" || entry.sourceType === "weapon" || /weapon|item|armor|shield/i.test(entry.sourceName))
+    .map((entry) => `${entry.sourceName} ${formatSignedValue(entry.value)}`);
+  const featureModifiers = [...permanent, ...temporary]
+    .filter((entry) => /class-feature|subclass-feature|species-feature|background-feature|feat/i.test(String(entry.sourceType ?? "")) || /style|feature|aura|smite|sneak/i.test(entry.sourceName))
+    .map((entry) => `${entry.sourceName} ${formatSignedValue(entry.value)}`);
+  const activeEffects = result.activeEffects?.map((entry) => `${entry.label}${entry.origin ? ` (${entry.origin})` : ""}`) ?? [];
+  const temporaryBuffs = temporary
+    .filter((entry) => !itemModifiers.some((label) => label.startsWith(entry.sourceName)) && !featureModifiers.some((label) => label.startsWith(entry.sourceName)))
+    .map((entry) => `${entry.sourceName} ${formatSignedValue(entry.value)}`);
+  const optionalEffectsSelected = result.activeEffects
+    ?.filter((entry) => entry.origin === "manual" || entry.origin === "auto")
+    .map((entry) => `${entry.label}${entry.origin ? ` (${entry.origin})` : ""}`) ?? [];
+  const suggestedEffects = Array.isArray(result.metadata?.suggestedActiveEffects)
+    ? (result.metadata?.suggestedActiveEffects as Array<{ label?: string }>)
+      .map((entry) => entry.label)
+      .filter((label): label is string => Boolean(label))
+      .map((label) => `${label} (suggested)`)
+    : [];
+  const resourcesSpent =
+    spendOutcome?.status === "spent"
+      ? [`${spendOutcome.label} -1 (${String(result.metadata?.resourceSpendOrigin ?? "manual")})`]
+      : [];
+  const resourcesNotSpent =
+    spendOutcome?.status === "blocked"
+      ? [`${spendOutcome.label}: ${spendOutcome.reason ?? "not spent"}`]
+      : [];
+  const unsupportedOrManualNotes = [
+    ...(Array.isArray(request.metadata?.unsupportedNotes) ? (request.metadata?.unsupportedNotes as string[]) : []),
+    ...(suggestedEffects.length ? [`Available suggestions: ${suggestedEffects.join(", ")}`] : []),
+  ];
+  const baseRoll = result.dice.keptRoll !== undefined
+    ? result.dice.rawRolls.length > 1
+      ? `${result.dice.rawRolls.join(", ")} -> kept ${result.dice.keptRoll}`
+      : String(result.dice.keptRoll)
+    : result.dice.rawRolls.join(", ");
+  return {
+    baseDice: result.diceExpression,
+    baseRoll,
+    abilityModifier: pickAbilityModifierLabel(request),
+    proficiencyModifier: pickProficiencyModifierLabel(request),
+    itemModifiers,
+    featureModifiers,
+    activeEffects,
+    temporaryBuffs,
+    optionalEffectsSelected,
+    resourcesSpent,
+    resourcesNotSpent,
+    unsupportedOrManualNotes,
+    finalTotal: result.total,
+  };
+}
+
+function resolveResourceSpendOutcome(
+  playState: CharacterPlayState,
+  runtime: PlayStateRuntimeContext,
+  options: RollAndRecordOptions,
+): ResourceSpendOutcome | undefined {
+  if (!options.spendResourceKey) {
+    return undefined;
+  }
+  const resourceKey = options.spendResourceKey;
+  const resourceLabel = options.resourceLabel ?? resourceKey;
+  const mode = options.spendResourceMode ?? "manual";
+  const automationSettings = options.automationSettings ?? playState.automationSettings;
+  const max = getResourceMax(runtime, resourceKey);
+  const spent = clampWithin(playState.spentResources[resourceKey] ?? 0, 0, max);
+
+  if (mode === "auto-unsafe") {
+    if (automationSettings.resourceSpending === "autoSpendWhenSafe") {
+      return { status: "blocked", reason: "unsafe-path", resourceKey, label: resourceLabel };
+    }
+    return { status: "blocked", reason: "manual-setting", resourceKey, label: resourceLabel };
+  }
+
+  if (mode === "auto-safe" && automationSettings.resourceSpending !== "autoSpendWhenSafe") {
+    return { status: "blocked", reason: "manual-setting", resourceKey, label: resourceLabel };
+  }
+
+  if (max <= 0) {
+    return { status: "blocked", reason: "unknown", resourceKey, label: resourceLabel };
+  }
+  if (spent >= max) {
+    return { status: "blocked", reason: "depleted", resourceKey, label: resourceLabel };
+  }
+  return { status: "spent", resourceKey, label: resourceLabel };
 }
 
 export function rollAndRecord(
@@ -1242,10 +1498,25 @@ export function rollAndRecord(
   result: RollResult;
 } {
   const timestamp = nowTimestamp(options.now);
-  const result = executeRollRequest(request, {
+  const executedResult = executeRollRequest(request, {
     rng: options.rng,
     now: timestamp,
   });
+  const resourceSpend = resolveResourceSpendOutcome(playState, runtime, options);
+  const enrichedMetadata: Record<string, unknown> = {
+    ...(executedResult.metadata ?? {}),
+  };
+  if (resourceSpend) {
+    enrichedMetadata.resourceSpendOrigin = options.spendResourceMode ?? "manual";
+    enrichedMetadata.resourceSpendOutcome = resourceSpend.status;
+    enrichedMetadata.resourceSpendReason = resourceSpend.reason;
+    enrichedMetadata.resourceSpendLabel = resourceSpend.label;
+  }
+  const result: RollResult = {
+    ...executedResult,
+    metadata: enrichedMetadata,
+    trustBreakdown: buildRollTrustBreakdown(request, { ...executedResult, metadata: enrichedMetadata }, resourceSpend),
+  };
   let next = recordRollResult(playState, result);
   const selectedEffectIds = new Set(request.selectedActiveEffectIds ?? []);
   if (selectedEffectIds.size > 0) {
@@ -1258,15 +1529,11 @@ export function rollAndRecord(
       }
     }
   }
-  if (options.spendResourceKey) {
-    const max = getResourceMax(runtime, options.spendResourceKey);
-    const spent = clampWithin(next.spentResources[options.spendResourceKey] ?? 0, 0, max);
-    if (max <= 0) {
-      next = recordResourceSpendBlocked(next, options.spendResourceKey, options.resourceLabel, "unknown", timestamp);
-    } else if (spent >= max) {
-      next = recordResourceSpendBlocked(next, options.spendResourceKey, options.resourceLabel, "depleted", timestamp);
+  if (resourceSpend) {
+    if (resourceSpend.status === "spent") {
+      next = spendResource(next, runtime, resourceSpend.resourceKey, 1, resourceSpend.label, timestamp);
     } else {
-      next = spendResource(next, runtime, options.spendResourceKey, 1, options.resourceLabel, timestamp);
+      next = recordResourceSpendBlocked(next, resourceSpend.resourceKey, resourceSpend.label, resourceSpend.reason ?? "unknown", timestamp);
     }
   }
   return {

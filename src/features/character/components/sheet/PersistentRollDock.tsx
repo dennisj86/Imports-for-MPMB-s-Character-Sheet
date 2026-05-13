@@ -5,6 +5,7 @@ import type { RollMode, RollRequest, RollResult } from "../../../../domain/rolls
 import { parseDiceExpression } from "../../../../features/dice";
 import { EmptyState, InfoPopover, RollResultCard, SectionHeader, StatusBadge } from "./SheetDesignSystem";
 import { PlayLogPanel } from "./PlayLogPanel";
+import { RuleDetailDrawer, type RuleDetailModel } from "./RuleDetailDrawer";
 import { ruleInfo } from "./rulesInfo";
 
 interface PersistentRollDockProps {
@@ -57,6 +58,7 @@ export function PersistentRollDock({
   const [freeDiceLabel, setFreeDiceLabel] = useState("");
   const [playLogOpen, setPlayLogOpen] = useState(false);
   const [compactOpen, setCompactOpen] = useState(false);
+  const [selectedEffectDetail, setSelectedEffectDetail] = useState<RuleDetailModel | undefined>();
 
   const runningEffects = activeEffects.filter((effect) => effect.status === "active");
   const selectableEffects = runningEffects
@@ -122,6 +124,27 @@ export function PersistentRollDock({
       checked ? Array.from(new Set([...selectedEffectIds, effectId])) : selectedEffectIds.filter((id) => id !== effectId),
     );
   };
+
+  const detailForEffect = (effect: ActiveEffectState, selectedState?: boolean): RuleDetailModel => ({
+    name: effect.label,
+    source: `${effect.sourceType} · ${effect.sourceName}`,
+    timing: "active effect",
+    rangeOrTarget: effect.targets.join(", "),
+    duration: effect.durationType,
+    description: effect.note,
+    gameplaySummary: `${effect.effectType}${effect.modifierSummary?.dice ? ` · ${effect.modifierSummary.dice}` : ""}${effect.modifierSummary?.flat !== undefined ? ` · ${modifierLabel(effect.modifierSummary.flat)}` : ""}`,
+    automationStatus: effect.requiresPrompt ? "partial" : "automated",
+    manualInstructions: effect.requiresPrompt
+      ? "Select this effect when it applies, then resolve any target/trigger specifics manually."
+      : "Effect is applied automatically where supported.",
+    knownLimitations: effect.diagnostics.join(" · ") || undefined,
+    fields: [
+      { label: "Effect Type", value: effect.effectType },
+      { label: "Roll Types", value: effect.applicableRollTypes.join(", ") || "none" },
+      { label: "Concentration Linked", value: effect.concentrationLinked ? "yes" : "no" },
+      { label: "Selected for Next Roll", value: selectedState ? "yes" : "no" },
+    ],
+  });
 
   const dockBody = (
     <div className="space-y-3">
@@ -215,6 +238,14 @@ export function PersistentRollDock({
                 <div className="flex items-center gap-1">
                   <StatusBadge label={effect.durationType} status={effect.durationType === "until-used" || effect.durationType === "one-roll" ? "pending" : "info"} />
                   <InfoPopover title={effect.durationType} description={ruleInfo(effect.durationType)} />
+                  <button
+                    aria-label={`Open details for active effect ${effect.label}`}
+                    className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-700"
+                    onClick={() => setSelectedEffectDetail(detailForEffect(effect))}
+                    type="button"
+                  >
+                    Details
+                  </button>
                 </div>
                 {onDismissEffect ? (
                   <button
@@ -252,6 +283,14 @@ export function PersistentRollDock({
                 />
                 <span className="font-medium text-slate-900">{effect.label}</span>
                 <StatusBadge label={effect.durationType} status={effect.durationType === "until-used" || effect.durationType === "one-roll" ? "pending" : "info"} />
+                <button
+                  aria-label={`Open details for optional effect ${effect.label}`}
+                  className="sheet-focus-ring rounded border border-slate-300 bg-white px-1 py-0.5 text-[11px] text-slate-700"
+                  onClick={() => setSelectedEffectDetail(detailForEffect(effect, selectedEffectIds.includes(effect.id)))}
+                  type="button"
+                >
+                  Details
+                </button>
               </label>
             ))}
           </div>
@@ -262,6 +301,13 @@ export function PersistentRollDock({
           </p>
         ) : null}
       </div>
+
+      {selectedEffectDetail ? (
+        <RuleDetailDrawer
+          detail={selectedEffectDetail}
+          heading="Active Effect Details"
+        />
+      ) : null}
 
       <section className="sheet-card p-3">
         <SectionHeader
