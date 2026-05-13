@@ -39,6 +39,12 @@ interface ActionRollPanelProps {
   ) => void;
   onSpendResource: (resourceKey: string, amount?: number, label?: string) => void;
   onActivateEffect?: (effect: ActiveEffectDefinition, options?: { external?: boolean; sourceCasterName?: string; note?: string; diceExpression?: string }) => void;
+  partyAllies?: Array<{ id: string; name: string }>;
+  onActivateEffectOnAlly?: (
+    allyId: string,
+    effect: ActiveEffectDefinition,
+    options?: { external?: boolean; sourceCasterName?: string; note?: string; diceExpression?: string },
+  ) => void;
   onCreateCustomEffect?: (options: {
     name: string;
     applicableRollTypes: RollType[];
@@ -1047,6 +1053,8 @@ export function ActionRollPanel({
   onRecordAttackResolution,
   onSpendResource,
   onActivateEffect,
+  partyAllies = [],
+  onActivateEffectOnAlly,
   onCreateCustomEffect,
   inventoryAmmunition = [],
 }: ActionRollPanelProps) {
@@ -1057,6 +1065,7 @@ export function ActionRollPanel({
   const [activationCasterName, setActivationCasterName] = useState("");
   const [activationNote, setActivationNote] = useState("");
   const [activationDice, setActivationDice] = useState("");
+  const [activationTarget, setActivationTarget] = useState("self");
   const [customName, setCustomName] = useState("");
   const [customDice, setCustomDice] = useState("");
   const [customFlat, setCustomFlat] = useState("");
@@ -1149,15 +1158,26 @@ export function ActionRollPanel({
     if (!selectedCatalogEntry || !onActivateEffect) {
       return;
     }
-    onActivateEffect(selectedCatalogEntry.effect, {
+    const options = {
       external: true,
       sourceCasterName: activationCasterName.trim() || undefined,
       note: activationNote.trim() || undefined,
       diceExpression: selectedCatalogEntry.effect.configurableFields?.includes("die-size") ? activationDice || selectedCatalogEntry.modifier.dice : undefined,
-    });
+    };
+    if (activationTarget !== "self" && onActivateEffectOnAlly) {
+      onActivateEffectOnAlly(activationTarget, selectedCatalogEntry.effect, options);
+    } else {
+      onActivateEffect(selectedCatalogEntry.effect, {
+        ...options,
+        note: activationTarget !== "self" && !onActivateEffectOnAlly
+          ? [options.note, "Manual: apply this ally buff on the target character; shared-server mode is required for direct ally writes."].filter(Boolean).join(" ")
+          : options.note,
+      });
+    }
     setActivationCasterName("");
     setActivationNote("");
     setActivationDice("");
+    setActivationTarget("self");
   };
 
   const activateCustomEffect = () => {
@@ -1436,6 +1456,20 @@ export function ActionRollPanel({
               </div>
               <div className="grid gap-2 md:grid-cols-2">
                 <label className="text-xs text-slate-700">
+                  Target
+                  <select
+                    aria-label="External buff target"
+                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                    onChange={(event) => setActivationTarget(event.target.value)}
+                    value={activationTarget}
+                  >
+                    <option value="self">Self</option>
+                    {partyAllies.map((ally) => (
+                      <option key={ally.id} value={ally.id}>{ally.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs text-slate-700">
                   Source / Caster Name
                   <input
                     aria-label="External buff source or caster name"
@@ -1471,8 +1505,13 @@ export function ActionRollPanel({
                   value={activationNote}
                 />
               </label>
+              {activationTarget !== "self" && !onActivateEffectOnAlly ? (
+                <p className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                  Ally targeting is available, but direct ally writes require shared-server mode. This will add a manual note to self.
+                </p>
+              ) : null}
               <button className="sheet-focus-ring rounded bg-indigo-700 px-3 py-2 text-sm text-white" onClick={activateSelectedCatalogEntry} type="button">
-                Activate on self
+                {activationTarget === "self" ? "Activate on self" : "Activate on ally"}
               </button>
             </div>
           ) : null}

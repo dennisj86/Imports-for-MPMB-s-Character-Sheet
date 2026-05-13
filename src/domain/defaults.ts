@@ -15,11 +15,17 @@ export function createCharacterDraft(id: string, name: string): CharacterDraft {
   return {
     id,
     version: 2,
+    syncVersion: 1,
     name,
     provider: "mpmb",
     rulesMode: "2024",
     createdAt: timestamp,
     updatedAt: timestamp,
+    portraitUrl: undefined,
+    portraitData: undefined,
+    backgroundImageUrl: undefined,
+    backgroundImageData: undefined,
+    themeColor: undefined,
     abilityScores: { ...DEFAULT_ABILITY_SCORES },
     classSelection: {
       classId: undefined,

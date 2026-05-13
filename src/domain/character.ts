@@ -188,11 +188,17 @@ export interface LevelUpState {
 export interface CharacterDraft {
   id: string;
   version: 2;
+  syncVersion?: number;
   name: string;
   provider: "open5e" | "mpmb";
   rulesMode: RulesMode;
   createdAt: string;
   updatedAt: string;
+  portraitUrl?: string;
+  portraitData?: string;
+  backgroundImageUrl?: string;
+  backgroundImageData?: string;
+  themeColor?: string;
   abilityScores: AbilityScores;
   classSelection: ClassSelection;
   subclassSelection: SubclassSelection;

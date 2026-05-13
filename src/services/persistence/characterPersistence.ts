@@ -424,11 +424,17 @@ const ruleChoiceStateSchema = z.record(
 const characterDraftV2Schema = z.object({
   id: z.string(),
   version: z.literal(2),
+  syncVersion: z.number().int().nonnegative().optional(),
   name: z.string(),
   provider: z.enum(["open5e", "mpmb"]),
   rulesMode: z.enum(["2014", "2024"]),
   createdAt: z.string(),
   updatedAt: z.string(),
+  portraitUrl: z.string().optional(),
+  portraitData: z.string().optional(),
+  backgroundImageUrl: z.string().optional(),
+  backgroundImageData: z.string().optional(),
+  themeColor: z.string().optional(),
   abilityScores: abilityScoresSchema,
   classSelection: z.object({
     classId: z.string().optional(),
@@ -525,8 +531,14 @@ function migrateV1ToV2(value: CharacterDraftV1): CharacterDraft {
   return {
     ...value,
     version: 2,
+    syncVersion: 1,
     provider: "mpmb",
     rulesMode: "2024",
+    portraitUrl: undefined,
+    portraitData: undefined,
+    backgroundImageUrl: undefined,
+    backgroundImageData: undefined,
+    themeColor: undefined,
     inventory: normalizeInventoryState(value.inventory),
     xp: normalizeCharacterXpTrackingState(undefined),
     levelUp: normalizeLevelUpState(undefined),
@@ -538,6 +550,7 @@ function migrateV1ToV2(value: CharacterDraftV1): CharacterDraft {
 function ensurePersistedPlayState(entry: CharacterDraftV2Persisted | CharacterDraft): CharacterDraft {
   return {
     ...entry,
+    syncVersion: entry.syncVersion ?? 1,
     inventory: normalizeInventoryState(entry.inventory),
     xp: normalizeCharacterXpTrackingState(entry.xp),
     levelUp: normalizeLevelUpState(entry.levelUp),

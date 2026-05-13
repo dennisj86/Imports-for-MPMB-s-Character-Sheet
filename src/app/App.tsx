@@ -4,6 +4,8 @@ import { AppShell } from "./AppShell";
 import { CharacterBuilderPage } from "../pages/CharacterBuilderPage";
 import { CharacterSheetPage } from "../pages/CharacterSheetPage";
 import { HomePage } from "../pages/HomePage";
+import { PartyCharacterSheetPage } from "../pages/PartyCharacterSheetPage";
+import { PartyPage } from "../pages/PartyPage";
 
 const ContentBrowserPage = lazy(async () => {
   const module = await import("../pages/ContentBrowserPage");
@@ -17,6 +19,8 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/builder/:id" element={<CharacterBuilderPage />} />
         <Route path="/sheet/:id" element={<CharacterSheetPage />} />
+        <Route path="/party/:partyId" element={<PartyPage />} />
+        <Route path="/party/:partyId/characters/:characterId" element={<PartyCharacterSheetPage />} />
         <Route
           path="/content"
           element={

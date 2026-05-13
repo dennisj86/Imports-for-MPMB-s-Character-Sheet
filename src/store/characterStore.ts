@@ -7,6 +7,8 @@ import {
   saveCharactersToLocalStorage,
   serializeCharacters,
 } from "../services/persistence/characterPersistence";
+import { bumpCharacterSync } from "../services/party";
+import { saveCharacterToActiveParty, withSuppressedPartyCharacterSaves } from "../services/party/partyRuntime";
 
 type CharacterStore = {
   characters: CharacterDraft[];
@@ -14,6 +16,8 @@ type CharacterStore = {
   deleteCharacter: (id: string) => void;
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
   replaceCharacters: (characters: CharacterDraft[]) => void;
+  upsertRemoteCharacter: (character: CharacterDraft) => void;
+  replaceCharactersFromParty: (characters: CharacterDraft[]) => void;
   exportCharacters: () => string;
   importCharacters: (payload: string) => void;
 };
@@ -53,18 +57,33 @@ export const useCharacterStore = create<CharacterStore>((set, get) => ({
         if (entry.id !== id) {
           return entry;
         }
-        const updated = updater(entry);
-        return {
-          ...updated,
-          updatedAt: new Date().toISOString(),
-        };
+        return bumpCharacterSync(updater(entry));
       });
       persistCharacters(next);
+      const updated = next.find((entry) => entry.id === id);
+      if (updated) {
+        saveCharacterToActiveParty(updated);
+      }
       return { characters: next };
     }),
   replaceCharacters: (characters) => {
     persistCharacters(characters);
     set({ characters });
+  },
+  upsertRemoteCharacter: (character) =>
+    set((state) => {
+      const exists = state.characters.some((entry) => entry.id === character.id);
+      const next = exists
+        ? state.characters.map((entry) => (entry.id === character.id ? character : entry))
+        : [...state.characters, character];
+      persistCharacters(next);
+      return { characters: next };
+    }),
+  replaceCharactersFromParty: (characters) => {
+    withSuppressedPartyCharacterSaves(() => {
+      persistCharacters(characters);
+      set({ characters });
+    });
   },
   exportCharacters: (): string => serializeCharacters(get().characters),
   importCharacters: (payload) => {

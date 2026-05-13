@@ -37,6 +37,13 @@ export function HomePage() {
           >
             New Character
           </button>
+          <button
+            className="w-full rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white"
+            onClick={() => navigate("/party/default")}
+            type="button"
+          >
+            Open Party Session
+          </button>
         </div>
       </Panel>
 

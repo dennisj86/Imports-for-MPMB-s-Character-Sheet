@@ -64,10 +64,13 @@ import {
   setCharacterXp,
   undoLastLevelUp,
 } from "../services/levelUp";
+import { addResolvedActiveEffect } from "../services/playState";
 import { buildCharacterRollView, getLatestRollResult } from "../services/rolls";
 import { activeEffectsForRollType, buildActiveEffectCatalog, resolveCombinedRuleProficiencies } from "../services/rules";
 import { useCharacterStore } from "../store/characterStore";
+import { usePartyStore } from "../store/partyStore";
 import { useSourceStore } from "../store/sourceStore";
+import type { ActiveEffectDefinition } from "../domain/rules";
 
 function modifierLabel(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`;
@@ -170,9 +173,12 @@ function latestConcentrationPrompt(events: CharacterPlayEvent[]): CharacterPlayE
 export function CharacterSheetPage() {
   const generation = useSourceStore((state) => state.generation);
   const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId, characterId, partyId } = useParams<{ id?: string; characterId?: string; partyId?: string }>();
+  const id = routeId ?? characterId;
   const characters = useCharacterStore((state) => state.characters);
   const updateCharacter = useCharacterStore((state) => state.updateCharacter);
+  const partyMode = usePartyStore((state) => state.mode);
+  const party = usePartyStore((state) => state.party);
   const [activeTab, setActiveTab] = useState<SheetTabId>("overview");
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [rollMode, setRollMode] = useState<RollMode>("normal");
@@ -220,6 +226,15 @@ export function CharacterSheetPage() {
   const activeEffectCatalog = useMemo(
     () => buildActiveEffectCatalog(engineView.snapshot),
     [engineView.snapshot],
+  );
+  const partyAllies = useMemo(
+    () =>
+      partyId && party
+        ? characters
+          .filter((entry) => entry.id !== draft.id && party.characterIds.includes(entry.id))
+          .map((entry) => ({ id: entry.id, name: entry.name }))
+        : [],
+    [characters, draft.id, party, partyId],
   );
   const combinedProficiencies = useMemo(
     () => resolveCombinedRuleProficiencies(engine.appliedRules, engine.ruleEngine.optionScoped),
@@ -356,6 +371,25 @@ export function CharacterSheetPage() {
     },
     [playState, playStateView, selectableRollEffects, selectedEffectIds],
   );
+  const activateEffectOnAlly = useCallback((
+    allyId: string,
+    effect: ActiveEffectDefinition,
+    options: { external?: boolean; sourceCasterName?: string; note?: string; diceExpression?: string } = {},
+  ) => {
+    if (!partyId || partyMode !== "shared-server") {
+      return;
+    }
+    updateCharacter(allyId, (current) => ({
+      ...current,
+      playState: addResolvedActiveEffect(current.playState, effect, {
+        target: "self",
+        external: options.external ?? true,
+        sourceCasterName: options.sourceCasterName,
+        note: options.note,
+        diceExpression: options.diceExpression,
+      }),
+    }));
+  }, [partyId, partyMode, updateCharacter]);
   const rollDeathSaveFromOverview = useCallback(() => {
     rollWithSelectedEffects({
       id: "roll:overview:death-save",
@@ -554,17 +588,43 @@ export function CharacterSheetPage() {
   const undoLevelUpStep = () => {
     updateCharacter(draft.id, (current) => undoLastLevelUp(current));
   };
+  const updateCharacterMedia = (updates: Partial<Pick<typeof draft, "portraitUrl" | "portraitData" | "backgroundImageUrl" | "backgroundImageData" | "themeColor">>) => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      ...updates,
+    }));
+  };
+  const readImageFile = (file: File | undefined, field: "portraitData" | "backgroundImageData") => {
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        updateCharacterMedia({ [field]: reader.result } as Partial<Pick<typeof draft, "portraitData" | "backgroundImageData">>);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const inPartyShell = Boolean(partyId);
 
   return (
-    <div className="min-w-0 lg:grid lg:grid-cols-[minmax(0,1fr),minmax(300px,360px)] lg:items-start lg:gap-4">
-      <div className="min-w-0 space-y-4 pb-44 lg:pb-0">
+    <div
+      className={
+        inPartyShell
+          ? "min-h-0 min-w-0 lg:grid lg:h-full lg:grid-cols-[minmax(0,1fr),340px] lg:items-stretch lg:gap-3 lg:overflow-hidden"
+          : "min-w-0 lg:grid lg:grid-cols-[minmax(0,1fr),minmax(300px,360px)] lg:items-start lg:gap-4"
+      }
+    >
+      <div className={inPartyShell ? "min-h-0 min-w-0 space-y-4 overflow-y-auto pb-44 pr-1 lg:pb-0" : "min-w-0 space-y-4 pb-44 lg:pb-0"}>
         <CharacterHeroHeader
           actions={
             <>
               <Link className="sheet-focus-ring rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800" to={`/builder/${draft.id}`}>
                 Edit Builder
               </Link>
-              <Link className="sheet-focus-ring rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800" to="/">
+              <Link className="sheet-focus-ring rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800" to={partyId ? `/party/${partyId}` : "/"}>
                 Back
               </Link>
             </>
@@ -574,6 +634,52 @@ export function CharacterSheetPage() {
           name={draft.name}
           originLine={combat.originLine}
         />
+        <section className="sheet-card grid gap-3 p-3 md:grid-cols-3">
+          <label className="text-xs font-medium text-slate-700">
+            Portrait URL
+            <input
+              className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+              onChange={(event) => updateCharacterMedia({ portraitUrl: event.target.value, portraitData: undefined })}
+              placeholder="https://..."
+              value={draft.portraitUrl ?? ""}
+            />
+          </label>
+          <label className="text-xs font-medium text-slate-700">
+            Background URL
+            <input
+              className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+              onChange={(event) => updateCharacterMedia({ backgroundImageUrl: event.target.value, backgroundImageData: undefined })}
+              placeholder="https://..."
+              value={draft.backgroundImageUrl ?? ""}
+            />
+          </label>
+          <label className="text-xs font-medium text-slate-700">
+            Theme
+            <input
+              className="mt-1 h-9 w-full rounded border border-slate-300 bg-white px-1"
+              onChange={(event) => updateCharacterMedia({ themeColor: event.target.value })}
+              type="color"
+              value={draft.themeColor ?? "#334155"}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2 md:col-span-3">
+            <label className="sheet-focus-ring cursor-pointer rounded bg-slate-200 px-3 py-1.5 text-xs text-slate-800">
+              Upload Portrait
+              <input hidden accept="image/*" type="file" onChange={(event) => readImageFile(event.target.files?.[0], "portraitData")} />
+            </label>
+            <label className="sheet-focus-ring cursor-pointer rounded bg-slate-200 px-3 py-1.5 text-xs text-slate-800">
+              Upload Background
+              <input hidden accept="image/*" type="file" onChange={(event) => readImageFile(event.target.files?.[0], "backgroundImageData")} />
+            </label>
+            <button
+              className="sheet-focus-ring rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800"
+              onClick={() => updateCharacterMedia({ portraitUrl: undefined, portraitData: undefined, backgroundImageUrl: undefined, backgroundImageData: undefined, themeColor: undefined })}
+              type="button"
+            >
+              Clear Images
+            </button>
+          </div>
+        </section>
 
         <nav
           aria-label="Character sheet tabs"
@@ -755,11 +861,13 @@ export function CharacterSheetPage() {
               inventoryAmmunition={inventory.ammunition}
               lastRoll={lastRoll}
               onActivateEffect={playStateView.addActiveEffect}
+              onActivateEffectOnAlly={partyMode === "shared-server" ? activateEffectOnAlly : undefined}
               onCreateCustomEffect={playStateView.addCustomActiveEffect}
               onRecordAttackResolution={playStateView.recordAttackResolution}
               onRoll={rollWithSelectedEffects}
               onRollModeChange={setRollMode}
               onSpendResource={playStateView.spendResource}
+              partyAllies={partyAllies}
               automationSettings={playStateView.automationSettings}
               resources={playStateView.resourceCounters}
               rollMode={rollMode}
@@ -1306,8 +1414,8 @@ export function CharacterSheetPage() {
         ) : null}
       </div>
 
-      <aside className="hidden min-w-0 lg:block">
-        <div className="sticky top-3 max-h-[calc(100vh-1rem)] overflow-y-auto pr-1">
+      <aside className={inPartyShell ? "hidden min-h-0 min-w-0 lg:block" : "hidden min-w-0 lg:block"}>
+        <div className={inPartyShell ? "h-full overflow-y-auto pr-1" : "sticky top-3 max-h-[calc(100vh-1rem)] overflow-y-auto pr-1"}>
           <PersistentRollDock
             activeEffects={rollEffects}
             lastRoll={lastRoll}

@@ -23,6 +23,8 @@
     "test": "npm run data:generate && vitest run",
     "test:watch": "npm run data:generate && vitest",
     "build": "npm run data:generate && vite build",
+    "serve": "npm run build && node scripts/party-server.mjs",
+    "party:serve": "npm run serve",
     "preview": "vite preview",
     "minify": "gulp",
     "minifyStable": "gulp minifyStable",
