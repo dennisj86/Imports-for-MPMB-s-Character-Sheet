@@ -38,7 +38,21 @@ import {
 import type { CharacterAutomationSettings, CharacterPlayEvent } from "../domain/playState";
 import type { RollEffectSelectionOrigin, RollMode, RollRequest, RollResult } from "../domain/rolls";
 import { resolveCharacterEngineState } from "../services/characterEngine";
-import { adjustCurrencyAmount as adjustInventoryCurrencyAmount, equipItem, setCurrencyAmount as setInventoryCurrencyAmount, setHpGainMethod, unequipItem } from "../services/equipment";
+import {
+  addInventoryItem,
+  adjustCurrencyAmount as adjustInventoryCurrencyAmount,
+  adjustInventoryItemQuantity,
+  applyCurrencyNormalization,
+  applyCurrencyTransaction,
+  consumeInventoryItem,
+  duplicateInventoryItem,
+  equipItem,
+  removeInventoryItem,
+  setCurrencyAmount as setInventoryCurrencyAmount,
+  setHpGainMethod,
+  unequipItem,
+  updateInventoryItem,
+} from "../services/equipment";
 import {
   addCharacterXp,
   applyLevelUpWithSnapshot,
@@ -405,6 +419,106 @@ export function CharacterSheetPage() {
       inventory: adjustInventoryCurrencyAmount(current.inventory, denomination, delta),
     }));
   };
+  const normalizeCurrency = () => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      inventory: applyCurrencyNormalization(current.inventory),
+    }));
+  };
+  const applyCurrencyTx = (input: { mode: "add" | "subtract"; denomination: "cp" | "sp" | "ep" | "gp" | "pp"; amount: number; note?: string }) => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      inventory: applyCurrencyTransaction(current.inventory, input),
+    }));
+    playStateView.recordCurrencyTransaction(input);
+  };
+  const addInventoryEntry = (input: {
+    name: string;
+    quantity: number;
+    itemType: "weapon" | "armor" | "shield" | "gear" | "tool" | "focus" | "consumable" | "ammunition" | "magic-item" | "spell-component" | "custom";
+    category?: string;
+    type?: string;
+    notes?: string;
+    equipped?: boolean;
+  }) => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      inventory: addInventoryItem(current.inventory, input, engine.equipmentCatalog),
+    }));
+  };
+  const updateInventoryEntry = (
+    itemInstanceId: string,
+    patch: {
+      name?: string;
+      quantity?: number;
+      itemType?: "weapon" | "armor" | "shield" | "gear" | "tool" | "focus" | "consumable" | "ammunition" | "magic-item" | "spell-component" | "custom";
+      category?: string;
+      type?: string;
+      notes?: string;
+      equipped?: boolean;
+    },
+  ) => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      inventory: updateInventoryItem(current.inventory, itemInstanceId, patch, engine.equipmentCatalog),
+    }));
+  };
+  const removeInventoryEntry = (itemInstanceId: string) => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      inventory: removeInventoryItem(current.inventory, itemInstanceId, engine.equipmentCatalog),
+    }));
+  };
+  const duplicateInventoryEntry = (itemInstanceId: string) => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      inventory: duplicateInventoryItem(current.inventory, itemInstanceId, engine.equipmentCatalog),
+    }));
+  };
+  const consumeInventoryEntry = (itemInstanceId: string, amount = 1) => {
+    let consumedName: string | undefined;
+    let consumedAmount = amount;
+    let consumedRemaining: number | undefined;
+    let consumedType: string | undefined;
+    updateCharacter(draft.id, (current) => {
+      const result = consumeInventoryItem(current.inventory, itemInstanceId, amount, engine.equipmentCatalog);
+      if (result.consumed) {
+        consumedName = result.itemName;
+        consumedAmount = result.amount;
+        consumedRemaining = result.remainingQuantity;
+        consumedType = current.inventory.items.find((item) => item.instanceId === itemInstanceId || item.id === itemInstanceId)?.itemType;
+      }
+      return {
+        ...current,
+        inventory: result.inventory,
+      };
+    });
+    if (consumedName) {
+      playStateView.recordInventoryItemUse({
+        itemName: consumedName,
+        amount: consumedAmount,
+        remainingQuantity: consumedRemaining,
+        itemType: consumedType,
+      });
+    }
+  };
+  const adjustInventoryEntryQuantity = (itemInstanceId: string, delta: number) => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      inventory: adjustInventoryItemQuantity(current.inventory, itemInstanceId, delta, engine.equipmentCatalog),
+    }));
+  };
+  const addSpellComponentNeedToInventory = (need: ReturnType<typeof buildInventoryViewModel>["neededSpellComponents"][number]) => {
+    addInventoryEntry({
+      name: need.addSuggestionName,
+      quantity: 1,
+      itemType: "spell-component",
+      category: "gear",
+      type: "spell component",
+      notes: `${need.spellName}: ${need.componentText}`,
+      equipped: false,
+    });
+  };
   const chooseHpGainMethod = (method: Parameters<typeof setHpGainMethod>[2]) => {
     updateCharacter(draft.id, (current) => setHpGainMethod(current, current.classSelection.level, method));
   };
@@ -638,6 +752,7 @@ export function CharacterSheetPage() {
             <SectionHeader subtitle="Grouped action surface with reduced scrolling." title="Actions & Rolls" />
             <ActionRollPanel
               activeEffectCatalog={activeEffectCatalog}
+              inventoryAmmunition={inventory.ammunition}
               lastRoll={lastRoll}
               onActivateEffect={playStateView.addActiveEffect}
               onCreateCustomEffect={playStateView.addCustomActiveEffect}
@@ -672,10 +787,19 @@ export function CharacterSheetPage() {
           <section aria-labelledby="inventory-tab" className="sheet-card min-w-0 p-4" id="inventory-panel" role="tabpanel">
             <SectionHeader subtitle="Equipped state, armor/shield/weapon cards and AC readability" title="Inventory & Equipment" />
             <InventoryPanel
+              onAddItem={addInventoryEntry}
               onAdjustCurrency={adjustCurrencyAmount}
+              onAdjustItemQuantity={adjustInventoryEntryQuantity}
+              onAddSpellComponentItem={addSpellComponentNeedToInventory}
+              onApplyCurrencyTransaction={applyCurrencyTx}
+              onConsumeItem={consumeInventoryEntry}
+              onDuplicateItem={duplicateInventoryEntry}
               onEquipItem={equipInventoryItem}
+              onNormalizeCurrency={normalizeCurrency}
+              onRemoveItem={removeInventoryEntry}
               onSetCurrency={setCurrencyAmount}
               onUnequipItem={unequipInventoryItem}
+              onUpdateItem={updateInventoryEntry}
               viewModel={inventory}
             />
           </section>

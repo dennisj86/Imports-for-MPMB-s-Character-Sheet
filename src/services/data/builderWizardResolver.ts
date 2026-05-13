@@ -1072,7 +1072,8 @@ export function validateBuilderStep(
   const warnings: string[] = [];
   const { draft, classDef, subclassDef, appliedRules, progression } = input;
   const pendingCanonicalRuleChoices = (input.ruleEngine?.choiceSurface.choices ?? [])
-    .filter((choice) => choice.playerVisible && choice.requiredCount > 0 && (choice.status === "pending" || choice.status === "blocked"));
+    .filter((choice) => choice.playerVisible && choice.requiredCount > 0 && (choice.status === "pending" || choice.status === "blocked"))
+    .filter((choice) => choice.choiceType !== "spell" && choice.choiceType !== "cantrip");
 
   if (stepId === "class") {
     if (!draft.name.trim()) {

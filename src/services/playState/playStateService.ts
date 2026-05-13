@@ -1349,6 +1349,65 @@ export function recordResourceSpendBlocked(
   });
 }
 
+export function recordInventoryItemUse(
+  playState: CharacterPlayState,
+  input: {
+    itemName: string;
+    amount: number;
+    remainingQuantity?: number;
+    itemType?: string;
+    note?: string;
+    now?: string;
+  },
+): CharacterPlayState {
+  const timestamp = nowTimestamp(input.now);
+  return reduceCharacterPlayState(playState, {
+    type: "record-event",
+    timestamp,
+    event: createPlayEvent({
+      timestamp,
+      type: "inventory-item-use",
+      shortLabel: `${input.itemName} used`,
+      payload: {
+        itemName: input.itemName,
+        amount: input.amount,
+        remainingQuantity: input.remainingQuantity,
+        itemType: input.itemType,
+        note: input.note,
+      },
+    }),
+  });
+}
+
+export function recordCurrencyTransaction(
+  playState: CharacterPlayState,
+  input: {
+    mode: "add" | "subtract";
+    denomination: "cp" | "sp" | "ep" | "gp" | "pp";
+    amount: number;
+    note?: string;
+    now?: string;
+  },
+): CharacterPlayState {
+  const timestamp = nowTimestamp(input.now);
+  const direction = input.mode === "subtract" ? "-" : "+";
+  return reduceCharacterPlayState(playState, {
+    type: "record-event",
+    timestamp,
+    event: createPlayEvent({
+      timestamp,
+      type: "currency-transaction",
+      shortLabel: `Currency ${direction}${input.amount} ${input.denomination}`,
+      payload: {
+        mode: input.mode,
+        denomination: input.denomination,
+        amount: input.amount,
+        note: input.note,
+      },
+    }),
+  });
+}
+
 export interface RollAndRecordOptions {
   rng?: () => number;
   now?: string;

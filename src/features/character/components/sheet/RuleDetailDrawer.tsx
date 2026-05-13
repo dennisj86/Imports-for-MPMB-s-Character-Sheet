@@ -71,8 +71,8 @@ export function RuleDetailDrawer({
       {detail.gameplaySummary ? <p className="mt-1 text-slate-700">{detail.gameplaySummary}</p> : null}
       {entries.length ? (
         <dl className="mt-2 grid gap-x-3 gap-y-1 sm:grid-cols-2">
-          {entries.map((entry) => (
-            <div key={`${detail.name}-${entry.label}`}>
+          {entries.map((entry, index) => (
+            <div key={`${detail.name}-${entry.label}-${index}`}>
               <dt className="text-[11px] uppercase tracking-wide text-slate-500">{entry.label}</dt>
               <dd className="text-slate-800">{entry.value}</dd>
             </div>

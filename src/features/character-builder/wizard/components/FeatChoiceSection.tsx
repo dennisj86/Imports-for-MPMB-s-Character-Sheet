@@ -1,14 +1,22 @@
 import { useMemo, useState } from "react";
 import { inputClassName } from "../../../../components/ui/FormField";
-import type { FeatChoiceContext } from "../../../../domain/builderWizard";
+import type { FeatChoiceContext, SpellChoiceContext } from "../../../../domain/builderWizard";
 
 type FeatChoiceSectionProps = {
   contexts: FeatChoiceContext[];
+  spellContexts: SpellChoiceContext[];
+  onOpenSpellsStep?: () => void;
   onSelectFeat: (contextId: string, featId: string | undefined) => void;
   onSelectSubchoice: (subchoiceId: string, optionId: string | undefined) => void;
 };
 
-export function FeatChoiceSection({ contexts, onSelectFeat, onSelectSubchoice }: FeatChoiceSectionProps) {
+export function FeatChoiceSection({
+  contexts,
+  spellContexts,
+  onOpenSpellsStep,
+  onSelectFeat,
+  onSelectSubchoice,
+}: FeatChoiceSectionProps) {
   const [query, setQuery] = useState("");
 
   const queryLower = query.toLowerCase().trim();
@@ -93,6 +101,33 @@ export function FeatChoiceSection({ contexts, onSelectFeat, onSelectSubchoice }:
               ))}
             </div>
           ) : null}
+          {context.selectedFeatId
+            ? (() => {
+                const relatedSpellContexts = spellContexts.filter((entry) => entry.source === "feat" && entry.sourceId === context.selectedFeatId);
+                if (relatedSpellContexts.length === 0) {
+                  return null;
+                }
+                return (
+                  <div className="mt-2 rounded border border-indigo-200 bg-indigo-50 p-2 text-xs text-indigo-900">
+                    <p className="font-medium">Spell Choices Owned By Spells Tab</p>
+                    <div className="mt-1 space-y-1">
+                      {relatedSpellContexts.map((entry) => (
+                        <p key={entry.id}>
+                          {entry.title}: {entry.selectedSpellIds.length}/{entry.requiredCount} ({entry.satisfied ? "complete" : "pending"})
+                        </p>
+                      ))}
+                    </div>
+                    <button
+                      className="sheet-focus-ring mt-2 rounded bg-indigo-700 px-2 py-1 text-xs text-white"
+                      onClick={onOpenSpellsStep}
+                      type="button"
+                    >
+                      Complete spell choices in Spells
+                    </button>
+                  </div>
+                );
+              })()
+            : null}
           {context.selectedFeatName ? <p className="mt-2 text-xs text-slate-600">Selected: {context.selectedFeatName}</p> : null}
         </section>
       ))}

@@ -95,6 +95,19 @@ function describeEvent(event: CharacterPlayEvent): string | undefined {
     const concentrationName = typeof event.payload.concentrationName === "string" ? event.payload.concentrationName : undefined;
     return [concentrationName ? `Concentration: ${concentrationName}` : undefined, dc].filter(Boolean).join(" · ");
   }
+  if (event.type === "inventory-item-use") {
+    const amount = typeof event.payload.amount === "number" ? `x${event.payload.amount}` : undefined;
+    const remaining = typeof event.payload.remainingQuantity === "number" ? `remaining ${event.payload.remainingQuantity}` : undefined;
+    const note = typeof event.payload.note === "string" && event.payload.note ? event.payload.note : undefined;
+    return [amount, remaining, note].filter(Boolean).join(" · ") || "Inventory item used.";
+  }
+  if (event.type === "currency-transaction") {
+    const mode = typeof event.payload.mode === "string" ? event.payload.mode : undefined;
+    const amount = typeof event.payload.amount === "number" ? String(event.payload.amount) : undefined;
+    const denom = typeof event.payload.denomination === "string" ? event.payload.denomination : undefined;
+    const note = typeof event.payload.note === "string" && event.payload.note ? event.payload.note : undefined;
+    return [mode && amount && denom ? `${mode} ${amount} ${denom}` : undefined, note].filter(Boolean).join(" · ") || "Currency transaction logged.";
+  }
   if (event.type === "hit-die-spent") {
     const result = event.payload.result;
     if (result && typeof result === "object" && "rawRoll" in result) {

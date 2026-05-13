@@ -298,6 +298,8 @@ const playStateSchema = z.object({
         "attack-resolution",
         "automation-settings-update",
         "concentration-check-prompt",
+        "inventory-item-use",
+        "currency-transaction",
       ]),
       shortLabel: z.string(),
       payload: z.record(z.unknown()),
@@ -319,6 +321,10 @@ const inventoryItemSchema = z.object({
   equipmentSlot: equipmentSlotSchema.optional(),
   category: z.string().optional(),
   type: z.string().optional(),
+  itemType: z
+    .enum(["weapon", "armor", "shield", "gear", "tool", "focus", "consumable", "ammunition", "magic-item", "spell-component", "custom"])
+    .optional(),
+  notes: z.string().optional(),
 });
 
 const currencySchema = z
@@ -330,6 +336,14 @@ const currencySchema = z
     pp: z.number().int().nonnegative().default(0),
   })
   .default({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
+
+const currencyTransactionSchema = z.object({
+  id: z.string(),
+  timestamp: z.string(),
+  delta: currencySchema,
+  note: z.string().optional(),
+  mode: z.enum(["add", "subtract", "set"]),
+});
 
 const levelUpStateSchema = z.object({
   hpGainByLevel: z.record(
@@ -442,6 +456,7 @@ const characterDraftV2Schema = z.object({
   inventory: z.object({
     items: z.array(inventoryItemSchema),
     currency: currencySchema.optional(),
+    currencyTransactions: z.array(currencyTransactionSchema).optional(),
   }),
   xp: xpTrackingStateSchema,
   levelUp: levelUpStateSchema,
@@ -482,6 +497,7 @@ const characterDraftV1Schema = z.object({
   inventory: z.object({
     items: z.array(inventoryItemSchema),
     currency: currencySchema.optional(),
+    currencyTransactions: z.array(currencyTransactionSchema).optional(),
   }),
 });
 

@@ -124,7 +124,9 @@ export type CharacterPlayEventType =
   | "rest-long"
   | "attack-resolution"
   | "automation-settings-update"
-  | "concentration-check-prompt";
+  | "concentration-check-prompt"
+  | "inventory-item-use"
+  | "currency-transaction";
 
 export interface CharacterPlayEvent {
   id: string;

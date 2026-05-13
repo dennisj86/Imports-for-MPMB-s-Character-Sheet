@@ -4,6 +4,7 @@ import type { ActiveEffectCatalogEntry, ActiveEffectDefinition, RuleModifier } f
 import type { CharacterRollView, RollActionDescriptor, RollMode, RollRequest, RollResult, RollType } from "../../../../domain/rolls";
 import type { PlayResourceCounter } from "../../../../services/playState";
 import { searchActiveEffectCatalog, type ActiveEffectCatalogEffectFilter, type ActiveEffectCatalogSourceFilter } from "../../../../services/rules";
+import type { InventoryItemViewModel } from "../../viewModels/inventoryViewModel";
 import { ActionCard, EmptyState, InfoPopover, SectionHeader, StatusBadge } from "./SheetDesignSystem";
 import { RuleDetailDrawer } from "./RuleDetailDrawer";
 import { defaultManualInstructionForStatus, normalizeRuleAutomationStatus, ruleAutomationTone, type RuleAutomationStatus } from "./ruleAutomationStatus";
@@ -47,6 +48,7 @@ interface ActionRollPanelProps {
     note?: string;
     sourceCasterName?: string;
   }) => void;
+  inventoryAmmunition?: InventoryItemViewModel[];
 }
 
 const CUSTOM_ROLL_TYPE_OPTIONS: Array<{ value: RollType; label: string }> = [
@@ -141,6 +143,10 @@ function rollTypeLabel(rollType: RollType): string {
 
 function normalizeSearch(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function normalizeToken(value: string | undefined): string {
+  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 type WeaponProfileMetadata = {
@@ -261,6 +267,12 @@ interface AttackResolutionFlowState {
   status: "awaiting-confirmation" | "hit-confirmed";
 }
 
+interface ResolvedAmmoHint {
+  label: string;
+  quantity?: number;
+  note?: string;
+}
+
 function descriptorTimingLabel(value: RollActionDescriptor["activationType"]): string {
   if (value === "bonus-action") return "bonus action";
   if (value === "reaction") return "reaction";
@@ -279,6 +291,72 @@ function descriptorSourceLabel(descriptor: RollActionDescriptor): string {
   if (descriptor.sourceType === "spell") return "spell";
   if (descriptor.sourceType === "item") return "item";
   return "custom";
+}
+
+function ammoFamilyFromText(value: string): "arrow" | "bolt" | "bullet" | "needle" | "general" {
+  const normalized = normalizeToken(value);
+  if (normalized.includes("crossbow") || normalized.includes("bolt")) return "bolt";
+  if (normalized.includes("longbow") || normalized.includes("shortbow") || normalized.includes("bow") || normalized.includes("arrow")) return "arrow";
+  if (normalized.includes("sling") || normalized.includes("bullet")) return "bullet";
+  if (normalized.includes("blowgun") || normalized.includes("needle") || normalized.includes("dart")) return "needle";
+  return "general";
+}
+
+function ammoFamiliesForItem(item: InventoryItemViewModel): Set<ReturnType<typeof ammoFamilyFromText>> {
+  const token = normalizeToken(`${item.name} ${item.type ?? ""} ${item.notes ?? ""} ${item.propertyLabels.join(" ")}`);
+  const families = new Set<ReturnType<typeof ammoFamilyFromText>>();
+  if (token.includes("bolt")) families.add("bolt");
+  if (token.includes("arrow") || token.includes("arrows")) families.add("arrow");
+  if (token.includes("bullet") || token.includes("stone")) families.add("bullet");
+  if (token.includes("needle") || token.includes("dart")) families.add("needle");
+  if (families.size === 0) {
+    families.add("general");
+  }
+  return families;
+}
+
+function isAmmoTrackableWeapon(descriptor: RollActionDescriptor, weaponProfile: WeaponProfileMetadata | undefined): boolean {
+  if (!weaponProfile) {
+    return false;
+  }
+  const properties = weaponProfile.properties ?? [];
+  return (
+    weaponProfile.usageMode === "ranged"
+    || properties.includes("ammunition")
+    || properties.includes("ranged")
+    || Boolean(weaponProfile.range)
+    || /\branged\b|\bammunition\b/.test(normalizeToken(`${descriptor.label} ${descriptor.description ?? ""}`))
+  );
+}
+
+function resolveAmmoHint(
+  descriptor: RollActionDescriptor,
+  weaponProfile: WeaponProfileMetadata | undefined,
+  ammunitionItems: InventoryItemViewModel[],
+): ResolvedAmmoHint | undefined {
+  if (!isAmmoTrackableWeapon(descriptor, weaponProfile)) {
+    return undefined;
+  }
+  if (ammunitionItems.length === 0) {
+    return {
+      label: "Ammo tracking available",
+      note: "Track ammunition manually or add ammo items in Inventory.",
+    };
+  }
+  const family = ammoFamilyFromText(`${descriptor.label} ${weaponProfile?.range ?? ""} ${(weaponProfile?.properties ?? []).join(" ")}`);
+  const familyMatches = ammunitionItems.filter((item) => ammoFamiliesForItem(item).has(family));
+  const fallback = ammunitionItems.filter((item) => item.quantity > 0);
+  const selected = familyMatches.length === 1 ? familyMatches[0] : familyMatches.length > 1 ? familyMatches.sort((left, right) => right.quantity - left.quantity)[0] : fallback.length === 1 ? fallback[0] : undefined;
+  if (!selected) {
+    return {
+      label: "Ammo tracking available",
+      note: "Multiple ammo items found. Choose and consume manually in Inventory.",
+    };
+  }
+  return {
+    label: selected.name,
+    quantity: selected.quantity,
+  };
 }
 
 function riderStatusTone(status: RiderAutomationStatus): "pending" | "blocked" | "unsupported" {
@@ -414,6 +492,7 @@ function ActionDescriptorRow({
   onRoll,
   onRecordAttackResolution,
   onSpendResource,
+  ammunitionItems,
 }: {
   descriptor: RollActionDescriptor;
   lastRoll?: RollResult;
@@ -426,6 +505,7 @@ function ActionDescriptorRow({
   onRoll: ActionRollPanelProps["onRoll"];
   onRecordAttackResolution?: ActionRollPanelProps["onRecordAttackResolution"];
   onSpendResource: ActionRollPanelProps["onSpendResource"];
+  ammunitionItems: InventoryItemViewModel[];
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [attackFlow, setAttackFlow] = useState<AttackResolutionFlowState | undefined>();
@@ -478,6 +558,7 @@ function ActionDescriptorRow({
   });
   const propertyDetails = weaponProperties.map((property) => `${property}: ${weaponPropertySummary(property)}`);
   const manualInstructions = descriptor.manualInstructions || defaultManualInstructionForStatus(actionAutomation);
+  const ammoHint = resolveAmmoHint(descriptor, weaponProfile, ammunitionItems);
   const knownLimitations = Array.from(
     new Set(
       [
@@ -662,6 +743,7 @@ function ActionDescriptorRow({
             {ambiguousResources ? <StatusBadge label="manual resource spend" status="blocked" /> : null}
             {resource ? <StatusBadge label={`${resource.name} ${resource.remaining}/${resource.max}`} status={resource.remaining > 0 ? "complete" : "pending"} /> : null}
             {weaponProfile?.range ? <StatusBadge label={`range ${weaponProfile.range}`} status="info" /> : null}
+            {ammoHint?.quantity !== undefined ? <StatusBadge label={`${ammoHint.label} x${ammoHint.quantity}`} status="info" /> : ammoHint ? <StatusBadge label={ammoHint.label} status="info" /> : null}
           </>
         }
         actions={
@@ -864,6 +946,7 @@ function ActionDescriptorRow({
             {versatileLabel ? <span className="text-slate-500">{versatileLabel}</span> : null}
           </label>
         ) : null}
+        {ammoHint?.note ? <p className="mt-1 text-xs text-slate-600">{ammoHint.note}</p> : null}
         {linkedResult ? (
           <div className="mt-2 rounded border border-indigo-200 bg-indigo-50 p-2 text-xs text-slate-700">
             <p className="font-medium text-indigo-900">Last Result: {linkedResult.label}</p>
@@ -913,6 +996,7 @@ function ActionDescriptorRow({
                 { label: "Spell Save", value: descriptor.spellSaveDc ? `DC ${descriptor.spellSaveDc}${descriptor.spellSaveAbility ? ` (${descriptor.spellSaveAbility.toUpperCase()})` : ""}` : undefined },
                 { label: "Weapon Mastery", value: masteryName ? `${masteryName}${masterySummary ? ` · ${masterySummary}` : ""}` : undefined },
                 { label: "Weapon Properties", value: propertyDetails.length ? propertyDetails.join(" · ") : undefined },
+                { label: "Ammunition", value: ammoHint ? `${ammoHint.label}${ammoHint.quantity !== undefined ? ` · x${ammoHint.quantity}` : ""}` : undefined },
               ],
             }}
             heading="Action Details"
@@ -964,6 +1048,7 @@ export function ActionRollPanel({
   onSpendResource,
   onActivateEffect,
   onCreateCustomEffect,
+  inventoryAmmunition = [],
 }: ActionRollPanelProps) {
   const [buffSearch, setBuffSearch] = useState("");
   const [sourceFilters, setSourceFilters] = useState<ActiveEffectCatalogSourceFilter[]>(["spells", "features", "items", "custom"]);
@@ -1126,6 +1211,7 @@ export function ActionRollPanel({
               {group.map((descriptor) => (
                 <ActionDescriptorRow
                   key={descriptor.id}
+                  ammunitionItems={inventoryAmmunition}
                   automationSettings={automationSettings}
                   descriptor={descriptor}
                   lastRoll={lastRoll}
@@ -1237,10 +1323,11 @@ export function ActionRollPanel({
             ) : (
               <ul className="space-y-2">
                 {filteredSpellRolls.map((descriptor) => (
-                  <ActionDescriptorRow
-                    key={descriptor.id}
-                    automationSettings={automationSettings}
-                    descriptor={descriptor}
+                <ActionDescriptorRow
+                  key={descriptor.id}
+                  ammunitionItems={inventoryAmmunition}
+                  automationSettings={automationSettings}
+                  descriptor={descriptor}
                     lastRoll={lastRoll}
                     onRecordAttackResolution={onRecordAttackResolution}
                     onRoll={onRoll}

@@ -48,6 +48,7 @@ export function createCharacterDraft(id: string, name: string): CharacterDraft {
         gp: 0,
         pp: 0,
       },
+      currencyTransactions: [],
     },
     xp: {
       currentXp: 0,

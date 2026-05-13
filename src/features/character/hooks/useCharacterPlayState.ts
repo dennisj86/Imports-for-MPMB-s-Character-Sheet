@@ -20,7 +20,9 @@ import {
   ensureCharacterPlayState,
   getLatestHitDieSpendResult,
   recordAttackResolution,
+  recordCurrencyTransaction,
   recordDeathSave,
+  recordInventoryItemUse,
   replaceTempHp,
   resolveHitDiceCounters,
   resolveResourceCounters,
@@ -92,6 +94,8 @@ export interface CharacterPlayStateViewState {
   toggleCondition: (conditionIdOrName: string, source?: string, notes?: string) => void;
   startConcentration: (name: string, sourceId?: string, notes?: string) => void;
   endConcentration: (reason?: string) => void;
+  recordInventoryItemUse: (input: { itemName: string; amount: number; remainingQuantity?: number; itemType?: string; note?: string }) => void;
+  recordCurrencyTransaction: (input: { mode: "add" | "subtract"; denomination: "cp" | "sp" | "ep" | "gp" | "pp"; amount: number; note?: string }) => void;
   applyShortRest: () => void;
   applyLongRest: () => void;
 }
@@ -347,6 +351,14 @@ export function useCharacterPlayState(
     commit((current) => endConcentration(current, reason));
   }, [commit]);
 
+  const recordInventoryItemUseAction = useCallback((input: { itemName: string; amount: number; remainingQuantity?: number; itemType?: string; note?: string }) => {
+    commit((current) => recordInventoryItemUse(current, input));
+  }, [commit]);
+
+  const recordCurrencyTransactionAction = useCallback((input: { mode: "add" | "subtract"; denomination: "cp" | "sp" | "ep" | "gp" | "pp"; amount: number; note?: string }) => {
+    commit((current) => recordCurrencyTransaction(current, input));
+  }, [commit]);
+
   const shortRestAction = useCallback(() => {
     if (!runtime) {
       return;
@@ -395,6 +407,8 @@ export function useCharacterPlayState(
     toggleCondition: toggleConditionAction,
     startConcentration: startConcentrationAction,
     endConcentration: endConcentrationAction,
+    recordInventoryItemUse: recordInventoryItemUseAction,
+    recordCurrencyTransaction: recordCurrencyTransactionAction,
     applyShortRest: shortRestAction,
     applyLongRest: longRestAction,
   };

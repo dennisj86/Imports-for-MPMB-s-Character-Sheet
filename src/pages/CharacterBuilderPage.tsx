@@ -13,6 +13,7 @@ import { InventoryEditor } from "../features/character/components/InventoryEdito
 import { weaponMasteryInfoForToken } from "../features/character/components/sheet/weaponMasteryInfo";
 import { FeatChoiceSection } from "../features/character-builder/wizard/components/FeatChoiceSection";
 import { ChoiceOptionPicker } from "../features/character-builder/wizard/components/ChoiceOptionPicker";
+import { buildSpellOptionDetailModel, spellOptionSummary } from "../features/character-builder/wizard/components/SpellOptionPreview";
 import { SpellChoiceSection } from "../features/character-builder/wizard/components/SpellChoiceSection";
 import { WizardStepRail } from "../features/character-builder/wizard/components/WizardStepRail";
 import type { SkillChoiceState, StartingEquipmentChoiceContext, WizardCompletionState, WizardStepId, WizardStepState, WizardStepValidation } from "../domain/builderWizard";
@@ -93,6 +94,9 @@ export function CharacterBuilderPage() {
   const progression = wizardView.engine.progression;
   const featChoiceContexts = wizardView.wizard.featContexts;
   const spellChoiceContexts = spellManagementView.spellManagement.contexts;
+  const visibleCanonicalChoices = wizardView.engine.ruleEngine.choiceSurface.choices.filter((choice) => choice.playerVisible);
+  const spellOwnedCanonicalChoices = visibleCanonicalChoices.filter((choice) => choice.choiceType === "spell" || choice.choiceType === "cantrip");
+  const nonSpellCanonicalChoices = visibleCanonicalChoices.filter((choice) => choice.choiceType !== "spell" && choice.choiceType !== "cantrip");
   const skillChoiceStates = wizardView.wizard.skillChoiceStates;
   const startingEquipmentChoices = wizardView.wizard.equipmentChoices;
   const requiredChoices = wizardView.wizard.requiredChoices;
@@ -252,14 +256,35 @@ export function CharacterBuilderPage() {
               updateCharacter={updateCharacter}
             />
             <GenericRuleChoicesStep
-              choices={wizardView.engine.ruleEngine.choiceSurface.choices.filter((choice) => choice.playerVisible)}
+              choices={nonSpellCanonicalChoices}
               draft={draft}
               ruleSources={wizardView.engine.ruleEngine.sources}
               spellCatalog={wizardView.engine.spellCatalog}
               updateCharacter={updateCharacter}
             />
+            {spellOwnedCanonicalChoices.length ? (
+              <section className="rounded border border-indigo-200 bg-indigo-50 p-3 text-sm">
+                <h3 className="text-sm font-semibold text-indigo-900">Spell Choices Owned by Spells Tab</h3>
+                <p className="mt-1 text-xs text-indigo-800">Spell and cantrip selections are completed in the Spells step to keep one canonical selection flow.</p>
+                <div className="mt-2 space-y-1">
+                  {spellOwnedCanonicalChoices.map((choice) => (
+                    <p key={choice.id} className="text-xs text-indigo-900">
+                      {choice.label}: {choice.selectedCount}/{choice.requiredCount} ({choice.status})
+                    </p>
+                  ))}
+                </div>
+                <button
+                  className="mt-2 rounded bg-indigo-700 px-2 py-1 text-xs text-white"
+                  onClick={() => setCurrentStepId("spells")}
+                  type="button"
+                >
+                  Open Spells Step
+                </button>
+              </section>
+            ) : null}
             <FeatChoiceSection
               contexts={featChoiceContexts}
+              onOpenSpellsStep={() => setCurrentStepId("spells")}
               onSelectFeat={(contextId, featId) =>
                 updateCharacter(draft.id, (current) => {
                   const asiChoiceId = contextId.startsWith("feat-choice:asi:") ? contextId.slice("feat-choice:asi:".length) : undefined;
@@ -284,6 +309,7 @@ export function CharacterBuilderPage() {
                   featureChoices: setFeatureChoice(current.featureChoices, subchoiceId, optionId),
                 }))
               }
+              spellContexts={spellChoiceContexts}
             />
           </div>
         ) : null}
@@ -320,15 +346,15 @@ export function CharacterBuilderPage() {
         ) : null}
 
         {currentStepId === "review" ? (
-          <ReviewStep
-            appliedRules={appliedRules}
-            completion={completion}
-            draft={draft}
-            progression={progression}
-            ruleChoices={wizardView.engine.ruleEngine.choiceSurface.choices.filter((choice) => choice.playerVisible)}
-            requiredChoices={requiredChoices}
-            selectedBackground={selectedBackground?.name}
-            selectedClass={selectedClass?.name}
+            <ReviewStep
+              appliedRules={appliedRules}
+              completion={completion}
+              draft={draft}
+              progression={progression}
+              ruleChoices={visibleCanonicalChoices}
+              requiredChoices={requiredChoices}
+              selectedBackground={selectedBackground?.name}
+              selectedClass={selectedClass?.name}
             selectedFeats={selectedFeatEntries.map((entry) => entry.name)}
             selectedSpecies={selectedSpecies?.name}
             selectedSpells={selectedSpellEntries.map((entry) => entry.name)}
@@ -1010,30 +1036,6 @@ function GenericRuleChoicesStep({
   const spellById = useMemo(() => new Map(spellCatalog.map((entry) => [entry.id, entry])), [spellCatalog]);
   const sourceById = useMemo(() => new Map(ruleSources.map((source) => [source.id, source])), [ruleSources]);
 
-  const spellComponentsFromDescription = (description: string | undefined): string | undefined => {
-    const text = String(description ?? "");
-    const explicit = text.match(/(?:^|\n)\s*components?\s*:\s*([^\n]+)/i)?.[1]?.trim();
-    if (explicit) {
-      return explicit;
-    }
-    const mention = text.match(/\bcomponents?\s*:\s*[^.\n]+/i)?.[0]?.split(":")[1]?.trim();
-    return mention || undefined;
-  };
-  const spellUpcastFromDescription = (description: string | undefined): string | undefined => {
-    const text = String(description ?? "");
-    const matched = text.match(/at higher levels?\.?\s*([\s\S]+)/i);
-    if (!matched) {
-      return undefined;
-    }
-    return matched[1]?.split(/\n{2,}/)[0]?.replace(/\s+/g, " ").trim();
-  };
-  const firstSentence = (value: string | undefined): string | undefined => {
-    const text = String(value ?? "").replace(/\s+/g, " ").trim();
-    if (!text) {
-      return undefined;
-    }
-    return text.split(/(?<=[.!?])\s+/)[0];
-  };
   const spellForOption = (option: RuleChoiceOption): SpellDefinition | undefined => {
     const optionId = String(option.sourceId ?? option.id);
     return spellById.get(optionId) ?? spellById.get(option.id);
@@ -1042,30 +1044,12 @@ function GenericRuleChoicesStep({
     const source = sourceById.get(choice.choice.sourceDescriptorId);
     const spell = spellForOption(option);
     if (spell && (choice.choiceType === "spell" || choice.choiceType === "cantrip")) {
-      const levelLabel = spell.level === 0 ? "Cantrip" : `Level ${spell.level}`;
-      return {
-        name: spell.name,
-        source: source?.sourceName ?? choice.sourceName,
-        timing: spell.castingTime ?? "action",
-        rangeOrTarget: spell.range,
-        duration: spell.duration,
-        cost: spell.level === 0 ? "No slot cost (cantrip)." : `Spell slot level ${spell.level}+`,
-        description: spell.description,
-        gameplaySummary: firstSentence(spell.description) ?? `${levelLabel}${spell.school ? ` · ${spell.school}` : ""}`,
+      return buildSpellOptionDetailModel(spell, {
+        sourceLabel: source?.sourceName ?? choice.sourceName,
         automationStatus: "partial",
-        manualInstructions: "Confirm targeting, saving throw handling, and effect outcomes manually.",
-        knownLimitations: "No full spell effect automation engine is implemented.",
-        fields: [
-          { label: "Spell Level", value: levelLabel },
-          { label: "School", value: spell.school },
-          { label: "Casting Time", value: spell.castingTime },
-          { label: "Range", value: spell.range },
-          { label: "Duration", value: spell.duration },
-          { label: "Components", value: spellComponentsFromDescription(spell.description) },
-          { label: "Concentration/Ritual", value: `${spell.concentration ? "Concentration" : "No concentration"}${spell.ritual ? " · Ritual" : ""}` },
-          { label: "At Higher Levels", value: spellUpcastFromDescription(spell.description) },
-        ],
-      };
+        description: spell.description,
+        manualInstructions: "Verify Casting Time, Range, and Duration before confirming this spell choice.",
+      });
     }
 
     if (choice.choiceType === "weapon-mastery") {
@@ -1113,7 +1097,7 @@ function GenericRuleChoicesStep({
   const summaryForOption = (choice: CanonicalRuleChoice, option: RuleChoiceOption): string | undefined => {
     const spell = spellForOption(option);
     if (spell) {
-      return `${spell.level === 0 ? "Cantrip" : `L${spell.level}`} · ${spell.school ?? "School?"}${spell.castingTime ? ` · ${spell.castingTime}` : ""}${spell.range ? ` · ${spell.range}` : ""}${spell.duration ? ` · ${spell.duration}` : ""}`;
+      return spellOptionSummary(spell);
     }
     if (choice.choiceType === "weapon-mastery") {
       const mastery = String(option.metadata?.masteryLabel ?? option.metadata?.mastery ?? "Mastery unavailable");

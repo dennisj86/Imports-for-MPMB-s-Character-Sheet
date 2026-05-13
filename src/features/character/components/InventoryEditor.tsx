@@ -38,10 +38,14 @@ export function InventoryEditor({ catalog, inventory, onChange }: InventoryEdito
             if (existing) {
               onChange({
                 items: inventory.items.map((item) => (item.id === selected.id ? { ...item, quantity: item.quantity + 1 } : item)),
+                currency: inventory.currency,
+                currencyTransactions: inventory.currencyTransactions,
               });
             } else {
               onChange({
                 items: [...inventory.items, { id: selected.id, name: selected.name, quantity: 1 }],
+                currency: inventory.currency,
+                currencyTransactions: inventory.currencyTransactions,
               });
             }
           }}
@@ -76,6 +80,8 @@ export function InventoryEditor({ catalog, inventory, onChange }: InventoryEdito
                   const nextQty = Math.max(1, Number(event.target.value) || 1);
                   onChange({
                     items: inventory.items.map((entry) => (entry.id === item.id ? { ...entry, quantity: nextQty } : entry)),
+                    currency: inventory.currency,
+                    currencyTransactions: inventory.currencyTransactions,
                   });
                 }}
               />
@@ -91,7 +97,12 @@ export function InventoryEditor({ catalog, inventory, onChange }: InventoryEdito
               </label>
               <button
                 className="rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"
-                onClick={() => onChange({ items: inventory.items.filter((entry) => entry.id !== item.id) })}
+                onClick={() =>
+                  onChange({
+                    items: inventory.items.filter((entry) => entry.id !== item.id),
+                    currency: inventory.currency,
+                    currencyTransactions: inventory.currencyTransactions,
+                  })}
                 type="button"
               >
                 Remove

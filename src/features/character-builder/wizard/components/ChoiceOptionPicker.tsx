@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { inputClassName } from "../../../../components/ui/FormField";
 import type { RuleChoiceOption } from "../../../../domain/rules";
 import { RuleDetailDrawer, type RuleDetailModel } from "../../../character/components/sheet/RuleDetailDrawer";
@@ -36,7 +36,7 @@ export function ChoiceOptionPicker({
 }: ChoiceOptionPickerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [previewOptionId, setPreviewOptionId] = useState<string | undefined>();
-  const [detailsOpenByOptionId, setDetailsOpenByOptionId] = useState<Record<string, boolean>>({});
+  const [detailOptionId, setDetailOptionId] = useState<string | undefined>();
   const isSingleChoice = maxCount <= 1;
   const selectedSet = useMemo(() => new Set(selectedOptionIds), [selectedOptionIds]);
   const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -60,6 +60,15 @@ export function ChoiceOptionPicker({
   }, [options, previewOptionId, selectedOptionIds, visibleOptions]);
 
   const previewDetail = previewOption ? buildDetail(previewOption) : undefined;
+
+  useEffect(() => {
+    if (!detailOptionId) {
+      return;
+    }
+    if (!visibleOptions.some((option) => option.id === detailOptionId)) {
+      setDetailOptionId(undefined);
+    }
+  }, [detailOptionId, visibleOptions]);
 
   return (
     <div className="space-y-2">
@@ -92,7 +101,7 @@ export function ChoiceOptionPicker({
             const selected = selectedSet.has(option.id);
             const blockedByMax = !selected && !isSingleChoice && selectedOptionIds.length >= maxCount;
             const summary = optionSummary?.(option);
-            const detailOpen = detailsOpenByOptionId[option.id] ?? false;
+            const detailOpen = detailOptionId === option.id;
             const detailModel = buildDetail(option);
             return (
               <div key={option.id} className="rounded border border-slate-200 px-2 py-1 text-xs">
@@ -139,12 +148,7 @@ export function ChoiceOptionPicker({
                     aria-expanded={detailOpen}
                     className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700"
                     disabled={!detailModel}
-                    onClick={() =>
-                      setDetailsOpenByOptionId((current) => ({
-                        ...current,
-                        [option.id]: !(current[option.id] ?? false),
-                      }))
-                    }
+                    onClick={() => setDetailOptionId((current) => (current === option.id ? undefined : option.id))}
                     onFocus={() => setPreviewOptionId(option.id)}
                     type="button"
                   >

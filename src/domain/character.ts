@@ -45,6 +45,19 @@ export interface RuleChoiceState {
 
 export type EquipmentSlot = "armor" | "shield" | "mainHand" | "offHand" | "twoHanded" | "ranged" | "focus" | "other";
 
+export type InventoryItemType =
+  | "weapon"
+  | "armor"
+  | "shield"
+  | "gear"
+  | "tool"
+  | "focus"
+  | "consumable"
+  | "ammunition"
+  | "magic-item"
+  | "spell-component"
+  | "custom";
+
 export interface InventoryItem {
   instanceId?: string;
   id: string;
@@ -55,6 +68,8 @@ export interface InventoryItem {
   equipmentSlot?: EquipmentSlot;
   category?: string;
   type?: string;
+  itemType?: InventoryItemType;
+  notes?: string;
 }
 
 export interface CurrencyState {
@@ -65,9 +80,18 @@ export interface CurrencyState {
   pp: number;
 }
 
+export interface CurrencyTransaction {
+  id: string;
+  timestamp: string;
+  delta: CurrencyState;
+  note?: string;
+  mode: "add" | "subtract" | "set";
+}
+
 export interface InventoryState {
   items: InventoryItem[];
   currency?: CurrencyState;
+  currencyTransactions?: CurrencyTransaction[];
 }
 
 export interface DerivedSummary {
