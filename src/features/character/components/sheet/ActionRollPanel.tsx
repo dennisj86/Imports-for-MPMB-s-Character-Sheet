@@ -2,14 +2,15 @@ import { useMemo, useState } from "react";
 import type { ActiveEffectCatalogEntry, ActiveEffectDefinition } from "../../../../domain/rules";
 import type { CharacterRollView, RollActionDescriptor, RollMode, RollRequest, RollResult, RollType } from "../../../../domain/rolls";
 import type { PlayResourceCounter } from "../../../../services/playState";
-import { parseDiceExpression } from "../../../../features/dice";
-import { activeEffectsForRollType, searchActiveEffectCatalog, type ActiveEffectCatalogEffectFilter, type ActiveEffectCatalogSourceFilter } from "../../../../services/rules";
-import { ActionCard, EmptyState, InfoPopover, RollResultCard, SectionHeader, StatusBadge } from "./SheetDesignSystem";
+import { searchActiveEffectCatalog, type ActiveEffectCatalogEffectFilter, type ActiveEffectCatalogSourceFilter } from "../../../../services/rules";
+import { ActionCard, EmptyState, InfoPopover, SectionHeader, StatusBadge } from "./SheetDesignSystem";
 import { ruleInfo } from "./rulesInfo";
 
 interface ActionRollPanelProps {
   rollView: CharacterRollView;
   lastRoll?: RollResult;
+  rollMode: RollMode;
+  onRollModeChange: (mode: RollMode) => void;
   resources: PlayResourceCounter[];
   activeEffectCatalog?: ActiveEffectCatalogEntry[];
   showSpellRolls?: boolean;
@@ -25,7 +26,6 @@ interface ActionRollPanelProps {
     note?: string;
     sourceCasterName?: string;
   }) => void;
-  onDismissEffect?: (effectId: string) => void;
 }
 
 const CUSTOM_ROLL_TYPE_OPTIONS: Array<{ value: RollType; label: string }> = [
@@ -39,8 +39,71 @@ const CUSTOM_ROLL_TYPE_OPTIONS: Array<{ value: RollType; label: string }> = [
 
 const DIE_SIZE_OPTIONS = ["1d4", "1d6", "1d8", "1d10", "1d12"];
 
+type ActionGroupId = "attacks" | "actions" | "bonus-actions" | "reactions" | "resources";
+type RollListGroupId = "ability-checks" | "saving-throws" | "skill-checks" | "spell-rolls";
+type ActionPanelGroupId = ActionGroupId | RollListGroupId;
+type MasteryAutomationStatus = "automated" | "manual" | "unsupported";
+
+const ACTION_GROUP_CONFIG: Record<ActionGroupId, { title: string; subtitle: string }> = {
+  attacks: { title: "Attacks", subtitle: "Primary combat attacks and damage profiles." },
+  actions: { title: "Actions", subtitle: "Standard action economy entries." },
+  "bonus-actions": { title: "Bonus Actions", subtitle: "Quick options with bonus-action timing." },
+  reactions: { title: "Reactions", subtitle: "Reaction-triggered actions." },
+  resources: { title: "Resources", subtitle: "Resource-linked actions and utility entries." },
+};
+
+const MASTERY_INFO_BY_KEY: Record<string, { name: string; summary: string; automation: MasteryAutomationStatus }> = {
+  cleave: {
+    name: "Cleave",
+    summary: "On a hit, the weapon can spill damage to a nearby second target.",
+    automation: "manual",
+  },
+  graze: {
+    name: "Graze",
+    summary: "On a miss, still deal ability-modifier damage to the target.",
+    automation: "manual",
+  },
+  nick: {
+    name: "Nick",
+    summary: "Enables a faster off-hand style strike during your attack sequence.",
+    automation: "manual",
+  },
+  push: {
+    name: "Push",
+    summary: "Can move the target away from you after a successful hit.",
+    automation: "manual",
+  },
+  sap: {
+    name: "Sap",
+    summary: "Can weaken the target's next offensive pressure.",
+    automation: "manual",
+  },
+  slow: {
+    name: "Slow",
+    summary: "Can reduce the target's speed for the round.",
+    automation: "manual",
+  },
+  topple: {
+    name: "Topple",
+    summary: "Can force a target prone after a successful hit.",
+    automation: "manual",
+  },
+  vex: {
+    name: "Vex",
+    summary: "Can set up advantage pressure for a follow-up attack.",
+    automation: "manual",
+  },
+};
+
 function modifierLabel(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`;
+}
+
+function breakdownValueLabel(value: number | string | boolean): string {
+  if (typeof value === "number") {
+    return modifierLabel(value);
+  }
+  return String(value);
 }
 
 function sourceFilterLabel(sourceFilter: ActiveEffectCatalogSourceFilter): string {
@@ -102,29 +165,34 @@ function normalizeSearch(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function normalizeMasteryToken(value: string | undefined): string {
+  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function masteryInfoForToken(token: string | undefined) {
+  return token ? MASTERY_INFO_BY_KEY[token] : undefined;
+}
+
+function masteryStatusTone(status: MasteryAutomationStatus): "complete" | "pending" | "unsupported" {
+  if (status === "automated") {
+    return "complete";
+  }
+  if (status === "manual") {
+    return "pending";
+  }
+  return "unsupported";
+}
+
 type WeaponProfileMetadata = {
   usageMode?: "melee" | "ranged" | "thrown" | "versatile-one-hand" | "versatile-two-hand";
   versatileDamageDice?: string;
   damageDice?: string;
   properties?: string[];
   range?: string;
+  mastery?: string;
   masteryBadges?: string[];
+  diagnostics?: string[];
 };
-
-const QUICK_DICE_EXPRESSIONS = ["d20", "1d4", "1d6", "1d8", "1d10", "1d12", "1d100"];
-
-function normalizeDiceExpression(value: string): string {
-  return value.replace(/\s+/g, "").toLowerCase();
-}
-
-function isD20Expression(expression: string): boolean {
-  const normalized = normalizeDiceExpression(expression);
-  return normalized === "d20" || normalized === "1d20";
-}
-
-function normalizedD20Expression(expression: string): string {
-  return isD20Expression(expression) ? "1d20" : expression.trim();
-}
 
 function firstDiceToken(expression: string): string | undefined {
   return expression.match(/\b\d*d\d+\b/i)?.[0]?.replace(/\s+/g, "");
@@ -137,6 +205,76 @@ function applyVersatileDamageExpression(expression: string, versatileDice: strin
     return normalized;
   }
   return normalized.replace(firstDice, versatileDice);
+}
+
+function classifyActionGroup(descriptor: RollActionDescriptor): ActionGroupId {
+  const hasAttackRoll = descriptor.rollRequest?.type === "attack-roll" || descriptor.rollRequest?.type === "spell-attack";
+  const weaponLinked = descriptor.sourceType === "weapon";
+  if (hasAttackRoll || weaponLinked) {
+    return "attacks";
+  }
+  if (descriptor.activationType === "bonus-action") {
+    return "bonus-actions";
+  }
+  if (descriptor.activationType === "reaction") {
+    return "reactions";
+  }
+  if (descriptor.resourceIds.length > 0 || descriptor.activationType === "free" || descriptor.activationType === "utility" || descriptor.activationType === "special") {
+    return "resources";
+  }
+  return "actions";
+}
+
+function initialCollapsedGroups(): Record<ActionPanelGroupId, boolean> {
+  return {
+    attacks: false,
+    actions: false,
+    "bonus-actions": false,
+    reactions: true,
+    resources: true,
+    "ability-checks": true,
+    "saving-throws": true,
+    "skill-checks": true,
+    "spell-rolls": true,
+  };
+}
+
+function groupCountLabel(count: number): string {
+  return count === 1 ? "1 entry" : `${count} entries`;
+}
+
+function GroupHeader({
+  collapsed,
+  count,
+  onToggle,
+  title,
+  subtitle,
+}: {
+  collapsed: boolean;
+  count: number;
+  onToggle: () => void;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <SectionHeader
+      actions={
+        <div className="flex items-center gap-2">
+          <StatusBadge label={groupCountLabel(count)} status="info" />
+          <button
+            aria-expanded={!collapsed}
+            className="sheet-focus-ring rounded border border-slate-300 bg-slate-100 px-2 py-1 text-xs text-slate-800"
+            onClick={onToggle}
+            type="button"
+          >
+            {collapsed ? "Expand" : "Collapse"}
+          </button>
+        </div>
+      }
+      subtitle={subtitle}
+      title={title}
+    />
+  );
 }
 
 function RollButton({
@@ -157,7 +295,7 @@ function RollButton({
   return (
     <button
       aria-label={`${children}: ${request.label}`}
-      className="sheet-focus-ring rounded bg-slate-700 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+      className="sheet-focus-ring rounded bg-slate-700 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
       disabled={disabled}
       title={disabled ? disabledReason ?? "Action currently unavailable." : undefined}
       onClick={() => onRoll({ ...request, rollMode })}
@@ -168,44 +306,9 @@ function RollButton({
   );
 }
 
-function RequestGrid({
-  title,
-  requests,
-  rollMode,
-  onRoll,
-}: {
-  title: string;
-  requests: RollRequest[];
-  rollMode: RollMode;
-  onRoll: (request: RollRequest) => void;
-}) {
-  return (
-    <section className="space-y-2">
-      <SectionHeader title={title} />
-      {requests.length === 0 ? (
-        <EmptyState title={title} description="No matching entries." />
-      ) : (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {requests.map((request) => (
-            <button
-              aria-label={`Roll ${request.label}`}
-              key={request.id}
-              className="sheet-focus-ring sheet-card flex items-center justify-between rounded px-2 py-1.5 text-left text-sm"
-              onClick={() => onRoll({ ...request, rollMode })}
-              type="button"
-            >
-              <span>{request.label}</span>
-              <span className="font-medium">{modifierLabel(request.modifier)}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
 function ActionDescriptorRow({
   descriptor,
+  lastRoll,
   rollMode,
   resourceById,
   versatileMode,
@@ -214,6 +317,7 @@ function ActionDescriptorRow({
   onSpendResource,
 }: {
   descriptor: RollActionDescriptor;
+  lastRoll?: RollResult;
   rollMode: RollMode;
   resourceById: Map<string, PlayResourceCounter>;
   versatileMode?: "one-hand" | "two-hand";
@@ -233,6 +337,12 @@ function ActionDescriptorRow({
   const weaponMasteryBadges = weaponProfile?.masteryBadges ?? [];
   const descriptorMasteryBadges = descriptor.mappingBadges ?? [];
   const masteryBadges = Array.from(new Set([...weaponMasteryBadges, ...descriptorMasteryBadges]));
+  const masteryToken = normalizeMasteryToken(weaponProfile?.mastery);
+  const masteryInfo = masteryInfoForToken(masteryToken);
+  const masteryName = masteryInfo?.name ?? (weaponProfile?.mastery ? weaponProfile.mastery : masteryBadges.length ? "Mastery selected" : undefined);
+  const masteryAutomation: MasteryAutomationStatus | undefined = masteryInfo?.automation ?? (masteryName ? "unsupported" : undefined);
+  const masterySummary = masteryInfo?.summary ?? (masteryName ? "Mastery selected, details unavailable." : undefined);
+  const masteryDiagnostics = weaponProfile?.diagnostics?.find((entry) => entry.toLowerCase().includes("mastery"));
   const versatileDamageDice = weaponProfile?.versatileDamageDice;
   const hasVersatileMode = Boolean(versatileDamageDice && descriptor.damageRequest?.diceExpression);
   const selectedVersatileMode = versatileMode ?? "one-hand";
@@ -264,6 +374,26 @@ function ActionDescriptorRow({
   };
   const effectiveRollRequest = withWeaponUsage(rollRequest);
   const effectiveDamageRequest = withWeaponUsage(descriptor.damageRequest);
+  const linkedResult =
+    lastRoll && (
+      (effectiveRollRequest && lastRoll.requestId === effectiveRollRequest.id) ||
+      (effectiveDamageRequest && lastRoll.requestId === effectiveDamageRequest.id)
+    ) ? lastRoll : undefined;
+  const linkedNatural = linkedResult?.naturalRoll ?? linkedResult?.dice.keptRoll ?? linkedResult?.dice.rawRolls[0];
+  const linkedBaseModifier = linkedResult?.baseModifier ?? linkedResult?.modifier;
+  const linkedEffects = linkedResult?.activeEffects?.map((entry) => entry.label) ?? [];
+  const linkedTemporaryModifiers = linkedResult?.temporaryModifierBreakdown?.filter((entry) => entry.applied) ?? [];
+  const linkedPermanentModifiers = linkedResult?.permanentModifierBreakdown?.filter((entry) => entry.applied) ?? [];
+  const linkedEffectsLabel = linkedEffects.length > 0 ? linkedEffects.join(", ") : "None";
+  const linkedModifierContributions = [...linkedPermanentModifiers, ...linkedTemporaryModifiers];
+  const rollAttackAndDamage = () => {
+    if (effectiveRollRequest) {
+      onRoll({ ...effectiveRollRequest, rollMode });
+    }
+    if (effectiveDamageRequest) {
+      onRoll({ ...effectiveDamageRequest, rollMode: "normal" });
+    }
+  };
 
   return (
     <li>
@@ -272,44 +402,42 @@ function ActionDescriptorRow({
         subtitle={`${descriptor.activationType ?? "action"}${descriptor.sourceSummary ? ` · ${descriptor.sourceSummary}` : ""}${descriptor.rollRequest ? ` · attack ${modifierLabel(descriptor.rollRequest.modifier)}` : ""}`}
         badges={
           <>
-            {masteryBadges.map((badge) => (
-              <span key={badge} className="inline-flex items-center gap-1">
-                <StatusBadge label={badge} status="info" />
-                <InfoPopover title={badge} description={ruleInfo("weapon-mastery")} />
-              </span>
-            ))}
+            {masteryName ? <StatusBadge label={`Mastery ${masteryName}`} status="info" /> : null}
+            {masteryAutomation ? <StatusBadge label={masteryAutomation} status={masteryStatusTone(masteryAutomation)} /> : null}
             {weaponProperties.map((property) => (
-              <span key={`${descriptor.id}:${property}`} className="inline-flex items-center gap-1">
-                <StatusBadge label={property} status="info" />
-                <InfoPopover title={property} description={ruleInfo(property)} />
-              </span>
+              <StatusBadge key={`${descriptor.id}:${property}`} label={property} status="info" />
             ))}
             {ambiguousResources ? <StatusBadge label="manual resource spend" status="blocked" /> : null}
             {resource ? <StatusBadge label={`${resource.name} ${resource.remaining}/${resource.max}`} status={resource.remaining > 0 ? "complete" : "pending"} /> : null}
-            {weaponProfile?.range ? (
-              <span className="inline-flex items-center gap-1">
-                <StatusBadge label={`range ${weaponProfile.range}`} status="info" />
-                <InfoPopover title="Range" description={ruleInfo("range")} />
-              </span>
-            ) : null}
+            {weaponProfile?.range ? <StatusBadge label={`range ${weaponProfile.range}`} status="info" /> : null}
           </>
         }
         actions={
           <>
             {effectiveRollRequest ? (
               <RollButton request={effectiveRollRequest} rollMode={rollMode} onRoll={(request) => onRoll(request)}>
-                Roll
+                Attack Roll
               </RollButton>
             ) : null}
             {effectiveDamageRequest ? (
               <RollButton request={effectiveDamageRequest} rollMode="normal" onRoll={(request) => onRoll(request)}>
-                Damage
+                Damage Roll
               </RollButton>
+            ) : null}
+            {effectiveRollRequest && effectiveDamageRequest ? (
+              <button
+                aria-label={`Roll attack and damage for ${descriptor.label}`}
+                className="sheet-focus-ring rounded bg-indigo-700 px-3 py-2 text-sm text-white"
+                onClick={rollAttackAndDamage}
+                type="button"
+              >
+                Attack + Damage
+              </button>
             ) : null}
             {effectiveRollRequest && singleResourceId ? (
               <button
                 aria-label={`Roll and spend ${resource?.name ?? "resource"} for ${descriptor.label}`}
-                className="sheet-focus-ring rounded bg-indigo-700 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="sheet-focus-ring rounded bg-indigo-700 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                 disabled={!canSpend}
                 title={!canSpend ? spendDisabledReason : undefined}
                 onClick={() => onRoll({ ...effectiveRollRequest, rollMode }, { spendResourceKey: singleResourceId, resourceLabel: resource?.name })}
@@ -321,7 +449,7 @@ function ActionDescriptorRow({
             {!effectiveRollRequest && singleResourceId ? (
               <button
                 aria-label={`Spend ${resource?.name ?? "resource"} for ${descriptor.label}`}
-                className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                className="sheet-focus-ring rounded bg-slate-200 px-3 py-2 text-sm text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                 disabled={!canSpend}
                 title={!canSpend ? spendDisabledReason : undefined}
                 onClick={() => onSpendResource(singleResourceId, 1, resource?.name)}
@@ -339,6 +467,22 @@ function ActionDescriptorRow({
           </p>
         ) : null}
         {effectiveDamageRequest ? <p className="text-xs text-slate-700">Damage {effectiveDamageRequest.diceExpression}</p> : null}
+        {masteryName ? (
+          <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium text-slate-900">Weapon Mastery: {masteryName}</p>
+              <div className="flex items-center gap-1">
+                {masteryAutomation ? <StatusBadge label={masteryAutomation} status={masteryStatusTone(masteryAutomation)} /> : null}
+                <InfoPopover title="Weapon Mastery" description={ruleInfo("weapon-mastery")} />
+              </div>
+            </div>
+            {masterySummary ? <p className="mt-1">{masterySummary}</p> : null}
+            {masteryAutomation !== "automated" ? (
+              <p className="mt-1 text-[11px] text-slate-600">Manual: remember this effect when resolving the attack.</p>
+            ) : null}
+            {masteryDiagnostics ? <p className="mt-1 text-[11px] text-slate-500">Diagnostics: {masteryDiagnostics}</p> : null}
+          </div>
+        ) : null}
         {weaponProperties.length ? (
           <div className="mt-1 flex flex-wrap gap-1">
             {weaponProperties.map((property) => (
@@ -364,14 +508,72 @@ function ActionDescriptorRow({
             {versatileLabel ? <span className="text-slate-500">{versatileLabel}</span> : null}
           </label>
         ) : null}
+        {linkedResult ? (
+          <div className="mt-2 rounded border border-indigo-200 bg-indigo-50 p-2 text-xs text-slate-700">
+            <p className="font-medium text-indigo-900">Last Result: {linkedResult.label}</p>
+            <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide text-indigo-700">d20</dt>
+                <dd className="font-medium text-slate-900">{linkedNatural ?? "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide text-indigo-700">Modifier</dt>
+                <dd className="font-medium text-slate-900">{modifierLabel(linkedBaseModifier ?? 0)}</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-[11px] uppercase tracking-wide text-indigo-700">Effects</dt>
+                <dd>{linkedEffectsLabel}</dd>
+              </div>
+              {linkedModifierContributions.length ? (
+                <div className="col-span-2">
+                  <dt className="text-[11px] uppercase tracking-wide text-indigo-700">Modifiers</dt>
+                  <dd>{linkedModifierContributions.map((entry) => `${entry.sourceName} ${breakdownValueLabel(entry.value)}`).join(", ")}</dd>
+                </div>
+              ) : null}
+              <div className="col-span-2">
+                <dt className="text-[11px] uppercase tracking-wide text-indigo-700">Total</dt>
+                <dd className="font-semibold text-slate-900">{linkedResult.total}</dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
       </ActionCard>
     </li>
+  );
+}
+
+function RequestList({
+  requests,
+  rollMode,
+  onRoll,
+}: {
+  requests: RollRequest[];
+  rollMode: RollMode;
+  onRoll: (request: RollRequest) => void;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {requests.map((request) => (
+        <button
+          aria-label={`Roll ${request.label}`}
+          key={request.id}
+          className="sheet-focus-ring sheet-card flex items-center justify-between rounded px-2 py-1.5 text-left text-sm"
+          onClick={() => onRoll({ ...request, rollMode })}
+          type="button"
+        >
+          <span>{request.label}</span>
+          <span className="font-medium">{modifierLabel(request.modifier)}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
 export function ActionRollPanel({
   rollView,
   lastRoll,
+  rollMode,
+  onRollModeChange,
   resources,
   activeEffectCatalog = [],
   showSpellRolls = true,
@@ -379,10 +581,7 @@ export function ActionRollPanel({
   onSpendResource,
   onActivateEffect,
   onCreateCustomEffect,
-  onDismissEffect,
 }: ActionRollPanelProps) {
-  const [rollMode, setRollMode] = useState<RollMode>("normal");
-  const [selectedEffectIds, setSelectedEffectIds] = useState<string[]>([]);
   const [buffSearch, setBuffSearch] = useState("");
   const [sourceFilters, setSourceFilters] = useState<ActiveEffectCatalogSourceFilter[]>(["spells", "features", "items", "custom"]);
   const [effectFilter, setEffectFilter] = useState<ActiveEffectCatalogEffectFilter>("all");
@@ -399,9 +598,8 @@ export function ActionRollPanel({
   const [customRollTypes, setCustomRollTypes] = useState<RollType[]>(["ability-check"]);
   const [weaponUsageByActionId, setWeaponUsageByActionId] = useState<Record<string, "one-hand" | "two-hand">>({});
   const [actionSearch, setActionSearch] = useState("");
-  const [freeDiceExpression, setFreeDiceExpression] = useState("d20");
-  const [freeDiceLabel, setFreeDiceLabel] = useState("");
   const [showCustomBuffEditor, setShowCustomBuffEditor] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<ActionPanelGroupId, boolean>>(initialCollapsedGroups);
 
   const resourceById = useMemo(() => new Map(resources.map((resource) => [resource.id, resource])), [resources]);
   const actionableSpells = useMemo(
@@ -409,11 +607,6 @@ export function ActionRollPanel({
     [rollView.spellRolls],
   );
   const activeEffects = rollView.activeEffects?.filter((effect) => effect.status === "active") ?? [];
-  const inactiveEffects = rollView.activeEffects?.filter((effect) => effect.status !== "active") ?? [];
-  const consumedEffects = inactiveEffects.filter((effect) => effect.durationType === "until-used" || effect.durationType === "one-roll");
-  const rollSelectableEffects = activeEffects
-    .filter((effect) => effect.applicableRollTypes.length > 0)
-    .filter((effect) => effect.targets.includes("self") || effect.targets.includes("global"));
   const normalizedActionSearch = normalizeSearch(actionSearch);
   const matchesActionSearch = (value: string): boolean => normalizeSearch(value).includes(normalizedActionSearch);
   const filterRollRequests = (entries: RollRequest[]): RollRequest[] => (
@@ -432,6 +625,19 @@ export function ActionRollPanel({
   const filteredSkillChecks = filterRollRequests(rollView.skillChecks);
   const filteredActionRolls = filterDescriptors(rollView.actionRolls);
   const filteredSpellRolls = filterDescriptors(actionableSpells);
+  const groupedActions = useMemo(() => {
+    const grouped: Record<ActionGroupId, RollActionDescriptor[]> = {
+      attacks: [],
+      actions: [],
+      "bonus-actions": [],
+      reactions: [],
+      resources: [],
+    };
+    for (const descriptor of filteredActionRolls) {
+      grouped[classifyActionGroup(descriptor)].push(descriptor);
+    }
+    return grouped;
+  }, [filteredActionRolls]);
   const excludedEffectIds = useMemo(() => activeEffects.map((effect) => effect.id), [activeEffects]);
   const searchResult = useMemo(
     () =>
@@ -449,42 +655,22 @@ export function ActionRollPanel({
 
   const selectedCatalogEntry = filteredCatalog.find((entry) => entry.id === selectedCatalogId) ?? activeEffectCatalog.find((entry) => entry.id === selectedCatalogId);
   const canActivateCustomEffect = customName.trim().length > 0 && customRollTypes.length > 0;
-  const freeDiceValidationError = useMemo(() => {
-    const expression = normalizedD20Expression(freeDiceExpression);
-    if (!expression) {
-      return "Enter a dice expression.";
-    }
-    try {
-      parseDiceExpression(expression);
-      return undefined;
-    } catch (error) {
-      return error instanceof Error ? error.message : "Invalid dice expression.";
-    }
-  }, [freeDiceExpression]);
-
-  const applySelectedEffects = (request: RollRequest): RollRequest => {
-    const applicable = activeEffectsForRollType(rollSelectableEffects, request.type).filter((effect) => selectedEffectIds.includes(effect.id));
-    const temporaryModifiers = applicable.flatMap((effect) => effect.modifiers);
-    return {
-      ...request,
-      temporaryModifiers: [...(request.temporaryModifiers ?? []), ...temporaryModifiers],
-      selectedActiveEffectIds: Array.from(new Set([...(request.selectedActiveEffectIds ?? []), ...applicable.map((effect) => effect.id)])),
-      selectedActiveEffects: Array.from(
-        new Map(
-          [...(request.selectedActiveEffects ?? []), ...applicable.map((effect) => ({
-            id: effect.id,
-            label: effect.label,
-            sourceName: effect.sourceName,
-          }))].map((entry) => [entry.id, entry]),
-        ).values(),
-      ),
-    };
-  };
-
-  const rollWithEffects: ActionRollPanelProps["onRoll"] = (request, options) => onRoll(applySelectedEffects(request), options);
+  const totalSearchEntries =
+    filteredActionRolls.length +
+    filteredAbilityChecks.length +
+    filteredSavingThrows.length +
+    filteredSkillChecks.length +
+    (showSpellRolls ? filteredSpellRolls.length : 0);
 
   const toggleSourceFilter = (value: ActiveEffectCatalogSourceFilter) => {
     setSourceFilters((current) => current.includes(value) ? current.filter((entry) => entry !== value) : [...current, value]);
+  };
+
+  const toggleGroup = (groupId: ActionPanelGroupId) => {
+    setCollapsedGroups((current) => ({
+      ...current,
+      [groupId]: !current[groupId],
+    }));
   };
 
   const activateSelectedCatalogEntry = () => {
@@ -529,48 +715,73 @@ export function ActionRollPanel({
     setShowCustomBuffEditor(false);
   };
 
-  const rollFreeDice = () => {
-    if (freeDiceValidationError) {
-      return;
-    }
-    const expression = normalizedD20Expression(freeDiceExpression);
-    const label = freeDiceLabel.trim() || `Free Roll (${expression})`;
-    onRoll({
-      id: `roll:free:${Date.now()}`,
-      type: "custom",
-      label,
-      sourceType: "custom",
-      sourceId: "free-dice",
-      modifier: 0,
-      diceExpression: expression,
-      rollMode: isD20Expression(expression) ? rollMode : "normal",
-      metadata: {
-        utility: "free-dice",
-      },
-    });
+  const renderActionGroup = (groupId: ActionGroupId) => {
+    const group = groupedActions[groupId];
+    const config = ACTION_GROUP_CONFIG[groupId];
+    const collapsed = collapsedGroups[groupId];
+    return (
+      <section key={groupId} className="space-y-2">
+        <GroupHeader
+          collapsed={collapsed}
+          count={group.length}
+          onToggle={() => toggleGroup(groupId)}
+          subtitle={config.subtitle}
+          title={config.title}
+        />
+        {!collapsed ? (
+          group.length === 0 ? (
+            <EmptyState
+              title={config.title}
+              description={normalizedActionSearch ? `No ${config.title.toLowerCase()} match current search.` : `No ${config.title.toLowerCase()} resolved.`}
+            />
+          ) : (
+            <ul className="space-y-2">
+              {group.map((descriptor) => (
+                <ActionDescriptorRow
+                  key={descriptor.id}
+                  descriptor={descriptor}
+                  lastRoll={lastRoll}
+                  onRoll={onRoll}
+                  onSpendResource={onSpendResource}
+                  resourceById={resourceById}
+                  rollMode={rollMode}
+                  versatileMode={weaponUsageByActionId[descriptor.id]}
+                  onChangeVersatileMode={(mode) =>
+                    setWeaponUsageByActionId((current) => ({
+                      ...current,
+                      [descriptor.id]: mode,
+                    }))
+                  }
+                />
+              ))}
+            </ul>
+          )
+        ) : null}
+      </section>
+    );
   };
 
-  const rollDeathSaveShortcut = () => {
-    onRoll({
-      id: `roll:free:death-save:${Date.now()}`,
-      type: "death-save",
-      label: "Death Save",
-      sourceType: "custom",
-      sourceId: "free-dice",
-      modifier: 0,
-      diceExpression: "1d20",
-      rollMode,
-      metadata: {
-        utility: "death-save-shortcut",
-      },
-    });
+  const renderRequestGroup = (groupId: RollListGroupId, title: string, subtitle: string, entries: RollRequest[]) => {
+    const collapsed = collapsedGroups[groupId];
+    return (
+      <section className="space-y-2">
+        <GroupHeader collapsed={collapsed} count={entries.length} onToggle={() => toggleGroup(groupId)} subtitle={subtitle} title={title} />
+        {!collapsed ? (
+          entries.length === 0 ? (
+            <EmptyState title={title} description={normalizedActionSearch ? `No ${title.toLowerCase()} match current search.` : `No ${title.toLowerCase()} available.`} />
+          ) : (
+            <RequestList requests={entries} rollMode={rollMode} onRoll={(request) => onRoll(request)} />
+          )
+        ) : null}
+      </section>
+    );
   };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionHeader
-          subtitle="Select optional buffs first, then execute rolls and resource spends."
+          subtitle="Optional buffs are selected in the persistent roll dock. Execute grouped actions here."
           title="Action Console"
         />
         <label className="text-sm text-slate-700">
@@ -578,7 +789,7 @@ export function ActionRollPanel({
           <select
             aria-label="Select roll mode"
             className="ml-2 rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-            onChange={(event) => setRollMode(event.target.value as RollMode)}
+            onChange={(event) => onRollModeChange(event.target.value as RollMode)}
             value={rollMode}
           >
             <option value="normal">Normal</option>
@@ -590,8 +801,8 @@ export function ActionRollPanel({
 
       <div className="sheet-card space-y-2 p-3">
         <SectionHeader
-          actions={<StatusBadge label={`${filteredActionRolls.length + filteredSpellRolls.length} actions`} status="info" />}
-          subtitle="Search across checks, action profiles and spell action entries."
+          actions={<StatusBadge label={groupCountLabel(totalSearchEntries)} status="info" />}
+          subtitle="Search across grouped actions, checks and spell entries."
           title="Action Search"
         />
         <input
@@ -604,126 +815,59 @@ export function ActionRollPanel({
         />
       </div>
 
-      <div className="sheet-card space-y-2 p-3">
-        <SectionHeader subtitle="Roll standalone dice formulas without combat automation." title="Free Dice Roller" />
-        <div className="grid gap-2 md:grid-cols-[minmax(0,2fr),minmax(0,2fr),auto]">
-          <input
-            aria-label="Free dice formula"
-            className="sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
-            onChange={(event) => setFreeDiceExpression(event.target.value)}
-            placeholder="d20, 2d6+3, 1d20+5"
-            type="text"
-            value={freeDiceExpression}
-          />
-          <input
-            aria-label="Free roll label"
-            className="sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
-            onChange={(event) => setFreeDiceLabel(event.target.value)}
-            placeholder="Optional custom label"
-            type="text"
-            value={freeDiceLabel}
-          />
-          <button
-            aria-label="Roll free dice expression"
-            className="sheet-focus-ring rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={Boolean(freeDiceValidationError)}
-            onClick={rollFreeDice}
-            title={freeDiceValidationError}
-            type="button"
-          >
-            Roll
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {QUICK_DICE_EXPRESSIONS.map((expression) => (
-            <button
-              key={`quick-die-${expression}`}
-              aria-label={`Set free dice expression to ${expression}`}
-              className={`sheet-focus-ring rounded px-2 py-1 text-xs ${normalizeDiceExpression(freeDiceExpression) === normalizeDiceExpression(expression) ? "bg-indigo-700 text-white" : "bg-slate-100 text-slate-700"}`}
-              onClick={() => setFreeDiceExpression(expression)}
-              type="button"
-            >
-              {expression}
-            </button>
-          ))}
-          <button
-            aria-label="Roll death save"
-            className="sheet-focus-ring rounded bg-rose-700 px-2 py-1 text-xs text-white"
-            onClick={rollDeathSaveShortcut}
-            type="button"
-          >
-            Death Save
-          </button>
-        </div>
-        {freeDiceValidationError ? <p className="text-xs text-rose-700">{freeDiceValidationError}</p> : null}
-      </div>
+      {renderActionGroup("attacks")}
+      {renderActionGroup("actions")}
+      {renderActionGroup("bonus-actions")}
+      {renderActionGroup("reactions")}
+      {renderActionGroup("resources")}
 
-      <RollResultCard result={lastRoll} />
+      {renderRequestGroup("ability-checks", "Ability Checks", "Core ability checks for quick calls.", filteredAbilityChecks)}
+      {renderRequestGroup("saving-throws", "Saving Throws", "Defensive checks with save modifiers.", filteredSavingThrows)}
+      {renderRequestGroup("skill-checks", "Skill Checks", "Skill list sorted for table use.", filteredSkillChecks)}
 
-      {activeEffects.length > 0 ? (
-        <div className="sheet-card bg-slate-50 p-2">
-          <SectionHeader
-            actions={<StatusBadge label={`${activeEffects.length} active`} status="complete" />}
-            subtitle="Effects with duration `one-roll` or `until-used` are consumed once checked and used in a roll."
-            title="Active Buffs"
+      {showSpellRolls ? (
+        <section className="space-y-2">
+          <GroupHeader
+            collapsed={collapsedGroups["spell-rolls"]}
+            count={filteredSpellRolls.length}
+            onToggle={() => toggleGroup("spell-rolls")}
+            subtitle="Spell action entries with attack/save/damage context."
+            title="Spell Rolls"
           />
-          <ul className="space-y-1">
-            {activeEffects.map((effect) => (
-              <li key={effect.id} className="sheet-card flex flex-wrap items-center justify-between gap-2 rounded bg-white px-2 py-1">
-                <div className="text-xs text-slate-700">
-                  <p className="font-medium text-slate-900">{effect.label}</p>
-                  <p>
-                    {sourceTypeLabel(effect.sourceType)} · {effect.targets.join(", ")}
-                    {effect.modifierSummary?.dice ? ` · ${effect.modifierSummary.dice}` : ""}
-                    {effect.modifierSummary?.flat !== undefined ? ` · ${modifierLabel(effect.modifierSummary.flat)}` : ""}
-                  </p>
-                  {effect.note ? <p className="text-slate-600">{effect.note}</p> : null}
-                </div>
-                <div className="flex items-center gap-1">
-                  <StatusBadge
-                    label={effect.durationType}
-                    status={effect.durationType === "until-used" || effect.durationType === "one-roll" ? "pending" : "info"}
+          {!collapsedGroups["spell-rolls"] ? (
+            filteredSpellRolls.length === 0 ? (
+              <EmptyState
+                title="Spell Rolls"
+                description={
+                  normalizedActionSearch
+                    ? "No spell action entries match current search."
+                    : "Spell roll actions appear when a selected spell has an attack, save, or damage context."
+                }
+              />
+            ) : (
+              <ul className="space-y-2">
+                {filteredSpellRolls.map((descriptor) => (
+                  <ActionDescriptorRow
+                    key={descriptor.id}
+                    descriptor={descriptor}
+                    lastRoll={lastRoll}
+                    onRoll={onRoll}
+                    onSpendResource={onSpendResource}
+                    resourceById={resourceById}
+                    rollMode={rollMode}
+                    versatileMode={weaponUsageByActionId[descriptor.id]}
+                    onChangeVersatileMode={(mode) =>
+                      setWeaponUsageByActionId((current) => ({
+                        ...current,
+                        [descriptor.id]: mode,
+                      }))
+                    }
                   />
-                  <InfoPopover title={effect.durationType} description={ruleInfo(effect.durationType)} />
-                </div>
-                <div className="flex items-center gap-1">
-                  <StatusBadge status="complete" label="active" />
-                  <InfoPopover title="Active" description={ruleInfo("active")} />
-                </div>
-                {onDismissEffect ? (
-                  <button
-                    className="sheet-focus-ring rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-800"
-                    onClick={() => onDismissEffect(effect.id)}
-                    type="button"
-                  >
-                    Dismiss
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {consumedEffects.length > 0 ? (
-        <div className="sheet-card border-slate-300 bg-slate-50 p-2">
-          <SectionHeader
-            actions={<StatusBadge label={`${consumedEffects.length} consumed`} status="pending" />}
-            subtitle="Consumed one-roll/until-used effects are removed from active selection until re-activated."
-            title="Consumed Buffs"
-          />
-          <ul className="space-y-1">
-            {consumedEffects.slice(0, 8).map((effect) => (
-              <li key={effect.id} className="sheet-card flex items-center justify-between gap-2 rounded bg-white px-2 py-1 text-xs text-slate-700">
-                <p className="font-medium text-slate-900">{effect.label}</p>
-                <div className="flex items-center gap-1">
-                  <StatusBadge label={effect.status} status="pending" />
-                  <InfoPopover title={effect.status} description={ruleInfo(effect.status)} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+                ))}
+              </ul>
+            )
+          ) : null}
+        </section>
       ) : null}
 
       {onActivateEffect ? (
@@ -733,7 +877,7 @@ export function ActionRollPanel({
             {(["spells", "features", "items", "custom"] as const).map((value) => (
               <button
                 key={value}
-                className={`sheet-focus-ring rounded px-2 py-1 text-xs ${sourceFilters.includes(value) ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-200"}`}
+                className={`sheet-focus-ring rounded px-2 py-1 text-xs ${sourceFilters.includes(value) ? "bg-slate-900 text-white" : "border border-slate-200 bg-white text-slate-700"}`}
                 onClick={() => toggleSourceFilter(value)}
                 type="button"
               >
@@ -743,7 +887,7 @@ export function ActionRollPanel({
             {(["all", "roll-bonus", "ac-bonus"] as const).map((value) => (
               <button
                 key={value}
-                className={`sheet-focus-ring rounded px-2 py-1 text-xs ${effectFilter === value ? "bg-indigo-700 text-white" : "bg-white text-slate-700 border border-slate-200"}`}
+                className={`sheet-focus-ring rounded px-2 py-1 text-xs ${effectFilter === value ? "bg-indigo-700 text-white" : "border border-slate-200 bg-white text-slate-700"}`}
                 onClick={() => setEffectFilter(value)}
                 type="button"
               >
@@ -973,115 +1117,6 @@ export function ActionRollPanel({
             )
           ) : null}
         </div>
-      ) : null}
-
-      {rollSelectableEffects.length > 0 ? (
-        <div className="sheet-card bg-slate-50 p-2">
-          <SectionHeader
-            actions={<StatusBadge label={`${selectedEffectIds.length} selected`} status="info" />}
-            subtitle="Checked effects apply to the next matching roll. One-roll and until-used effects are consumed."
-            title="Optional Active Effects"
-          />
-          <div className="flex flex-wrap gap-2">
-            {rollSelectableEffects.map((effect) => (
-              <label key={effect.id} className="sheet-card flex items-center gap-1 rounded bg-white px-2 py-1 text-xs text-slate-700">
-                <input
-                  aria-label={`Apply effect ${effect.label} to next roll`}
-                  checked={selectedEffectIds.includes(effect.id)}
-                  onChange={(event) =>
-                    setSelectedEffectIds((current) =>
-                      event.target.checked ? Array.from(new Set([...current, effect.id])) : current.filter((id) => id !== effect.id),
-                    )
-                  }
-                  type="checkbox"
-                />
-                <span className="font-medium text-slate-900">{effect.label}</span>
-                <StatusBadge
-                  className="ml-1"
-                  label={effect.durationType}
-                  status={effect.durationType === "until-used" || effect.durationType === "one-roll" ? "pending" : "info"}
-                />
-                <InfoPopover title={effect.durationType} description={ruleInfo(effect.durationType)} />
-              </label>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <RequestGrid title="Ability Checks" requests={filteredAbilityChecks} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
-      <RequestGrid title="Saving Throws" requests={filteredSavingThrows} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
-      <RequestGrid title="Skill Checks" requests={filteredSkillChecks} rollMode={rollMode} onRoll={(request) => rollWithEffects(request)} />
-
-      <section className="space-y-2">
-        <SectionHeader
-          actions={<StatusBadge label={`${filteredActionRolls.length}`} status="info" />}
-          title="Action Rolls"
-        />
-        {filteredActionRolls.length === 0 ? (
-          <EmptyState
-            title="Action Rolls"
-            description={normalizedActionSearch ? "No action entries match current search." : "No action entries resolved."}
-          />
-        ) : (
-          <ul className="space-y-2">
-            {filteredActionRolls.map((descriptor) => (
-              <ActionDescriptorRow
-                key={descriptor.id}
-                descriptor={descriptor}
-                onRoll={rollWithEffects}
-                onSpendResource={onSpendResource}
-                resourceById={resourceById}
-                rollMode={rollMode}
-                versatileMode={weaponUsageByActionId[descriptor.id]}
-                onChangeVersatileMode={(mode) =>
-                  setWeaponUsageByActionId((current) => ({
-                    ...current,
-                    [descriptor.id]: mode,
-                  }))
-                }
-              />
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {showSpellRolls ? (
-        <section className="space-y-2">
-          <SectionHeader
-            actions={<StatusBadge label={`${filteredSpellRolls.length}`} status="info" />}
-            title="Spell Rolls"
-          />
-          {filteredSpellRolls.length === 0 ? (
-            <EmptyState
-              title="Spell Rolls"
-              description={
-                normalizedActionSearch
-                  ? "No spell action entries match current search."
-                  : "Spell roll actions appear when a selected spell has an attack, save, or damage context."
-              }
-            />
-          ) : (
-            <ul className="space-y-2">
-              {filteredSpellRolls.map((descriptor) => (
-                <ActionDescriptorRow
-                  key={descriptor.id}
-                  descriptor={descriptor}
-                  onRoll={rollWithEffects}
-                  onSpendResource={onSpendResource}
-                  resourceById={resourceById}
-                  rollMode={rollMode}
-                  versatileMode={weaponUsageByActionId[descriptor.id]}
-                  onChangeVersatileMode={(mode) =>
-                    setWeaponUsageByActionId((current) => ({
-                      ...current,
-                      [descriptor.id]: mode,
-                    }))
-                  }
-                />
-              ))}
-            </ul>
-          )}
-        </section>
       ) : null}
     </div>
   );

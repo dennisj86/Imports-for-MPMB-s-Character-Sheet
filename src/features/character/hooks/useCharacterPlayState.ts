@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import type { CharacterDraft } from "../../../domain/character";
 import type { CharacterPlayState } from "../../../domain/playState";
-import type { RollRequest } from "../../../domain/rolls";
+import type { RollRequest, RollResult } from "../../../domain/rolls";
 import type { ActiveEffectDefinition } from "../../../domain/rules";
 import type { CharacterEngineState } from "../../../services/characterEngine";
 import {
@@ -63,7 +63,7 @@ export interface CharacterPlayStateViewState {
   spendSpellSlot: (slotKey: string, amount?: number) => void;
   restoreSpellSlot: (slotKey: string, amount?: number) => void;
   spendHitDie: (poolId: string) => void;
-  roll: (request: RollRequest, options?: { spendResourceKey?: string; resourceLabel?: string }) => void;
+  roll: (request: RollRequest, options?: { spendResourceKey?: string; resourceLabel?: string }) => RollResult | undefined;
   castSpell: (spellId: string, options?: CastSpellOptions) => void;
   addActiveEffect: (effect: ActiveEffectDefinition, options?: { external?: boolean; sourceCasterName?: string; note?: string; diceExpression?: string }) => void;
   addActiveEffectFromSpell: (spellId: string, options?: { external?: boolean }) => void;
@@ -221,9 +221,15 @@ export function useCharacterPlayState(
 
   const rollAction = useCallback((request: RollRequest, options: { spendResourceKey?: string; resourceLabel?: string } = {}) => {
     if (!runtime) {
-      return;
+      return undefined;
     }
-    commit((current) => rollAndRecord(current, runtime, request, options).playState);
+    let result: RollResult | undefined;
+    commit((current) => {
+      const rolled = rollAndRecord(current, runtime, request, options);
+      result = rolled.result;
+      return rolled.playState;
+    });
+    return result;
   }, [commit, runtime]);
 
   const castSpellAction = useCallback((spellId: string, options: CastSpellOptions = {}) => {

@@ -23,6 +23,7 @@ export interface WeaponAttackProfile {
   damageType?: string;
   properties: string[];
   range?: string;
+  mastery?: string;
   masteryBadges: string[];
   breakdown: {
     attack: string[];
@@ -294,12 +295,14 @@ export function buildWeaponAttackProfiles(input: {
       const versatileDamageDice = extractVersatileDamageDice(text);
       const damageType = damageTypeFromStructuredDamage(definition?.damage) ?? extractDamageType(text);
       const masteryBadges = weaponMasteryBadgesForItem(input.draft, item, definition);
+      const mastery = typeof definition?.mastery === "string" && definition.mastery.trim().length > 0 ? definition.mastery.trim() : undefined;
       const diagnostics = [
         ...attackAbility.diagnostics,
         ...(damageDice ? [] : ["No structured damage dice found for this weapon."]),
         ...(definition ? [] : ["Weapon definition missing; using inventory fallback fields."]),
         ...(structuredDamageDice ? [] : ["Base weapon damage dice fell back to textual extraction."]),
         ...(input.weaponProficiencies && !proficiencyApplied ? ["Weapon proficiency not established by the current deterministic proficiency set."] : []),
+        ...(masteryBadges.length && !mastery ? ["Mastery selected, but weapon mastery details are missing from equipment metadata."] : []),
       ];
       return {
         id: `weapon-profile:${definition?.id ?? item.itemDefinitionId ?? item.id}:${index}`,
@@ -319,6 +322,7 @@ export function buildWeaponAttackProfiles(input: {
         damageType,
         properties,
         range: definition?.range ?? extractRange(text),
+        mastery,
         masteryBadges,
         breakdown: {
           attack: [

@@ -82,9 +82,10 @@ interface ResourceBadgeProps {
   max: number;
   rechargeLabel?: string;
   source?: string;
+  quietInfo?: boolean;
 }
 
-export function ResourceBadge({ label, remaining, max, rechargeLabel, source }: ResourceBadgeProps) {
+export function ResourceBadge({ label, remaining, max, rechargeLabel, source, quietInfo = false }: ResourceBadgeProps) {
   const depleted = remaining <= 0;
   return (
     <article className={joinClassNames("sheet-card p-2", depleted ? "border-amber-200 bg-amber-50" : "bg-white")}>
@@ -99,7 +100,7 @@ export function ResourceBadge({ label, remaining, max, rechargeLabel, source }: 
         {rechargeLabel ? (
           <>
             <span>· {rechargeLabel}</span>
-            <InfoPopover title={`${label} Recharge`} description={ruleInfo(rechargeLabel)} />
+            {!quietInfo ? <InfoPopover title={`${label} Recharge`} description={ruleInfo(rechargeLabel)} /> : null}
           </>
         ) : null}
       </p>
