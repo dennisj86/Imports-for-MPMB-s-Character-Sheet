@@ -36,7 +36,7 @@ import {
   type SheetTabId,
 } from "../features/character/viewModels";
 import type { DerivedCharacterStats } from "../domain/derivedStats";
-import { equipItem, setHpGainMethod, unequipItem } from "../services/equipment";
+import { adjustCurrencyAmount as adjustInventoryCurrencyAmount, equipItem, setCurrencyAmount as setInventoryCurrencyAmount, setHpGainMethod, unequipItem } from "../services/equipment";
 import { setAsiOrFeatOption } from "../services/levelUp";
 import { buildCharacterRollView, getLatestRollResult } from "../services/rolls";
 import { buildActiveEffectCatalog, resolveCombinedRuleProficiencies } from "../services/rules";
@@ -199,6 +199,18 @@ export function CharacterSheetPage() {
   };
   const unequipInventoryItem = (itemInstanceId: string) => {
     updateCharacter(draft.id, (current) => unequipItem(current, engine.equipmentCatalog, itemInstanceId).draft);
+  };
+  const setCurrencyAmount = (denomination: "cp" | "sp" | "ep" | "gp" | "pp", amount: number) => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      inventory: setInventoryCurrencyAmount(current.inventory, denomination, amount),
+    }));
+  };
+  const adjustCurrencyAmount = (denomination: "cp" | "sp" | "ep" | "gp" | "pp", delta: number) => {
+    updateCharacter(draft.id, (current) => ({
+      ...current,
+      inventory: adjustInventoryCurrencyAmount(current.inventory, denomination, delta),
+    }));
   };
   const chooseHpGainMethod = (method: Parameters<typeof setHpGainMethod>[2]) => {
     updateCharacter(draft.id, (current) => setHpGainMethod(current, current.classSelection.level, method));
@@ -384,7 +396,13 @@ export function CharacterSheetPage() {
       {activeTab === "inventory" ? (
         <section aria-labelledby="inventory-tab" className="sheet-card min-w-0 p-4" id="inventory-panel" role="tabpanel">
           <SectionHeader subtitle="Equipped state, armor/shield/weapon cards and AC readability" title="Inventory & Equipment" />
-          <InventoryPanel onEquipItem={equipInventoryItem} onUnequipItem={unequipInventoryItem} viewModel={inventory} />
+          <InventoryPanel
+            onAdjustCurrency={adjustCurrencyAmount}
+            onEquipItem={equipInventoryItem}
+            onSetCurrency={setCurrencyAmount}
+            onUnequipItem={unequipInventoryItem}
+            viewModel={inventory}
+          />
         </section>
       ) : null}
 

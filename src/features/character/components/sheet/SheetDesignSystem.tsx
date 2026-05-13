@@ -1,5 +1,6 @@
-import { useId, type PropsWithChildren, type ReactNode } from "react";
+import { useId, useState, type FocusEvent, type PropsWithChildren, type ReactNode } from "react";
 import type { RollResult } from "../../../../domain/rolls";
+import { ruleInfo } from "./rulesInfo";
 
 function joinClassNames(...values: Array<string | undefined | false>): string {
   return values.filter(Boolean).join(" ");
@@ -91,9 +92,16 @@ export function ResourceBadge({ label, remaining, max, rechargeLabel, source }: 
         <p className="text-sm font-medium text-slate-900">{label}</p>
         <StatusBadge status={depleted ? "pending" : "complete"} label={depleted ? "depleted" : "ready"} />
       </div>
-      <p className="mt-1 text-sm text-slate-700">
-        {remaining}/{max}
-        {rechargeLabel ? ` · ${rechargeLabel}` : ""}
+      <p className="mt-1 flex flex-wrap items-center gap-1 text-sm text-slate-700">
+        <span>
+          {remaining}/{max}
+        </span>
+        {rechargeLabel ? (
+          <>
+            <span>· {rechargeLabel}</span>
+            <InfoPopover title={`${label} Recharge`} description={ruleInfo(rechargeLabel)} />
+          </>
+        ) : null}
       </p>
       {source ? <p className="text-xs text-slate-500">{source}</p> : null}
     </article>
@@ -201,6 +209,56 @@ export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   return (
     <span className={joinClassNames("inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-xs font-medium", STATUS_STYLE_BY_TONE[status], className)}>
       {label ?? status}
+    </span>
+  );
+}
+
+interface InfoPopoverProps {
+  title: string;
+  description?: string;
+  className?: string;
+}
+
+export function InfoPopover({ title, description, className }: InfoPopoverProps) {
+  const [open, setOpen] = useState(false);
+  const tooltipId = useId();
+  const resolvedDescription = description?.trim() || "Details unavailable.";
+
+  const handleBlur = (event: FocusEvent<HTMLSpanElement>) => {
+    const next = event.relatedTarget as Node | null;
+    if (!next || !event.currentTarget.contains(next)) {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <span
+      className={joinClassNames("relative inline-flex items-center", className)}
+      onBlur={handleBlur}
+      onFocus={() => setOpen(true)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        aria-controls={tooltipId}
+        aria-expanded={open}
+        aria-label={`Info for ${title}`}
+        className="sheet-focus-ring inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-semibold text-slate-700"
+        onClick={() => setOpen((value) => !value)}
+        type="button"
+      >
+        i
+      </button>
+      {open ? (
+        <span
+          className="absolute left-1/2 top-full z-30 mt-1 w-52 -translate-x-1/2 rounded border border-slate-300 bg-white p-2 text-left text-[11px] leading-snug text-slate-700 shadow-lg"
+          id={tooltipId}
+          role="tooltip"
+        >
+          <span className="block font-medium text-slate-900">{title}</span>
+          <span className="mt-0.5 block">{resolvedDescription}</span>
+        </span>
+      ) : null}
     </span>
   );
 }

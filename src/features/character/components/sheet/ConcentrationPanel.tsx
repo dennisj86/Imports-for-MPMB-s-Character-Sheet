@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ConcentrationState } from "../../../../domain/playState";
 import { inputClassName } from "../../../../components/ui/FormField";
-import { EmptyState, StatusBadge } from "./SheetDesignSystem";
+import { EmptyState, InfoPopover, StatusBadge } from "./SheetDesignSystem";
+import { ruleInfo } from "./rulesInfo";
 
 interface ConcentrationPanelProps {
   concentration: ConcentrationState | null;
@@ -17,8 +18,14 @@ export function ConcentrationPanel({ concentration, onStart, onEnd }: Concentrat
       {concentration ? (
         <div className="sheet-card border-indigo-300 bg-indigo-50 p-3">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <p className="text-sm font-medium text-indigo-900">{concentration.name}</p>
-            <StatusBadge label="concentrating" status="complete" />
+            <div className="flex items-center gap-1">
+              <p className="text-sm font-medium text-indigo-900">{concentration.name}</p>
+              <InfoPopover title="Concentration" description={ruleInfo("concentration")} />
+            </div>
+            <div className="flex items-center gap-1">
+              <StatusBadge label="concentrating" status="complete" />
+              <InfoPopover title="Concentrating" description={ruleInfo("concentration-duration")} />
+            </div>
           </div>
           <p className="text-xs text-indigo-800">Started: {new Date(concentration.startedAt).toLocaleTimeString()}</p>
           {concentration.notes ? <p className="text-xs text-indigo-800">{concentration.notes}</p> : null}

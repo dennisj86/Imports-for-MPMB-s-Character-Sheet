@@ -41,6 +41,13 @@ export function createCharacterDraft(id: string, name: string): CharacterDraft {
     featureChoices: [],
     inventory: {
       items: [],
+      currency: {
+        cp: 0,
+        sp: 0,
+        ep: 0,
+        gp: 0,
+        pp: 0,
+      },
     },
     levelUp: {
       hpGainByLevel: {},

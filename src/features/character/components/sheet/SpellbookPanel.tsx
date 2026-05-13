@@ -4,7 +4,8 @@ import type { RollMode, RollRequest } from "../../../../domain/rolls";
 import type { SpellbookViewModel, SpellCardViewModel } from "../../viewModels/spellbookViewModel";
 import type { CastSpellOptions, PlaySpellSlotCounter } from "../../../../services/playState";
 import { createActiveEffectFromSpell } from "../../../../services/rules";
-import { EmptyState, SectionHeader, SpellCardShell, StatusBadge } from "./SheetDesignSystem";
+import { EmptyState, InfoPopover, SectionHeader, SpellCardShell, StatusBadge } from "./SheetDesignSystem";
+import { ruleInfo } from "./rulesInfo";
 
 interface SpellbookPanelProps {
   viewModel: SpellbookViewModel;
@@ -27,6 +28,17 @@ function defaultSlotLevel(spell: SpellCardViewModel, slots: PlaySpellSlotCounter
     return undefined;
   }
   return slots.filter((slot) => slot.level >= spell.level && slot.remaining > 0)[0]?.level;
+}
+
+function spellTagInfo(label: string): string {
+  const normalized = label.trim().toLowerCase();
+  if (normalized === "effect mapped") {
+    return ruleInfo("effect-mapped");
+  }
+  if (normalized === "no mapped effect") {
+    return ruleInfo("no-mapped-effect");
+  }
+  return ruleInfo(normalized);
 }
 
 function SpellSlotOverview({
@@ -230,11 +242,30 @@ export function SpellbookPanel({
                   tags={
                     <>
                       {spell.categories.map((category) => (
-                        <StatusBadge key={category} label={category} status="info" />
+                        <span key={category} className="inline-flex items-center gap-1">
+                          <StatusBadge label={category} status="info" />
+                          <InfoPopover title={category} description={spellTagInfo(category)} />
+                        </span>
                       ))}
-                      {spell.concentration ? <StatusBadge label="concentration" status="pending" /> : null}
-                      {spell.ritual ? <StatusBadge label="ritual" status="complete" /> : null}
-                      <StatusBadge label={canApplyEffectToSelf ? "effect mapped" : "no mapped effect"} status={canApplyEffectToSelf ? "complete" : "unsupported"} />
+                      {spell.concentration ? (
+                        <span className="inline-flex items-center gap-1">
+                          <StatusBadge label="concentration" status="pending" />
+                          <InfoPopover title="Concentration" description={spellTagInfo("concentration")} />
+                        </span>
+                      ) : null}
+                      {spell.ritual ? (
+                        <span className="inline-flex items-center gap-1">
+                          <StatusBadge label="ritual" status="complete" />
+                          <InfoPopover title="Ritual" description={spellTagInfo("ritual")} />
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1">
+                        <StatusBadge label={canApplyEffectToSelf ? "effect mapped" : "no mapped effect"} status={canApplyEffectToSelf ? "complete" : "unsupported"} />
+                        <InfoPopover
+                          title={canApplyEffectToSelf ? "Effect Mapped" : "No Mapped Effect"}
+                          description={spellTagInfo(canApplyEffectToSelf ? "effect mapped" : "no mapped effect")}
+                        />
+                      </span>
                     </>
                   }
                   controls={

@@ -303,6 +303,16 @@ const inventoryItemSchema = z.object({
   type: z.string().optional(),
 });
 
+const currencySchema = z
+  .object({
+    cp: z.number().int().nonnegative().default(0),
+    sp: z.number().int().nonnegative().default(0),
+    ep: z.number().int().nonnegative().default(0),
+    gp: z.number().int().nonnegative().default(0),
+    pp: z.number().int().nonnegative().default(0),
+  })
+  .default({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
+
 const levelUpStateSchema = z.object({
   hpGainByLevel: z.record(
     z.object({
@@ -399,6 +409,7 @@ const characterDraftV2Schema = z.object({
   ),
   inventory: z.object({
     items: z.array(inventoryItemSchema),
+    currency: currencySchema.optional(),
   }),
   levelUp: levelUpStateSchema,
   ruleChoices: ruleChoiceStateSchema,
@@ -437,6 +448,7 @@ const characterDraftV1Schema = z.object({
   ),
   inventory: z.object({
     items: z.array(inventoryItemSchema),
+    currency: currencySchema.optional(),
   }),
 });
 

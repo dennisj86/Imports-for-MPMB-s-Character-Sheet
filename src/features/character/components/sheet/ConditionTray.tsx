@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { ActiveConditionState } from "../../../../domain/playState";
 import { inputClassName } from "../../../../components/ui/FormField";
 import { findConditionDefinition, STANDARD_CONDITION_DEFINITIONS } from "../../../../services/playState";
-import { EmptyState, StatusBadge } from "./SheetDesignSystem";
+import { EmptyState, InfoPopover, StatusBadge } from "./SheetDesignSystem";
+import { ruleInfo } from "./rulesInfo";
 
 interface ConditionTrayProps {
   activeConditions: ActiveConditionState[];
@@ -32,17 +33,20 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
       <div className="flex flex-wrap gap-1">
         {conditionOptions.map((condition) => {
           const active = activeConditions.some((entry) => entry.id === condition.id);
+          const explanation = condition.shortRulesHint ?? ruleInfo(condition.label);
           return (
-            <button
-              key={condition.id}
-              title={condition.shortRulesHint}
-              aria-label={`Toggle condition ${condition.label}`}
-              className={`sheet-focus-ring rounded px-2 py-1 text-xs ${active ? "bg-indigo-700 text-white" : "bg-slate-200 text-slate-800"}`}
-              onClick={() => onToggleCondition(condition.id)}
-              type="button"
-            >
-              {condition.label}
-            </button>
+            <div key={condition.id} className="inline-flex items-center gap-1">
+              <button
+                title={condition.shortRulesHint}
+                aria-label={`Toggle condition ${condition.label}`}
+                className={`sheet-focus-ring rounded px-2 py-1 text-xs ${active ? "bg-indigo-700 text-white" : "bg-slate-200 text-slate-800"}`}
+                onClick={() => onToggleCondition(condition.id)}
+                type="button"
+              >
+                {condition.label}
+              </button>
+              <InfoPopover title={condition.label} description={explanation} />
+            </div>
           );
         })}
       </div>
@@ -87,6 +91,7 @@ export function ConditionTray({ activeConditions, onToggleCondition }: Condition
               </span>
               <div className="flex items-center gap-2">
                 <StatusBadge label="active" status="pending" />
+                <InfoPopover title={condition.name} description={findConditionDefinition(condition.id)?.shortRulesHint ?? ruleInfo(condition.name)} />
                 <button
                   aria-label={`Remove condition ${condition.name}`}
                   className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"

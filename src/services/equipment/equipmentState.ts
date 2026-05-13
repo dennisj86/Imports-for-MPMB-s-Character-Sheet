@@ -7,6 +7,7 @@ import {
   normalizeEquipmentToken,
   resolveEquipmentDefinitionForInventoryItem,
 } from "./armorClass";
+import { normalizeCurrencyState } from "./currencyState";
 export { setHpGainMethod } from "../levelUp";
 
 export interface EquipmentOperationResult {
@@ -64,6 +65,7 @@ export function normalizeInventoryState(
         equipmentSlot: slot,
       };
     }),
+    currency: normalizeCurrencyState(inventory.currency),
   };
 }
 
@@ -132,7 +134,7 @@ export function setInventoryItemEquipped(
   }
 
   return {
-    inventory: { items: nextItems },
+    inventory: { items: nextItems, currency: normalized.currency },
     warnings,
   };
 }

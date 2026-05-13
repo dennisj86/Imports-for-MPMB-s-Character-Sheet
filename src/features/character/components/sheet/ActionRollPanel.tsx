@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import type { ActiveEffectCatalogEntry, ActiveEffectDefinition } from "../../../../domain/rules";
 import type { CharacterRollView, RollActionDescriptor, RollMode, RollRequest, RollResult, RollType } from "../../../../domain/rolls";
 import type { PlayResourceCounter } from "../../../../services/playState";
+import { parseDiceExpression } from "../../../../features/dice";
 import { activeEffectsForRollType, searchActiveEffectCatalog, type ActiveEffectCatalogEffectFilter, type ActiveEffectCatalogSourceFilter } from "../../../../services/rules";
-import { ActionCard, EmptyState, RollResultCard, SectionHeader, StatusBadge } from "./SheetDesignSystem";
+import { ActionCard, EmptyState, InfoPopover, RollResultCard, SectionHeader, StatusBadge } from "./SheetDesignSystem";
+import { ruleInfo } from "./rulesInfo";
 
 interface ActionRollPanelProps {
   rollView: CharacterRollView;
@@ -104,7 +106,25 @@ type WeaponProfileMetadata = {
   usageMode?: "melee" | "ranged" | "thrown" | "versatile-one-hand" | "versatile-two-hand";
   versatileDamageDice?: string;
   damageDice?: string;
+  properties?: string[];
+  range?: string;
+  masteryBadges?: string[];
 };
+
+const QUICK_DICE_EXPRESSIONS = ["d20", "1d4", "1d6", "1d8", "1d10", "1d12", "1d100"];
+
+function normalizeDiceExpression(value: string): string {
+  return value.replace(/\s+/g, "").toLowerCase();
+}
+
+function isD20Expression(expression: string): boolean {
+  const normalized = normalizeDiceExpression(expression);
+  return normalized === "d20" || normalized === "1d20";
+}
+
+function normalizedD20Expression(expression: string): string {
+  return isD20Expression(expression) ? "1d20" : expression.trim();
+}
 
 function firstDiceToken(expression: string): string | undefined {
   return expression.match(/\b\d*d\d+\b/i)?.[0]?.replace(/\s+/g, "");
@@ -209,6 +229,10 @@ function ActionDescriptorRow({
   const weaponProfile = (rollRequest?.metadata?.weaponProfile ?? descriptor.damageRequest?.metadata?.weaponProfile) as
     | WeaponProfileMetadata
     | undefined;
+  const weaponProperties = weaponProfile?.properties ?? [];
+  const weaponMasteryBadges = weaponProfile?.masteryBadges ?? [];
+  const descriptorMasteryBadges = descriptor.mappingBadges ?? [];
+  const masteryBadges = Array.from(new Set([...weaponMasteryBadges, ...descriptorMasteryBadges]));
   const versatileDamageDice = weaponProfile?.versatileDamageDice;
   const hasVersatileMode = Boolean(versatileDamageDice && descriptor.damageRequest?.diceExpression);
   const selectedVersatileMode = versatileMode ?? "one-hand";
@@ -248,11 +272,26 @@ function ActionDescriptorRow({
         subtitle={`${descriptor.activationType ?? "action"}${descriptor.sourceSummary ? ` · ${descriptor.sourceSummary}` : ""}${descriptor.rollRequest ? ` · attack ${modifierLabel(descriptor.rollRequest.modifier)}` : ""}`}
         badges={
           <>
-            {descriptor.mappingBadges?.map((badge) => (
-              <StatusBadge key={badge} label={badge} status="info" />
+            {masteryBadges.map((badge) => (
+              <span key={badge} className="inline-flex items-center gap-1">
+                <StatusBadge label={badge} status="info" />
+                <InfoPopover title={badge} description={ruleInfo("weapon-mastery")} />
+              </span>
+            ))}
+            {weaponProperties.map((property) => (
+              <span key={`${descriptor.id}:${property}`} className="inline-flex items-center gap-1">
+                <StatusBadge label={property} status="info" />
+                <InfoPopover title={property} description={ruleInfo(property)} />
+              </span>
             ))}
             {ambiguousResources ? <StatusBadge label="manual resource spend" status="blocked" /> : null}
             {resource ? <StatusBadge label={`${resource.name} ${resource.remaining}/${resource.max}`} status={resource.remaining > 0 ? "complete" : "pending"} /> : null}
+            {weaponProfile?.range ? (
+              <span className="inline-flex items-center gap-1">
+                <StatusBadge label={`range ${weaponProfile.range}`} status="info" />
+                <InfoPopover title="Range" description={ruleInfo("range")} />
+              </span>
+            ) : null}
           </>
         }
         actions={
@@ -300,6 +339,16 @@ function ActionDescriptorRow({
           </p>
         ) : null}
         {effectiveDamageRequest ? <p className="text-xs text-slate-700">Damage {effectiveDamageRequest.diceExpression}</p> : null}
+        {weaponProperties.length ? (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {weaponProperties.map((property) => (
+              <span key={`property-inline-${descriptor.id}-${property}`} className="inline-flex items-center gap-1 text-xs text-slate-700">
+                <span className="rounded bg-slate-100 px-1.5 py-0.5">{property}</span>
+                <InfoPopover title={property} description={ruleInfo(property)} />
+              </span>
+            ))}
+          </div>
+        ) : null}
         {hasVersatileMode ? (
           <label className="mt-1 inline-flex items-center gap-2 text-xs text-slate-700">
             Usage
@@ -350,6 +399,9 @@ export function ActionRollPanel({
   const [customRollTypes, setCustomRollTypes] = useState<RollType[]>(["ability-check"]);
   const [weaponUsageByActionId, setWeaponUsageByActionId] = useState<Record<string, "one-hand" | "two-hand">>({});
   const [actionSearch, setActionSearch] = useState("");
+  const [freeDiceExpression, setFreeDiceExpression] = useState("d20");
+  const [freeDiceLabel, setFreeDiceLabel] = useState("");
+  const [showCustomBuffEditor, setShowCustomBuffEditor] = useState(false);
 
   const resourceById = useMemo(() => new Map(resources.map((resource) => [resource.id, resource])), [resources]);
   const actionableSpells = useMemo(
@@ -397,6 +449,18 @@ export function ActionRollPanel({
 
   const selectedCatalogEntry = filteredCatalog.find((entry) => entry.id === selectedCatalogId) ?? activeEffectCatalog.find((entry) => entry.id === selectedCatalogId);
   const canActivateCustomEffect = customName.trim().length > 0 && customRollTypes.length > 0;
+  const freeDiceValidationError = useMemo(() => {
+    const expression = normalizedD20Expression(freeDiceExpression);
+    if (!expression) {
+      return "Enter a dice expression.";
+    }
+    try {
+      parseDiceExpression(expression);
+      return undefined;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Invalid dice expression.";
+    }
+  }, [freeDiceExpression]);
 
   const applySelectedEffects = (request: RollRequest): RollRequest => {
     const applicable = activeEffectsForRollType(rollSelectableEffects, request.type).filter((effect) => selectedEffectIds.includes(effect.id));
@@ -462,6 +526,44 @@ export function ActionRollPanel({
     setCustomNote("");
     setCustomCasterName("");
     setCustomRollTypes(["ability-check"]);
+    setShowCustomBuffEditor(false);
+  };
+
+  const rollFreeDice = () => {
+    if (freeDiceValidationError) {
+      return;
+    }
+    const expression = normalizedD20Expression(freeDiceExpression);
+    const label = freeDiceLabel.trim() || `Free Roll (${expression})`;
+    onRoll({
+      id: `roll:free:${Date.now()}`,
+      type: "custom",
+      label,
+      sourceType: "custom",
+      sourceId: "free-dice",
+      modifier: 0,
+      diceExpression: expression,
+      rollMode: isD20Expression(expression) ? rollMode : "normal",
+      metadata: {
+        utility: "free-dice",
+      },
+    });
+  };
+
+  const rollDeathSaveShortcut = () => {
+    onRoll({
+      id: `roll:free:death-save:${Date.now()}`,
+      type: "death-save",
+      label: "Death Save",
+      sourceType: "custom",
+      sourceId: "free-dice",
+      modifier: 0,
+      diceExpression: "1d20",
+      rollMode,
+      metadata: {
+        utility: "death-save-shortcut",
+      },
+    });
   };
 
   return (
@@ -502,6 +604,60 @@ export function ActionRollPanel({
         />
       </div>
 
+      <div className="sheet-card space-y-2 p-3">
+        <SectionHeader subtitle="Roll standalone dice formulas without combat automation." title="Free Dice Roller" />
+        <div className="grid gap-2 md:grid-cols-[minmax(0,2fr),minmax(0,2fr),auto]">
+          <input
+            aria-label="Free dice formula"
+            className="sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+            onChange={(event) => setFreeDiceExpression(event.target.value)}
+            placeholder="d20, 2d6+3, 1d20+5"
+            type="text"
+            value={freeDiceExpression}
+          />
+          <input
+            aria-label="Free roll label"
+            className="sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+            onChange={(event) => setFreeDiceLabel(event.target.value)}
+            placeholder="Optional custom label"
+            type="text"
+            value={freeDiceLabel}
+          />
+          <button
+            aria-label="Roll free dice expression"
+            className="sheet-focus-ring rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={Boolean(freeDiceValidationError)}
+            onClick={rollFreeDice}
+            title={freeDiceValidationError}
+            type="button"
+          >
+            Roll
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {QUICK_DICE_EXPRESSIONS.map((expression) => (
+            <button
+              key={`quick-die-${expression}`}
+              aria-label={`Set free dice expression to ${expression}`}
+              className={`sheet-focus-ring rounded px-2 py-1 text-xs ${normalizeDiceExpression(freeDiceExpression) === normalizeDiceExpression(expression) ? "bg-indigo-700 text-white" : "bg-slate-100 text-slate-700"}`}
+              onClick={() => setFreeDiceExpression(expression)}
+              type="button"
+            >
+              {expression}
+            </button>
+          ))}
+          <button
+            aria-label="Roll death save"
+            className="sheet-focus-ring rounded bg-rose-700 px-2 py-1 text-xs text-white"
+            onClick={rollDeathSaveShortcut}
+            type="button"
+          >
+            Death Save
+          </button>
+        </div>
+        {freeDiceValidationError ? <p className="text-xs text-rose-700">{freeDiceValidationError}</p> : null}
+      </div>
+
       <RollResultCard result={lastRoll} />
 
       {activeEffects.length > 0 ? (
@@ -517,13 +673,23 @@ export function ActionRollPanel({
                 <div className="text-xs text-slate-700">
                   <p className="font-medium text-slate-900">{effect.label}</p>
                   <p>
-                    {sourceTypeLabel(effect.sourceType)} · {effect.durationType} · {effect.targets.join(", ")}
+                    {sourceTypeLabel(effect.sourceType)} · {effect.targets.join(", ")}
                     {effect.modifierSummary?.dice ? ` · ${effect.modifierSummary.dice}` : ""}
                     {effect.modifierSummary?.flat !== undefined ? ` · ${modifierLabel(effect.modifierSummary.flat)}` : ""}
                   </p>
                   {effect.note ? <p className="text-slate-600">{effect.note}</p> : null}
                 </div>
-                <StatusBadge status="complete" label="active" />
+                <div className="flex items-center gap-1">
+                  <StatusBadge
+                    label={effect.durationType}
+                    status={effect.durationType === "until-used" || effect.durationType === "one-roll" ? "pending" : "info"}
+                  />
+                  <InfoPopover title={effect.durationType} description={ruleInfo(effect.durationType)} />
+                </div>
+                <div className="flex items-center gap-1">
+                  <StatusBadge status="complete" label="active" />
+                  <InfoPopover title="Active" description={ruleInfo("active")} />
+                </div>
                 {onDismissEffect ? (
                   <button
                     className="sheet-focus-ring rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-800"
@@ -550,7 +716,10 @@ export function ActionRollPanel({
             {consumedEffects.slice(0, 8).map((effect) => (
               <li key={effect.id} className="sheet-card flex items-center justify-between gap-2 rounded bg-white px-2 py-1 text-xs text-slate-700">
                 <p className="font-medium text-slate-900">{effect.label}</p>
-                <StatusBadge label={effect.status} status="pending" />
+                <div className="flex items-center gap-1">
+                  <StatusBadge label={effect.status} status="pending" />
+                  <InfoPopover title={effect.status} description={ruleInfo(effect.status)} />
+                </div>
               </li>
             ))}
           </ul>
@@ -685,102 +854,123 @@ export function ActionRollPanel({
           ) : null}
 
           {sourceFilters.includes("custom") && onCreateCustomEffect ? (
-            <div className="space-y-2 rounded border border-slate-200 bg-white p-2">
-              <p className="text-xs font-medium uppercase text-slate-500">Custom Buff</p>
-              <div className="grid gap-2 md:grid-cols-2">
-                <label className="text-xs text-slate-700">
-                  Name
-                  <input
-                    aria-label="Custom buff name"
-                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-                    onChange={(event) => setCustomName(event.target.value)}
-                    type="text"
-                    value={customName}
-                  />
-                </label>
-                <label className="text-xs text-slate-700">
-                  Duration
-                  <select
-                    aria-label="Custom buff duration"
-                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-                    onChange={(event) => setCustomDuration(event.target.value as "manual" | "until-used" | "one-roll")}
-                    value={customDuration}
+            showCustomBuffEditor ? (
+              <div className="space-y-2 rounded border border-slate-200 bg-white p-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-medium uppercase text-slate-500">Custom Buff</p>
+                  <button
+                    aria-label="Close custom buff editor"
+                    className="sheet-focus-ring rounded border border-slate-300 bg-slate-100 px-2 py-1 text-xs text-slate-700"
+                    onClick={() => setShowCustomBuffEditor(false)}
+                    type="button"
                   >
-                    <option value="manual">Manual</option>
-                    <option value="until-used">Until Used</option>
-                    <option value="one-roll">One Roll</option>
-                  </select>
-                </label>
-                <label className="text-xs text-slate-700">
-                  Bonus Dice
-                  <input
-                    aria-label="Custom buff bonus dice"
-                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-                    onChange={(event) => setCustomDice(event.target.value)}
-                    placeholder="1d4"
-                    type="text"
-                    value={customDice}
-                  />
-                </label>
-                <label className="text-xs text-slate-700">
-                  Flat Bonus
-                  <input
-                    aria-label="Custom buff flat bonus"
-                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-                    onChange={(event) => setCustomFlat(event.target.value)}
-                    placeholder="+2"
-                    type="number"
-                    value={customFlat}
-                  />
-                </label>
-                <label className="text-xs text-slate-700 md:col-span-2">
-                  Source / Caster Name
-                  <input
-                    aria-label="Custom buff source or caster name"
-                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-                    onChange={(event) => setCustomCasterName(event.target.value)}
-                    type="text"
-                    value={customCasterName}
-                  />
-                </label>
-                <label className="text-xs text-slate-700 md:col-span-2">
-                  Note
-                  <input
-                    aria-label="Custom buff note"
-                    className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-                    onChange={(event) => setCustomNote(event.target.value)}
-                    type="text"
-                    value={customNote}
-                  />
-                </label>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {CUSTOM_ROLL_TYPE_OPTIONS.map((option) => (
-                  <label key={option.value} className="flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-xs text-slate-700">
+                    Close
+                  </button>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <label className="text-xs text-slate-700">
+                    Name
                     <input
-                      aria-label={`Apply custom buff to ${option.label} rolls`}
-                      checked={customRollTypes.includes(option.value)}
-                      onChange={(event) =>
-                        setCustomRollTypes((current) =>
-                          event.target.checked ? Array.from(new Set([...current, option.value])) : current.filter((value) => value !== option.value),
-                        )
-                      }
-                      type="checkbox"
+                      aria-label="Custom buff name"
+                      className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                      onChange={(event) => setCustomName(event.target.value)}
+                      type="text"
+                      value={customName}
                     />
-                    {option.label}
                   </label>
-                ))}
+                  <label className="text-xs text-slate-700">
+                    Duration
+                    <select
+                      aria-label="Custom buff duration"
+                      className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                      onChange={(event) => setCustomDuration(event.target.value as "manual" | "until-used" | "one-roll")}
+                      value={customDuration}
+                    >
+                      <option value="manual">Manual</option>
+                      <option value="until-used">Until Used</option>
+                      <option value="one-roll">One Roll</option>
+                    </select>
+                  </label>
+                  <label className="text-xs text-slate-700">
+                    Bonus Dice
+                    <input
+                      aria-label="Custom buff bonus dice"
+                      className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                      onChange={(event) => setCustomDice(event.target.value)}
+                      placeholder="1d4"
+                      type="text"
+                      value={customDice}
+                    />
+                  </label>
+                  <label className="text-xs text-slate-700">
+                    Flat Bonus
+                    <input
+                      aria-label="Custom buff flat bonus"
+                      className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                      onChange={(event) => setCustomFlat(event.target.value)}
+                      placeholder="+2"
+                      type="number"
+                      value={customFlat}
+                    />
+                  </label>
+                  <label className="text-xs text-slate-700 md:col-span-2">
+                    Source / Caster Name
+                    <input
+                      aria-label="Custom buff source or caster name"
+                      className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                      onChange={(event) => setCustomCasterName(event.target.value)}
+                      type="text"
+                      value={customCasterName}
+                    />
+                  </label>
+                  <label className="text-xs text-slate-700 md:col-span-2">
+                    Note
+                    <input
+                      aria-label="Custom buff note"
+                      className="sheet-no-overflow mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                      onChange={(event) => setCustomNote(event.target.value)}
+                      type="text"
+                      value={customNote}
+                    />
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {CUSTOM_ROLL_TYPE_OPTIONS.map((option) => (
+                    <label key={option.value} className="flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-xs text-slate-700">
+                      <input
+                        aria-label={`Apply custom buff to ${option.label} rolls`}
+                        checked={customRollTypes.includes(option.value)}
+                        onChange={(event) =>
+                          setCustomRollTypes((current) =>
+                            event.target.checked ? Array.from(new Set([...current, option.value])) : current.filter((value) => value !== option.value),
+                          )
+                        }
+                        type="checkbox"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  className="sheet-focus-ring rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                  disabled={!canActivateCustomEffect}
+                  onClick={activateCustomEffect}
+                  title={!canActivateCustomEffect ? "Enter a custom buff name and at least one roll type." : undefined}
+                  type="button"
+                >
+                  Activate Custom Buff
+                </button>
               </div>
+            ) : (
               <button
-                className="sheet-focus-ring rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                disabled={!canActivateCustomEffect}
-                onClick={activateCustomEffect}
-                title={!canActivateCustomEffect ? "Enter a custom buff name and at least one roll type." : undefined}
+                aria-label="Create custom buff"
+                className="sheet-focus-ring rounded bg-slate-900 px-3 py-2 text-sm text-white"
+                onClick={() => setShowCustomBuffEditor(true)}
                 type="button"
               >
-                Activate Custom Buff
+                Create Custom Buff
               </button>
-            </div>
+            )
           ) : null}
         </div>
       ) : null}
@@ -811,6 +1001,7 @@ export function ActionRollPanel({
                   label={effect.durationType}
                   status={effect.durationType === "until-used" || effect.durationType === "one-roll" ? "pending" : "info"}
                 />
+                <InfoPopover title={effect.durationType} description={ruleInfo(effect.durationType)} />
               </label>
             ))}
           </div>

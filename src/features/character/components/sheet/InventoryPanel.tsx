@@ -1,12 +1,17 @@
 import { useMemo, useState } from "react";
 import type { InventoryItemViewModel, InventoryViewModel } from "../../viewModels/inventoryViewModel";
-import { EmptyState, InventoryItemCard, SectionHeader, StatusBadge } from "./SheetDesignSystem";
+import { EmptyState, InfoPopover, InventoryItemCard, SectionHeader, StatusBadge } from "./SheetDesignSystem";
+import { ruleInfo } from "./rulesInfo";
 
 interface InventoryPanelProps {
   viewModel: InventoryViewModel;
   onEquipItem: (itemInstanceId: string, slot?: InventoryItemViewModel["equipmentSlot"]) => void;
   onUnequipItem: (itemInstanceId: string) => void;
+  onSetCurrency: (denomination: "cp" | "sp" | "ep" | "gp" | "pp", amount: number) => void;
+  onAdjustCurrency: (denomination: "cp" | "sp" | "ep" | "gp" | "pp", delta: number) => void;
 }
+
+const CURRENCY_KEYS: Array<"cp" | "sp" | "ep" | "gp" | "pp"> = ["cp", "sp", "ep", "gp", "pp"];
 
 function ItemList({
   title,
@@ -62,7 +67,16 @@ function ItemList({
                 }
               >
                 {item.relevantStats.length ? <p className="text-xs text-slate-700">{item.relevantStats.join(" · ")}</p> : null}
-                {item.mappingBadges.length ? <p className="text-xs text-slate-600">{item.mappingBadges.join(" · ")}</p> : null}
+                {item.mappingBadges.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {item.mappingBadges.map((badge) => (
+                      <span key={`${item.instanceId}-${badge}`} className="inline-flex items-center gap-1">
+                        <StatusBadge label={badge} status="info" />
+                        <InfoPopover title={badge} description={ruleInfo("weapon-mastery")} />
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </InventoryItemCard>
             </li>
           ))}
@@ -72,7 +86,7 @@ function ItemList({
   );
 }
 
-export function InventoryPanel({ viewModel, onEquipItem, onUnequipItem }: InventoryPanelProps) {
+export function InventoryPanel({ viewModel, onEquipItem, onUnequipItem, onSetCurrency, onAdjustCurrency }: InventoryPanelProps) {
   const [itemSearch, setItemSearch] = useState("");
   const [equipFilter, setEquipFilter] = useState<"all" | "equipped" | "stowed">("all");
   const ac = viewModel.armorClass;
@@ -92,6 +106,69 @@ export function InventoryPanel({ viewModel, onEquipItem, onUnequipItem }: Invent
   const totalFilteredCount = filteredArmor.length + filteredShields.length + filteredWeapons.length + filteredOther.length + filteredUnresolved.length;
   return (
     <div className="space-y-4">
+      <div className="sheet-card border-indigo-200 bg-indigo-50/60 p-3 text-sm">
+        <SectionHeader
+          actions={<StatusBadge label={`${viewModel.currencyTotalGp.toFixed(2)} gp`} status="info" />}
+          subtitle="Track coin totals directly on the sheet."
+          title="Currency"
+        />
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {CURRENCY_KEYS.map((currency) => (
+            <div key={`currency-${currency}`} className="sheet-card space-y-2 p-2">
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-medium uppercase text-slate-600">{currency}</p>
+                <InfoPopover title={currency.toUpperCase()} description={ruleInfo(currency)} />
+              </div>
+              <input
+                aria-label={`Set ${currency} amount`}
+                className="sheet-no-overflow w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                min={0}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  onSetCurrency(currency, Number.isFinite(next) ? next : 0);
+                }}
+                type="number"
+                value={viewModel.currency[currency]}
+              />
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  aria-label={`Subtract one ${currency}`}
+                  className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"
+                  onClick={() => onAdjustCurrency(currency, -1)}
+                  type="button"
+                >
+                  -1
+                </button>
+                <button
+                  aria-label={`Add one ${currency}`}
+                  className="sheet-focus-ring rounded bg-slate-800 px-2 py-1 text-xs text-white"
+                  onClick={() => onAdjustCurrency(currency, 1)}
+                  type="button"
+                >
+                  +1
+                </button>
+                <button
+                  aria-label={`Subtract ten ${currency}`}
+                  className="sheet-focus-ring rounded bg-slate-200 px-2 py-1 text-xs text-slate-800"
+                  onClick={() => onAdjustCurrency(currency, -10)}
+                  type="button"
+                >
+                  -10
+                </button>
+                <button
+                  aria-label={`Add ten ${currency}`}
+                  className="sheet-focus-ring rounded bg-slate-800 px-2 py-1 text-xs text-white"
+                  onClick={() => onAdjustCurrency(currency, 10)}
+                  type="button"
+                >
+                  +10
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="sheet-card grid gap-2 p-3 md:grid-cols-[minmax(0,2fr),repeat(2,minmax(0,1fr))]">
         <input
           aria-label="Search inventory items"

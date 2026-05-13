@@ -57,8 +57,17 @@ export interface InventoryItem {
   type?: string;
 }
 
+export interface CurrencyState {
+  cp: number;
+  sp: number;
+  ep: number;
+  gp: number;
+  pp: number;
+}
+
 export interface InventoryState {
   items: InventoryItem[];
+  currency?: CurrencyState;
 }
 
 export interface DerivedSummary {

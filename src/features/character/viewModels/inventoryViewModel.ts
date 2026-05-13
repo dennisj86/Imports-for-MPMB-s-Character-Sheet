@@ -1,9 +1,11 @@
-import type { CharacterDraft, EquipmentSlot } from "../../../domain/character";
+import type { CharacterDraft, CurrencyState, EquipmentSlot } from "../../../domain/character";
 import type { EquipmentDefinition } from "../../../domain/content";
 import type { CharacterPlayState } from "../../../domain/playState";
 import type { CharacterEngineState } from "../../../services/characterEngine";
 import {
+  currencyTotalInGp,
   inferEquipmentSlot,
+  normalizeCurrencyState,
   isShieldDefinition,
   normalizeInventoryState,
   resolveAlternativeArmorClassFormulas,
@@ -30,6 +32,8 @@ export interface InventoryItemViewModel {
 }
 
 export interface InventoryViewModel {
+  currency: CurrencyState;
+  currencyTotalGp: number;
   armorClass: ArmorClassBreakdown;
   armor: InventoryItemViewModel[];
   shields: InventoryItemViewModel[];
@@ -119,6 +123,8 @@ export function buildInventoryViewModel(draft: CharacterDraft, engine: Character
   });
 
   return {
+    currency: normalizeCurrencyState(normalizedInventory.currency),
+    currencyTotalGp: currencyTotalInGp(normalizedInventory.currency),
     armorClass,
     armor: items
       .filter((entry) => (entry.definition?.category === "armor" || entry.slot === "armor") && !(entry.definition && isShieldDefinition(entry.definition)) && entry.slot !== "shield")
