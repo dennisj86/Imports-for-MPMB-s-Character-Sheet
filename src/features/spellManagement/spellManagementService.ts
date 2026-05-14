@@ -2,9 +2,9 @@ import type { CharacterDraft } from "../../domain/character";
 import type { MpmContentSnapshot, RulesMode, SpellDefinition } from "../../domain/content";
 import type { SpellChoiceContext } from "../../domain/builderWizard";
 import { getEligibleSpellsForChoice as selectEligibleSpellsForChoice } from "../../services/data/builderWizardResolver";
-import { resolveCharacterWizardState } from "../../services/characterEngine";
+import { resolveCharacterWizardState, type CharacterEngineQueryContext } from "../../services/characterEngine";
 
-export interface SpellManagementQueryContext {
+export interface SpellManagementQueryContext extends CharacterEngineQueryContext {
   provider?: "mpmb" | "open5e" | "all";
   rulesMode?: RulesMode;
 }

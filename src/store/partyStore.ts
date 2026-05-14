@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { CharacterDraft } from "../domain/character";
 import type { PartyBundle, PartyState, PartyStorageMode, PartySyncEvent } from "../domain/party";
 import {
+  createManualPartyBackup,
   bumpParty,
   createPartyBundle,
   createPartyState,
@@ -10,8 +11,11 @@ import {
   getStoredPartyStorageMode,
   isStalePartySyncEvent,
   isUnsafeEmptyPartyOverwrite,
+  loadManualPartyBackups,
   mergePartyBundles,
+  parsePartyBackupPayload,
   partyMemberCount,
+  restoreManualPartyBackup,
   setActivePartyRuntime,
   setStoredPartyStorageMode,
   wouldRemovePartyMembers,
@@ -33,6 +37,8 @@ type PendingPartyConflict = {
   attemptedBundle?: PartyBundle;
 };
 
+type PartyManualBackupRecord = ReturnType<typeof loadManualPartyBackups>[number];
+
 type PartyStore = {
   party?: PartyState;
   mode: PartyStorageMode;
@@ -43,6 +49,10 @@ type PartyStore = {
   connectionStatus: PartyConnectionStatus;
   lastSyncAt?: string;
   lastSaveAt?: string;
+  lastLocalUpdateAt?: string;
+  lastBackupAt?: string;
+  storageInfo?: string;
+  manualBackups: PartyManualBackupRecord[];
   pendingConflict?: PendingPartyConflict;
   lastRemoteUpdate?: PartySyncEvent;
   setMode: (mode: PartyStorageMode, partyId?: string) => Promise<void>;
@@ -51,6 +61,9 @@ type PartyStore = {
   resolvePendingConflict: (action: PartyConflictAction) => Promise<void>;
   importCharactersToParty: (characters: CharacterDraft[]) => Promise<void>;
   exportParty: () => string;
+  createManualBackup: () => PartyManualBackupRecord | undefined;
+  restoreManualBackup: (backupId: string) => Promise<void>;
+  restorePartyBackupPayload: (payload: string, partyId?: string) => Promise<void>;
   subscribeToParty: (partyId: string) => () => void;
   applyRemoteEvent: (event: PartySyncEvent) => Promise<void>;
 };
@@ -91,6 +104,20 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
+function buildCurrentPartyBundle(party: PartyState | undefined, fallbackPartyId = DEFAULT_PARTY_ID): PartyBundle {
+  if (!party) {
+    return createPartyBundle(createPartyState(fallbackPartyId), useCharacterStore.getState().characters);
+  }
+  return createPartyBundle(party, currentCharactersForParty(party));
+}
+
+function storageInfoLabel(mode: PartyStorageMode, partyId: string, bundle?: PartyBundle): string {
+  if (bundle?.storageMeta?.storagePath) {
+    return bundle.storageMeta.storagePath;
+  }
+  return mode === "shared-server" ? `/api/parties/${partyId}` : `localStorage:mpmb-party-session:v1:${partyId}`;
+}
+
 function bundleMemberIds(bundle: PartyBundle): Set<string> {
   return new Set([...bundle.party.characterIds, ...bundle.characters.map((entry) => entry.id)]);
 }
@@ -108,6 +135,8 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
   mode: getStoredPartyStorageMode(),
   loading: false,
   connectionStatus: getStoredPartyStorageMode() === "shared-server" ? "connecting" : "local",
+  manualBackups: loadManualPartyBackups(),
+  lastBackupAt: loadManualPartyBackups()[0]?.createdAt,
   setMode: async (mode, partyIdArg) => {
     const partyId = partyIdArg ?? get().party?.partyId ?? DEFAULT_PARTY_ID;
     setStoredPartyStorageMode(mode);
@@ -115,7 +144,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
 
     if (mode === "shared-server") {
       const storage = createPartyStorage("shared-server");
-      const localBundle = createPartyBundle(get().party ?? createPartyState(partyId), currentCharactersForParty(get().party));
+      const localBundle = buildCurrentPartyBundle(get().party, partyId);
       set({ loading: true, connectionStatus: "connecting" });
       try {
         const serverBundle = await loadSharedParty(partyId);
@@ -144,6 +173,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
         setActivePartyRuntime({
           partyId,
           storage,
+          onLocalUpdate: (timestamp) => set({ lastLocalUpdateAt: timestamp }),
           onSaveError: (error) => set({ saveError: errorMessage(error, "Party save failed."), connectionStatus: "disconnected" }),
           onSaveSuccess: () => set({ lastSaveAt: new Date().toISOString(), saveError: undefined, connectionStatus: "connected" }),
         });
@@ -152,6 +182,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
           loading: false,
           connectionStatus: "connected",
           lastSyncAt: new Date().toISOString(),
+          storageInfo: storageInfoLabel("shared-server", partyId, serverBundle),
           error: undefined,
           pendingConflict: localHasMembers && serverHasMembers && bundlesHaveDifferentMembers(localBundle, serverBundle)
             ? {
@@ -181,8 +212,12 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
     try {
       const bundle = await loadOrCreateParty(partyId, "local-only");
       hydratePartyBundle(bundle);
-      setActivePartyRuntime({ partyId: bundle.party.partyId, storage });
-      set({ party: bundle.party, loading: false, connectionStatus: "local", error: undefined });
+      setActivePartyRuntime({
+        partyId: bundle.party.partyId,
+        storage,
+        onLocalUpdate: (timestamp) => set({ lastLocalUpdateAt: timestamp }),
+      });
+      set({ party: bundle.party, loading: false, connectionStatus: "local", error: undefined, storageInfo: storageInfoLabel("local-only", partyId, bundle) });
     } catch (error) {
       set({ loading: false, error: errorMessage(error, "Local party load failed.") });
     }
@@ -193,7 +228,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
     set({ loading: true, error: undefined });
     try {
       const bundle = mode === "shared-server" ? await loadSharedParty(partyId) : await loadOrCreateParty(partyId, mode);
-      const localBundle = createPartyBundle(get().party ?? createPartyState(partyId), currentCharactersForParty(get().party));
+      const localBundle = buildCurrentPartyBundle(get().party, partyId);
       const localHasMembers = partyMemberCount(localBundle) > 0;
       const serverHasMembers = mode === "shared-server" && partyMemberCount(bundle) > 0;
       if (mode === "shared-server" && !serverHasMembers && localHasMembers) {
@@ -217,6 +252,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
       setActivePartyRuntime({
         partyId: bundle.party.partyId,
         storage,
+        onLocalUpdate: (timestamp) => set({ lastLocalUpdateAt: timestamp }),
         onSaveError: (error) => set({ saveError: errorMessage(error, "Party save failed."), connectionStatus: "disconnected" }),
         onSaveSuccess: () => set({ lastSaveAt: new Date().toISOString(), saveError: undefined, connectionStatus: mode === "shared-server" ? "connected" : "local" }),
       });
@@ -226,6 +262,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
         error: undefined,
         connectionStatus: mode === "shared-server" ? "connected" : "local",
         lastSyncAt: new Date().toISOString(),
+        storageInfo: storageInfoLabel(mode, partyId, bundle),
         pendingConflict: mode === "shared-server" && localHasMembers && serverHasMembers && bundlesHaveDifferentMembers(localBundle, bundle)
           ? {
             kind: "shared-switch",
@@ -251,6 +288,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
     const storage = createPartyStorage(get().mode);
     const nextParty = bumpParty(party, characters.map((entry) => entry.id));
     const nextBundle = createPartyBundle(nextParty, characters);
+    set({ lastLocalUpdateAt: nextBundle.party.updatedAt });
     try {
       if (get().mode === "shared-server" && !options?.force) {
         const serverBundle = await storage.loadParty(nextParty.partyId);
@@ -275,6 +313,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
       setActivePartyRuntime({
         partyId: bundle.party.partyId,
         storage,
+        onLocalUpdate: (timestamp) => set({ lastLocalUpdateAt: timestamp }),
         onSaveError: (error) => set({ saveError: errorMessage(error, "Party save failed."), connectionStatus: "disconnected" }),
         onSaveSuccess: () => set({ lastSaveAt: new Date().toISOString(), saveError: undefined, connectionStatus: get().mode === "shared-server" ? "connected" : "local" }),
       });
@@ -284,6 +323,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
         saveError: undefined,
         lastSaveAt: new Date().toISOString(),
         connectionStatus: get().mode === "shared-server" ? "connected" : "local",
+        storageInfo: storageInfoLabel(get().mode, bundle.party.partyId, bundle),
       });
     } catch (error) {
       set({ saveError: errorMessage(error, "Party save failed."), connectionStatus: get().mode === "shared-server" ? "disconnected" : "local" });
@@ -318,6 +358,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
       setActivePartyRuntime({
         partyId: bundle.party.partyId,
         storage,
+        onLocalUpdate: (timestamp) => set({ lastLocalUpdateAt: timestamp }),
         onSaveError: (error) => set({ saveError: errorMessage(error, "Party save failed."), connectionStatus: "disconnected" }),
         onSaveSuccess: () => set({ lastSaveAt: new Date().toISOString(), saveError: undefined, connectionStatus: "connected" }),
       });
@@ -328,6 +369,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
         connectionStatus: "connected",
         saveError: undefined,
         lastSaveAt: new Date().toISOString(),
+        storageInfo: storageInfoLabel("shared-server", bundle.party.partyId, bundle),
       });
     } catch (error) {
       set({ saveError: errorMessage(error, "Party save failed."), connectionStatus: "disconnected" });
@@ -349,7 +391,54 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
   },
   exportParty: () => {
     const party = get().party ?? createPartyState(DEFAULT_PARTY_ID);
-    return JSON.stringify(createPartyBundle(party, currentCharactersForParty(party)), null, 2);
+    return JSON.stringify({
+      ...createPartyBundle(party, currentCharactersForParty(party)),
+      storageMeta: {
+        source: get().mode,
+        persisted: true,
+        loadedAt: new Date().toISOString(),
+        storagePath: get().storageInfo,
+      },
+    } satisfies PartyBundle, null, 2);
+  },
+  createManualBackup: () => {
+    const bundle = buildCurrentPartyBundle(get().party, get().party?.partyId ?? DEFAULT_PARTY_ID);
+    const record = createManualPartyBackup({
+      ...bundle,
+      storageMeta: {
+        source: get().mode,
+        persisted: true,
+        loadedAt: new Date().toISOString(),
+        storagePath: get().storageInfo,
+      },
+    });
+    const backups = loadManualPartyBackups();
+    set({ manualBackups: backups, lastBackupAt: record.createdAt });
+    return record;
+  },
+  restoreManualBackup: async (backupId) => {
+    const bundle = restoreManualPartyBackup(backupId);
+    if (!bundle) {
+      set({ saveError: "Selected backup could not be found in this browser." });
+      return;
+    }
+    await get().restorePartyBackupPayload(JSON.stringify(bundle), get().party?.partyId ?? bundle.party.partyId);
+  },
+  restorePartyBackupPayload: async (payload, partyId = get().party?.partyId ?? DEFAULT_PARTY_ID) => {
+    try {
+      const parsed = parsePartyBackupPayload(payload, partyId);
+      const restoredBundle = {
+        ...parsed,
+        party: {
+          ...parsed.party,
+          partyId,
+        },
+      };
+      await get().saveParty(restoredBundle.party, restoredBundle.characters, { strategy: "replace", force: true });
+      set({ saveError: undefined });
+    } catch (error) {
+      set({ saveError: errorMessage(error, "Backup restore failed.") });
+    }
   },
   subscribeToParty: (partyId) => {
     const storage = createPartyStorage(get().mode);
@@ -382,7 +471,14 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
         return;
       }
       hydratePartyBundle(bundle);
-      set({ party: bundle.party, lastRemoteUpdate: event, lastSyncAt: new Date().toISOString(), syncError: undefined, connectionStatus: get().mode === "shared-server" ? "connected" : "local" });
+      set({
+        party: bundle.party,
+        lastRemoteUpdate: event,
+        lastSyncAt: new Date().toISOString(),
+        syncError: undefined,
+        connectionStatus: get().mode === "shared-server" ? "connected" : "local",
+        storageInfo: storageInfoLabel(get().mode, event.partyId, bundle),
+      });
       return;
     }
     let character: CharacterDraft | undefined;

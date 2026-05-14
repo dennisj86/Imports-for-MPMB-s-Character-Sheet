@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { inputClassName } from "../../../../components/ui/FormField";
 import type { FeatChoiceContext, SpellChoiceContext } from "../../../../domain/builderWizard";
+import { buildFeatContextFocusId } from "../../../../services/builderDeepLinks";
 
 type FeatChoiceSectionProps = {
   contexts: FeatChoiceContext[];
@@ -48,7 +49,7 @@ export function FeatChoiceSection({
         onChange={(event) => setQuery(event.target.value)}
       />
       {filtered.map((context) => (
-        <section key={context.id} className="rounded border border-slate-200 p-3">
+        <section id={buildFeatContextFocusId(context.id)} key={context.id} className="rounded border border-slate-200 p-3" tabIndex={-1}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-slate-900">{context.title}</h3>
             <span

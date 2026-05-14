@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { inputClassName } from "../../../../components/ui/FormField";
 import type { SpellChoiceContext } from "../../../../domain/builderWizard";
+import { buildSpellContextFocusId } from "../../../../services/builderDeepLinks";
 import { SpellOptionPreview, spellOptionSummary } from "./SpellOptionPreview";
 
 type SpellChoiceSectionProps = {
@@ -98,7 +99,7 @@ export function SpellChoiceSection({ contexts, onToggleSpell }: SpellChoiceSecti
                 context.eligibleSpells.find((spell) => selectedSet.has(spell.id)) ??
                 visibleSpells[0];
               return (
-                <div key={context.id} className="rounded border border-slate-200 bg-slate-50 p-3">
+                <div id={buildSpellContextFocusId(context.id)} key={context.id} className="rounded border border-slate-200 bg-slate-50 p-3" tabIndex={-1}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h4 className="text-sm font-semibold text-slate-900">{context.title}</h4>
                     <span

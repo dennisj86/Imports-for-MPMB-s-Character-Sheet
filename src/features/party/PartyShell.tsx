@@ -232,6 +232,9 @@ export function PartyShell({ children, partyId, selectedCharacterId }: PartyShel
         </nav>
 
         <div className="space-y-2 border-t border-slate-200 p-3">
+          <Link className="sheet-focus-ring block w-full rounded bg-slate-200 px-3 py-2 text-center text-sm text-slate-800" to={`/party/${partyId}`}>
+            Session Dashboard
+          </Link>
           <button className="sheet-focus-ring w-full rounded bg-indigo-700 px-3 py-2 text-sm text-white" onClick={addCharacterToParty} type="button">
             New Party Character
           </button>

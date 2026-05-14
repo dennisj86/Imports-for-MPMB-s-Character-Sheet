@@ -22,6 +22,7 @@ import {
   StatusBadge,
   type StatusTone,
 } from "../features/character/components/sheet/SheetDesignSystem";
+import { RuleDetailDrawer } from "../features/character/components/sheet/RuleDetailDrawer";
 import { SpellbookPanel } from "../features/character/components/sheet/SpellbookPanel";
 import {
   SHEET_TAB_LABELS,
@@ -65,6 +66,7 @@ import {
   undoLastLevelUp,
 } from "../services/levelUp";
 import { addResolvedActiveEffect } from "../services/playState";
+import { buildBuilderDeepLinkHref, type BuilderDeepLinkTarget } from "../services/builderDeepLinks";
 import { buildCharacterRollView, getLatestRollResult } from "../services/rolls";
 import { activeEffectsForRollType, buildActiveEffectCatalog, resolveCombinedRuleProficiencies } from "../services/rules";
 import { useCharacterStore } from "../store/characterStore";
@@ -149,6 +151,47 @@ function previewChoiceTone(status: "pending" | "complete" | "unsupported" | "blo
   return "pending";
 }
 
+function readinessTone(classification: "critical-blocker" | "pending-choice" | "unsupported-manual" | "informational"): StatusTone {
+  if (classification === "critical-blocker") return "blocked";
+  if (classification === "unsupported-manual") return "unsupported";
+  if (classification === "informational") return "info";
+  return "pending";
+}
+
+function readinessLabel(classification: "critical-blocker" | "pending-choice" | "unsupported-manual" | "informational"): string {
+  if (classification === "critical-blocker") return "critical-blocker";
+  if (classification === "unsupported-manual") return "unsupported-manual";
+  if (classification === "informational") return "informational";
+  return "pending-choice";
+}
+
+function builderActionLabel(input: {
+  label: string;
+  builderTarget?: {
+    stepId: string;
+  };
+}): string {
+  if (input.builderTarget?.stepId === "spells") {
+    return "Open Builder Spells Tab";
+  }
+  if (/fighting style/i.test(input.label)) {
+    return "Open Fighting Style Choice";
+  }
+  if (/weapon mastery/i.test(input.label)) {
+    return "Open Weapon Mastery Choice";
+  }
+  if (/feat/i.test(input.label)) {
+    return "Open Feat Choice";
+  }
+  if (/subclass/i.test(input.label)) {
+    return "Open Subclass Choice";
+  }
+  if (input.builderTarget?.stepId === "skills") {
+    return "Open Skill Choice";
+  }
+  return "Open Matching Choice";
+}
+
 function signedNumber(value: number): string {
   if (value === 0) {
     return "0";
@@ -170,6 +213,21 @@ function latestConcentrationPrompt(events: CharacterPlayEvent[]): CharacterPlayE
   return [...events].reverse().find((event) => event.type === "concentration-check-prompt");
 }
 
+function levelUpHintDetail(input: {
+  label: string;
+  detail: string;
+  classification: "critical-blocker" | "pending-choice" | "unsupported-manual" | "informational";
+  manualHint?: string;
+}) {
+  return {
+    name: input.label,
+    gameplaySummary: input.detail,
+    automationStatus: input.classification === "unsupported-manual" ? "unsupported" : input.classification === "critical-blocker" ? "manual" : "partial",
+    manualInstructions: input.manualHint ?? input.detail,
+    knownLimitations: input.classification === "critical-blocker" ? "Resolve this before confirming the level-up." : undefined,
+  } as const;
+}
+
 export function CharacterSheetPage() {
   const generation = useSourceStore((state) => state.generation);
   const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
@@ -186,6 +244,7 @@ export function CharacterSheetPage() {
   const [xpDeltaInput, setXpDeltaInput] = useState("300");
   const [xpSetInput, setXpSetInput] = useState("");
   const [levelUpPreviewOpen, setLevelUpPreviewOpen] = useState(false);
+  const [openLevelUpHintId, setOpenLevelUpHintId] = useState<string>();
   const [pendingDeathSave, setPendingDeathSave] = useState<
     { rollId: string; resolution: "success" | "failure" | "critical-success" | "critical-failure"; total: number } | undefined
   >();
@@ -580,8 +639,11 @@ export function CharacterSheetPage() {
     updateCharacter(draft.id, (current) => addCharacterXp(current, parsed));
   };
   const confirmLevelUp = () => {
+    if (!levelUpPreview?.canConfirm) {
+      return;
+    }
     updateCharacter(draft.id, (current) => applyLevelUpWithSnapshot(current, {
-      targetLevel: Math.min(20, current.classSelection.level + 1),
+      targetLevel: levelUpPreview.toLevel,
     }));
     setLevelUpPreviewOpen(false);
   };
@@ -605,6 +667,51 @@ export function CharacterSheetPage() {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const renderLevelUpActions = (choice: {
+    id: string;
+    label: string;
+    detail: string;
+    classification: "critical-blocker" | "pending-choice" | "unsupported-manual" | "informational";
+    builderTarget?: BuilderDeepLinkTarget;
+    manualHint?: string;
+  }, options: {
+    previewTargetLevel?: number;
+  } = {}) => {
+    const builderHref = choice.builderTarget
+      ? buildBuilderDeepLinkHref(draft.id, {
+        ...choice.builderTarget,
+        levelUpTarget: options.previewTargetLevel ?? choice.builderTarget.levelUpTarget,
+        mode: options.previewTargetLevel ? "level-up-preview" : choice.builderTarget.mode,
+        pendingChoiceId: options.previewTargetLevel ? choice.id : choice.builderTarget.pendingChoiceId,
+      })
+      : undefined;
+    const showHintButton = choice.classification === "unsupported-manual" || choice.classification === "critical-blocker";
+    if (!builderHref && !showHintButton) {
+      return null;
+    }
+    return (
+      <div className="mt-2 space-y-2">
+        <div className="flex flex-wrap gap-2">
+          {builderHref ? (
+            <Link className="sheet-focus-ring inline-block rounded bg-slate-800 px-2 py-1 text-xs text-white" to={builderHref}>
+              {options.previewTargetLevel ? "Resolve now" : builderActionLabel(choice)}
+            </Link>
+          ) : null}
+          {showHintButton ? (
+            <button
+              className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
+              onClick={() => setOpenLevelUpHintId((current) => current === choice.id ? undefined : choice.id)}
+              type="button"
+            >
+              {openLevelUpHintId === choice.id ? "Hide manual hint" : "Show manual hint"}
+            </button>
+          ) : null}
+        </div>
+        {openLevelUpHintId === choice.id ? <RuleDetailDrawer detail={levelUpHintDetail(choice)} heading="Manual / Detail Hint" /> : null}
+      </div>
+    );
   };
 
   const inPartyShell = Boolean(partyId);
@@ -1152,11 +1259,12 @@ export function CharacterSheetPage() {
                       </p>
                       <div className="flex gap-2">
                         <button
-                          className="sheet-focus-ring rounded bg-emerald-700 px-2 py-1 text-xs text-white"
+                          className="sheet-focus-ring rounded bg-emerald-700 px-2 py-1 text-xs text-white disabled:opacity-60"
+                          disabled={!levelUpPreview.canConfirm}
                           onClick={confirmLevelUp}
                           type="button"
                         >
-                          Confirm Level-Up
+                          {levelUpPreview.confirmLabel}
                         </button>
                         <button
                           className="sheet-focus-ring rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
@@ -1197,18 +1305,39 @@ export function CharacterSheetPage() {
                       <div className="mt-2 space-y-1">
                         <p className="text-xs font-medium text-slate-800">Choice Status</p>
                         {levelUpPreview.choiceStatuses.map((choice) => (
-                          <div key={choice.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-emerald-200 bg-white/80 px-2 py-1">
-                            <p className="text-xs text-slate-700">{choice.label}</p>
-                            <StatusBadge label={choice.status} status={previewChoiceTone(choice.status)} />
+                          <div key={choice.id} className="rounded border border-emerald-200 bg-white/80 px-2 py-1">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-xs text-slate-700">{choice.label}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <StatusBadge label={choice.status} status={previewChoiceTone(choice.status)} />
+                                {choice.status !== "complete" ? <StatusBadge label={readinessLabel(choice.classification)} status={readinessTone(choice.classification)} /> : null}
+                              </div>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-600">{choice.detail}</p>
+                            {choice.status !== "complete" ? renderLevelUpActions(choice, { previewTargetLevel: levelUpPreview.toLevel }) : null}
                           </div>
                         ))}
                       </div>
                     ) : null}
+                    {levelUpPreview.canConfirm && levelUpPreview.openEntries.some((entry) => entry.classification === "pending-choice" || entry.classification === "unsupported-manual") ? (
+                      <p className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                        Confirm remains enabled. Pending choices and manual issues stay visible after the level-up and can be resolved from the linked Builder sections.
+                      </p>
+                    ) : null}
                     {levelUpPreview.warnings.length ? (
-                      <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
-                        {levelUpPreview.warnings.map((warning) => (
-                          <p key={warning}>{warning}</p>
-                        ))}
+                      <div className="mt-2 space-y-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                        {levelUpPreview.openEntries
+                          .filter((entry) => !levelUpPreview.choiceStatuses.some((choice) => choice.id === entry.id))
+                          .map((entry) => (
+                            <div key={entry.id} className="rounded border border-amber-200 bg-white/60 p-2 text-slate-800">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="font-medium">{entry.label}</p>
+                                <StatusBadge label={readinessLabel(entry.classification)} status={readinessTone(entry.classification)} />
+                              </div>
+                              <p className="mt-1 text-xs text-slate-700">{entry.detail}</p>
+                              {renderLevelUpActions(entry, { previewTargetLevel: levelUpPreview.toLevel })}
+                            </div>
+                          ))}
                       </div>
                     ) : null}
                     {levelUpPreview.unsupportedNotes.length ? (
@@ -1239,9 +1368,13 @@ export function CharacterSheetPage() {
                       <li key={choice.id} className="sheet-card p-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-medium">{choice.label}</p>
-                          <StatusBadge label={choiceLabel(choice.status)} status={choiceTone(choice.status)} />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge label={choiceLabel(choice.status)} status={choiceTone(choice.status)} />
+                            <StatusBadge label={readinessLabel(choice.classification)} status={readinessTone(choice.classification)} />
+                          </div>
                         </div>
                         <p className="text-xs text-slate-600">{choice.detail}</p>
+                        {renderLevelUpActions(choice)}
                       </li>
                     ))}
                   </ul>
@@ -1257,9 +1390,13 @@ export function CharacterSheetPage() {
                       <div key={choice.id} className="sheet-card p-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-medium">{choice.label}</p>
-                          <StatusBadge label={choiceLabel(choice.status)} status={choiceTone(choice.status)} />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge label={choiceLabel(choice.status)} status={choiceTone(choice.status)} />
+                            <StatusBadge label={readinessLabel(choice.classification)} status={readinessTone(choice.classification)} />
+                          </div>
                         </div>
                         <p className="text-xs text-slate-600">{choice.detail}</p>
+                        {choice.status !== "complete" ? renderLevelUpActions(choice) : null}
                       </div>
                     ))}
                   </div>
@@ -1377,8 +1514,12 @@ export function CharacterSheetPage() {
                             <p className="font-medium">{entry.label}</p>
                             <p className="text-xs text-slate-600">{entry.detail}</p>
                           </div>
-                          <StatusBadge label={choiceLabel(entry.status)} status={choiceTone(entry.status)} />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge label={choiceLabel(entry.status)} status={choiceTone(entry.status)} />
+                            <StatusBadge label={readinessLabel(entry.classification)} status={readinessTone(entry.classification)} />
+                          </div>
                         </div>
+                        {renderLevelUpActions(entry)}
                       </li>
                     ))}
                   </ul>

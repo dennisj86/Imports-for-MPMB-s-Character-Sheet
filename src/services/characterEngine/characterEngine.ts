@@ -31,6 +31,7 @@ import {
 } from "../data/builderWizardResolver";
 import { resolveDerivedStats } from "../data/derivedStatsResolver";
 import { resolveLevelProgression } from "../data/progressionResolver";
+import { applyEffectiveLevelToDraft, normalizeLevelUpTargetContext, type LevelUpTargetContext } from "../levelUp/levelUpTargetContext";
 import { resolveCharacterRuleEngine } from "../rules";
 import {
   resolveBackgrounds,
@@ -47,16 +48,22 @@ export type CharacterEngineProvider = "mpmb" | "open5e" | "all";
 export interface CharacterEngineQueryContext {
   provider?: CharacterEngineProvider;
   rulesMode?: RulesMode;
+  levelUpTargetContext?: LevelUpTargetContext;
 }
 
 export interface CharacterEngineResolvedContext {
   provider: CharacterEngineProvider;
   rulesMode: RulesMode;
+  levelUpTargetContext?: LevelUpTargetContext;
 }
 
 export interface CharacterEngineState {
   draft: CharacterDraft;
+  resolutionDraft: CharacterDraft;
   context: CharacterEngineResolvedContext;
+  persistedLevel: number;
+  effectiveLevel: number;
+  levelUpTargetContext?: LevelUpTargetContext;
   classDef?: ClassDefinition;
   subclassDef?: SubclassDefinition;
   availableSubclasses: SubclassDefinition[];
@@ -114,9 +121,11 @@ function normalizeClassToken(value: string | undefined): string {
 }
 
 function resolveContext(draft: CharacterDraft, context: CharacterEngineQueryContext = {}): CharacterEngineResolvedContext {
+  const levelUpTargetContext = normalizeLevelUpTargetContext(draft, context.levelUpTargetContext);
   return {
     provider: context.provider ?? draft.provider,
     rulesMode: context.rulesMode ?? draft.rulesMode ?? DEFAULT_RULES_MODE,
+    levelUpTargetContext,
   };
 }
 
@@ -166,37 +175,40 @@ export function resolveCharacterEngineState(
   context: CharacterEngineQueryContext = {},
 ): CharacterEngineState {
   const resolvedContext = resolveContext(draft, context);
+  const resolutionDraft = applyEffectiveLevelToDraft(draft, resolvedContext.levelUpTargetContext);
+  const persistedLevel = draft.classSelection.level;
+  const effectiveLevel = resolutionDraft.classSelection.level;
   const classes = resolveClasses(snapshot.classes, resolvedContext);
-  const classDef = draft.classSelection.classId ? classes.find((entry) => entry.id === draft.classSelection.classId) : undefined;
-  const availableSubclasses = resolveSubclassesForClass(snapshot, classDef, resolvedContext, draft.classSelection.level);
+  const classDef = resolutionDraft.classSelection.classId ? classes.find((entry) => entry.id === resolutionDraft.classSelection.classId) : undefined;
+  const availableSubclasses = resolveSubclassesForClass(snapshot, classDef, resolvedContext, effectiveLevel);
   const subclassDef =
-    classDef && draft.subclassSelection.subclassId
-      ? availableSubclasses.find((entry) => entry.id === draft.subclassSelection.subclassId)
+    classDef && resolutionDraft.subclassSelection.subclassId
+      ? availableSubclasses.find((entry) => entry.id === resolutionDraft.subclassSelection.subclassId)
       : undefined;
   const speciesCatalog = resolveSpecies(snapshot.species, resolvedContext);
-  const speciesDef = draft.speciesSelection.speciesId
-    ? speciesCatalog.find((entry) => entry.id === draft.speciesSelection.speciesId)
+  const speciesDef = resolutionDraft.speciesSelection.speciesId
+    ? speciesCatalog.find((entry) => entry.id === resolutionDraft.speciesSelection.speciesId)
     : undefined;
   const backgroundCatalog = resolveBackgrounds(snapshot.backgrounds, resolvedContext);
-  const backgroundDef = draft.backgroundSelection.backgroundId
-    ? backgroundCatalog.find((entry) => entry.id === draft.backgroundSelection.backgroundId)
+  const backgroundDef = resolutionDraft.backgroundSelection.backgroundId
+    ? backgroundCatalog.find((entry) => entry.id === resolutionDraft.backgroundSelection.backgroundId)
     : undefined;
   const featCatalog = resolveFeats(snapshot.feats, resolvedContext);
   const spellCatalog = resolveSpells(snapshot.spells, resolvedContext);
   const equipmentCatalog = resolveEquipment(snapshot.equipment, resolvedContext);
-  const selectedFeats = draft.featIds
+  const selectedFeats = resolutionDraft.featIds
     .map((idValue) => featCatalog.find((entry) => entry.id === idValue))
     .filter((entry): entry is FeatDefinition => Boolean(entry));
-  const selectedSpells = draft.spellSelection.selectedSpellIds
+  const selectedSpells = resolutionDraft.spellSelection.selectedSpellIds
     .map((idValue) => spellCatalog.find((entry) => entry.id === idValue))
     .filter((entry): entry is SpellDefinition => Boolean(entry));
   const levelFeatures = [
-    ...(classDef?.features ?? []).filter((feature) => feature.minLevel <= draft.classSelection.level),
-    ...(subclassDef?.features ?? []).filter((feature) => feature.minLevel <= draft.classSelection.level),
+    ...(classDef?.features ?? []).filter((feature) => feature.minLevel <= effectiveLevel),
+    ...(subclassDef?.features ?? []).filter((feature) => feature.minLevel <= effectiveLevel),
   ].sort((left, right) => left.minLevel - right.minLevel || left.name.localeCompare(right.name));
 
   const appliedRules = resolveAppliedCharacterRules({
-    draft,
+    draft: resolutionDraft,
     classDef,
     subclassDef,
     speciesDef,
@@ -206,7 +218,7 @@ export function resolveCharacterEngineState(
     levelFeatures,
   });
   const ruleEngine = resolveCharacterRuleEngine({
-    draft,
+    draft: resolutionDraft,
     appliedRules,
     classDef,
     subclassDef,
@@ -217,7 +229,7 @@ export function resolveCharacterEngineState(
     equipmentCatalog,
     spellCatalog,
   });
-  const derivedStats = resolveDerivedStats(draft, appliedRules, {
+  const derivedStats = resolveDerivedStats(resolutionDraft, appliedRules, {
     classDef,
     subclassDef,
     speciesDef,
@@ -225,13 +237,14 @@ export function resolveCharacterEngineState(
     ruleModifiers: ruleEngine.modifiers,
     optionScoped: ruleEngine.optionScoped,
   });
-  const progression = resolveLevelProgression(draft, appliedRules, derivedStats, {
+  const progression = resolveLevelProgression(resolutionDraft, appliedRules, derivedStats, {
     classDef,
     subclassDef,
     availableSubclasses,
     selectedSpells,
+    targetLevel: effectiveLevel,
   });
-  const actionResources = resolveCharacterActionResources(draft, appliedRules, derivedStats, progression, {
+  const actionResources = resolveCharacterActionResources(resolutionDraft, appliedRules, derivedStats, progression, {
     classDef,
     subclassDef,
     speciesDef,
@@ -244,7 +257,11 @@ export function resolveCharacterEngineState(
 
   return {
     draft,
+    resolutionDraft,
     context: resolvedContext,
+    persistedLevel,
+    effectiveLevel,
+    levelUpTargetContext: resolvedContext.levelUpTargetContext,
     classDef,
     subclassDef,
     availableSubclasses,
@@ -270,7 +287,7 @@ export function buildCharacterWizardResolverInput(
 ) {
   const engine = resolveCharacterEngineState(snapshot, draft, context);
   return {
-    draft,
+    draft: engine.resolutionDraft,
     rulesMode: engine.context.rulesMode,
     classDef: engine.classDef,
     subclassDef: engine.subclassDef,
@@ -292,8 +309,8 @@ export function resolveCharacterWizardState(
   const input = buildCharacterWizardResolverInput(snapshot, draft, context);
   const featContexts = resolveFeatEligibility(input);
   const spellContexts = resolveSpellEligibility(input);
-  const classSkillChoiceState = getClassSkillChoiceState(draft, input.appliedRules);
-  const skillChoiceStates = getSkillChoiceStates(draft, input.appliedRules);
+  const classSkillChoiceState = getClassSkillChoiceState(input.draft, input.appliedRules);
+  const skillChoiceStates = getSkillChoiceStates(input.draft, input.appliedRules);
   const equipmentChoices = resolveStartingEquipmentChoices(input);
   const requiredChoices = getRequiredBuilderChoices(input.appliedRules, input.progression);
   const validations = {} as Record<WizardStepId, WizardStepValidation>;

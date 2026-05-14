@@ -2,12 +2,12 @@ import type { CharacterDraft } from "../../domain/character";
 import type { MpmContentSnapshot, RulesMode } from "../../domain/content";
 import type { WizardStepId, WizardStepValidation } from "../../domain/builderWizard";
 import { getVisibleWizardSteps } from "../character-builder/wizard/stepDefinitions";
-import { resolveCharacterWizardState } from "../../services/characterEngine";
+import { resolveCharacterWizardState, type CharacterEngineQueryContext } from "../../services/characterEngine";
 
-export interface WizardV2QueryContext {
+export type WizardV2QueryContext = CharacterEngineQueryContext & {
   provider?: "mpmb" | "open5e" | "all";
   rulesMode?: RulesMode;
-}
+};
 
 export interface WizardV2StepState {
   id: WizardStepId;
@@ -34,9 +34,17 @@ export function buildWizardV2State(
   context: WizardV2QueryContext = {},
 ): WizardV2State {
   const wizard = resolveCharacterWizardState(snapshot, draft, context);
+  const hasFeatStepContent =
+    wizard.featContexts.length > 0 ||
+    wizard.input.draft.classSelection.level > 1 ||
+    wizard.input.progression.asiOrFeatChoices.length > 0 ||
+    wizard.input.progression.pendingChoices.some((entry) => entry.kind !== "spell-selection") ||
+    wizard.input.ruleEngine.choiceSurface.choices.some(
+      (choice) => choice.playerVisible && choice.choiceType !== "spell" && choice.choiceType !== "cantrip",
+    );
   const visibleSteps = getVisibleWizardSteps({
     validations: wizard.validations,
-    hasFeatChoices: wizard.featContexts.length > 0,
+    hasFeatChoices: hasFeatStepContent,
     hasSpellChoices: wizard.spellContexts.length > 0,
   });
   const stepStates = visibleSteps.map((step) => {

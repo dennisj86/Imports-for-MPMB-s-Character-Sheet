@@ -13,13 +13,15 @@ export interface SpellManagementViewState {
 export function resolveSpellManagementViewState(
   draft: CharacterDraft | undefined,
   activeSourceKeys: string[],
+  contextOverrides: SpellManagementQueryContext = {},
 ): SpellManagementViewState | undefined {
   if (!draft) {
     return undefined;
   }
   const context: SpellManagementQueryContext = {
-    provider: draft.provider,
-    rulesMode: draft.rulesMode,
+    provider: contextOverrides.provider ?? draft.provider,
+    rulesMode: contextOverrides.rulesMode ?? draft.rulesMode,
+    levelUpTargetContext: contextOverrides.levelUpTargetContext,
   };
   const coreRegistry = createMpmbCoreRegistry(contentSnapshot, activeSourceKeys);
   const snapshot = resolveSnapshotForCoreContext(coreRegistry, context);
@@ -35,6 +37,10 @@ export function useSpellManagement(
   draft: CharacterDraft | undefined,
   activeSourceKeys: string[],
   generation = 0,
+  contextOverrides: SpellManagementQueryContext = {},
 ): SpellManagementViewState | undefined {
-  return useMemo(() => resolveSpellManagementViewState(draft, activeSourceKeys), [draft, activeSourceKeys, generation]);
+  return useMemo(
+    () => resolveSpellManagementViewState(draft, activeSourceKeys, contextOverrides),
+    [draft, activeSourceKeys, generation, contextOverrides],
+  );
 }

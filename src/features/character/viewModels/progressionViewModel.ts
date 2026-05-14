@@ -1,12 +1,19 @@
 import type { CharacterDraft } from "../../../domain/character";
 import type { CharacterEngineState } from "../../../services/characterEngine";
 import { buildCharacterXpProgressState, hpGainKey } from "../../../services/levelUp";
+import type { BuilderDeepLinkTarget } from "../../../services/builderDeepLinks";
+import { buildHpGainFocusId, resolveBuilderDeepLinkTarget } from "../../../services/builderDeepLinks";
+
+export type ProgressionOpenEntryClassification = "critical-blocker" | "pending-choice" | "unsupported-manual" | "informational";
 
 export interface ProgressionChoiceViewModel {
   id: string;
   label: string;
   status: "complete" | "missing" | "unsupported" | "needs-builder";
   detail: string;
+  classification: ProgressionOpenEntryClassification;
+  builderTarget?: BuilderDeepLinkTarget;
+  manualHint?: string;
 }
 
 export interface AsiOrFeatChoiceViewModel {
@@ -16,6 +23,8 @@ export interface AsiOrFeatChoiceViewModel {
   options: Array<"ability-score-improvement" | "feat">;
   status: "complete" | "missing" | "needs-builder";
   detail: string;
+  classification: ProgressionOpenEntryClassification;
+  builderTarget?: BuilderDeepLinkTarget;
   asiIncreases?: Partial<Record<keyof CharacterDraft["abilityScores"], number>>;
   selectedFeatId?: string;
   selectedFeatName?: string;
@@ -27,6 +36,8 @@ export interface HpGainChoiceViewModel {
   value?: number;
   status: "complete" | "missing";
   detail: string;
+  classification: ProgressionOpenEntryClassification;
+  builderTarget?: BuilderDeepLinkTarget;
 }
 
 export interface ProgressionViewModel {
@@ -62,6 +73,16 @@ function hasPendingChoice(engine: CharacterEngineState, search: RegExp): boolean
   return engine.progression.pendingChoices.some((choice) => search.test(choice.description));
 }
 
+function builderTarget(input: {
+  id: string;
+  label: string;
+  detail: string;
+  source?: string;
+  kind?: string;
+}): BuilderDeepLinkTarget | undefined {
+  return resolveBuilderDeepLinkTarget(input);
+}
+
 export function buildProgressionViewModel(draft: CharacterDraft, engine: CharacterEngineState): ProgressionViewModel {
   const xpProgress = buildCharacterXpProgressState(draft);
   const pendingChoices: ProgressionChoiceViewModel[] = engine.progression.pendingChoices.map((choice) => ({
@@ -69,14 +90,35 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
     label: choice.description,
     status: choice.satisfied ? "complete" : "missing",
     detail: choice.notes.join(" ") || `${choice.source} level ${choice.level}`,
+    classification: choice.satisfied ? "informational" : "pending-choice",
+    builderTarget: choice.satisfied
+      ? undefined
+      : builderTarget({
+        id: choice.id,
+        label: choice.description,
+        detail: choice.notes.join(" ") || `${choice.source} level ${choice.level}`,
+        source: choice.source,
+        kind: choice.kind,
+      }),
   }));
 
-  if (engine.progression.subclassRequirement?.required && !engine.progression.subclassRequirement.satisfied) {
+  if (
+    engine.progression.subclassRequirement?.required &&
+    !engine.progression.subclassRequirement.satisfied &&
+    !pendingChoices.some((entry) => entry.id === "progression:subclass-selection" || entry.id === "subclass-selection")
+  ) {
     pendingChoices.push({
       id: "subclass-selection",
       label: `Subclass required at level ${engine.progression.subclassRequirement.unlockLevel}`,
       status: "missing",
       detail: "Return to Builder to choose a subclass.",
+      classification: "pending-choice",
+      builderTarget: builderTarget({
+        id: "subclass-selection",
+        label: `Subclass required at level ${engine.progression.subclassRequirement.unlockLevel}`,
+        detail: "Return to Builder to choose a subclass.",
+        kind: "subclass-selection",
+      }),
     });
   }
 
@@ -88,10 +130,22 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
       id: choice.id,
       label: choice.label,
       status: choice.status === "complete" ? "complete" : choice.status === "unsupported" ? "unsupported" : "missing",
+      classification: choice.status === "unsupported" ? "unsupported-manual" : choice.status === "complete" ? "informational" : "pending-choice",
       detail:
         choice.status === "unsupported"
           ? "This rule choice needs more structured data before it can be completed."
           : `${choice.selectedCount}/${choice.requiredCount} selected from ${choice.options.length} option(s).`,
+      builderTarget: choice.status === "complete"
+        ? undefined
+        : builderTarget({
+          id: choice.id,
+          label: choice.label,
+          detail: `${choice.selectedCount}/${choice.requiredCount} selected from ${choice.options.length} option(s).`,
+          kind: choice.choiceType,
+        }),
+      manualHint: choice.status === "unsupported"
+        ? "Structured automation data is incomplete for this choice. Use the local description and resolve the rule manually."
+        : undefined,
     };
     ruleChoices.push(viewChoice);
   }
@@ -102,6 +156,8 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
       label: "Feat / ASI Choice Surface",
       status: "unsupported",
       detail: "No structured pending choice is exposed for the current level. Do not auto-select feats or ability score improvements from the sheet.",
+      classification: "unsupported-manual",
+      manualHint: "Use the Builder to verify ASI or feat handling for this level before relying on the sheet.",
     });
   }
 
@@ -111,11 +167,20 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
     options: [...choice.options],
     selectedOption: choice.selectedOption,
     status: choice.satisfied ? "complete" : choice.selectedOption === "feat" ? "needs-builder" : "missing",
+    classification: choice.satisfied ? "informational" : "pending-choice",
     asiIncreases: draft.levelUp?.abilityScoreIncreases?.[choice.id]?.increases,
     selectedFeatId: draft.levelUp?.featChoices?.[choice.id]?.featId,
     selectedFeatName: draft.levelUp?.featChoices?.[choice.id]?.featId
       ? engine.selectedFeats.find((feat) => feat.id === draft.levelUp?.featChoices?.[choice.id]?.featId)?.name
       : undefined,
+    builderTarget: choice.satisfied
+      ? undefined
+      : builderTarget({
+        id: choice.id,
+        label: `ASI / Feat Level ${choice.level}`,
+        detail: choice.notes.join(" ") || "Choose whether this level uses a feat or an Ability Score Improvement.",
+        kind: "asi-or-feat",
+      }),
     detail:
       choice.selectedOption === "feat"
         ? choice.satisfied
@@ -138,6 +203,13 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
       selectedMethod,
       value: state?.value,
       status,
+      classification: status === "missing" ? "pending-choice" : "informational",
+      builderTarget: status === "missing"
+        ? {
+          stepId: "feats",
+          focusId: buildHpGainFocusId(level),
+        }
+        : undefined,
       detail: needsValue
         ? state?.value === undefined
           ? "Enter the rolled/manual hit point gain for this level."
@@ -148,14 +220,23 @@ export function buildProgressionViewModel(draft: CharacterDraft, engine: Charact
     };
   });
 
+  for (const hpChoice of hpGainChoices.filter((entry) => entry.status === "missing")) {
+    pendingChoices.push({
+      id: `level-up:hp-gain:${hpChoice.level}`,
+      label: `Level ${hpChoice.level} HP Gain`,
+      status: "missing",
+      detail: hpChoice.detail,
+      classification: "pending-choice",
+      builderTarget: hpChoice.builderTarget,
+    });
+  }
+
   const currentHpGainKey = hpGainKey(draft.classSelection.level);
   const selectedHpGainMethod = draft.levelUp?.hpGainByLevel?.[currentHpGainKey]?.method;
 
   const levelUpPendingChoiceCount =
     pendingChoices.filter((choice) => choice.status === "missing").length +
-    missingCapabilities.filter((choice) => choice.status === "unsupported").length +
-    asiOrFeatChoices.filter((choice) => choice.status !== "complete").length +
-    hpGainChoices.filter((choice) => choice.status !== "complete").length;
+    missingCapabilities.filter((choice) => choice.status === "unsupported").length;
   const rulePendingChoiceCount = ruleChoices.filter((choice) => choice.status === "missing" || choice.status === "unsupported").length;
 
   return {

@@ -89,6 +89,8 @@ export function normalizePartyBundle(input: unknown, fallbackPartyId = DEFAULT_P
         source: source.storageMeta.source === "shared-server" ? "shared-server" : source.storageMeta.source === "local-only" ? "local-only" : undefined,
         persisted: typeof source.storageMeta.persisted === "boolean" ? source.storageMeta.persisted : undefined,
         loadedAt: typeof source.storageMeta.loadedAt === "string" ? source.storageMeta.loadedAt : undefined,
+        storagePath: typeof source.storageMeta.storagePath === "string" ? source.storageMeta.storagePath : undefined,
+        serverInfo: typeof source.storageMeta.serverInfo === "string" ? source.storageMeta.serverInfo : undefined,
       }
       : undefined,
   };
@@ -175,6 +177,17 @@ function partyStorageKey(partyId: string): string {
   return `${LOCAL_PARTY_STORAGE_PREFIX}${partyId}`;
 }
 
+function localStorageLabel(partyId: string): string {
+  return `localStorage:${partyStorageKey(partyId)}`;
+}
+
+function browserOrigin(): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  return typeof window.location?.origin === "string" ? window.location.origin : undefined;
+}
+
 function readLocalBundle(partyId: string): PartyBundle | undefined {
   if (typeof window === "undefined") {
     return undefined;
@@ -228,10 +241,33 @@ function localPartyStorage(): PartyStorageAdapter {
   return {
     mode: "local-only",
     async loadParty(partyId) {
-      return readLocalBundle(partyId);
+      const bundle = readLocalBundle(partyId);
+      return bundle
+        ? {
+          ...bundle,
+          storageMeta: {
+            ...bundle.storageMeta,
+            source: "local-only",
+            persisted: true,
+            loadedAt: new Date().toISOString(),
+            storagePath: localStorageLabel(partyId),
+            serverInfo: browserOrigin(),
+          },
+        }
+        : undefined;
     },
     async saveParty(bundle) {
-      const normalized = normalizePartyBundle(bundle, bundle.party.partyId);
+      const normalized = {
+        ...normalizePartyBundle(bundle, bundle.party.partyId),
+        storageMeta: {
+          ...bundle.storageMeta,
+          source: "local-only" as const,
+          persisted: true,
+          loadedAt: new Date().toISOString(),
+          storagePath: localStorageLabel(bundle.party.partyId),
+          serverInfo: browserOrigin(),
+        },
+      };
       writeLocalBundle(normalized);
       emitLocalSync({
         type: "party-updated",
@@ -252,7 +288,16 @@ function localPartyStorage(): PartyStorageAdapter {
       const characters = current.characters.filter((entry) => entry.id !== character.id);
       const nextCharacter = character;
       const nextParty = bumpParty(current.party, [...current.party.characterIds, nextCharacter.id]);
-      const next = createPartyBundle(nextParty, [...characters, nextCharacter]);
+      const next = {
+        ...createPartyBundle(nextParty, [...characters, nextCharacter]),
+        storageMeta: {
+          source: "local-only" as const,
+          persisted: true,
+          loadedAt: new Date().toISOString(),
+          storagePath: localStorageLabel(partyId),
+          serverInfo: browserOrigin(),
+        },
+      };
       writeLocalBundle(next);
       emitLocalSync({
         type: "character-updated",

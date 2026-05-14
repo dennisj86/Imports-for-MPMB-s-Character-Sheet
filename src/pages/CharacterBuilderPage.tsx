@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormField, inputClassName } from "../components/ui/FormField";
 import { Panel } from "../components/ui/Panel";
 import type { AppliedCharacterRules } from "../domain/appliedRules";
@@ -8,6 +8,7 @@ import type { DerivedCharacterStats } from "../domain/derivedStats";
 import type { LevelProgressionResult } from "../domain/progression";
 import type { CanonicalRuleChoice, RuleChoice, RuleChoiceOption, RuleSourceDescriptor } from "../domain/rules";
 import type { BackgroundDefinition, ClassDefinition, EquipmentDefinition, SpeciesDefinition, SpellDefinition, SubclassDefinition } from "../domain/content";
+import type { CharacterEngineQueryContext } from "../services/characterEngine";
 import { AbilityScoreEditor } from "../features/character/components/AbilityScoreEditor";
 import { InventoryEditor } from "../features/character/components/InventoryEditor";
 import { weaponMasteryInfoForToken } from "../features/character/components/sheet/weaponMasteryInfo";
@@ -22,12 +23,20 @@ import { applySpellSelectionToDraft, useSpellManagement } from "../features/spel
 import {
   ABILITY_KEYS,
   hpGainKey,
+  parseLevelUpTargetContextFromSearchParams,
   setAbilityScoreIncreaseChoice,
   setAsiOrFeatOption,
   setHpGainMethod as setLevelUpHpGainMethod,
   setLevelUpFeatChoice,
 } from "../services/levelUp";
 import { setRuleChoiceSelection } from "../services/rules";
+import {
+  buildAsiChoiceFocusId,
+  buildHpGainFocusId,
+  buildRuleChoiceFocusId,
+  buildSkillChoiceFocusId,
+  buildSubclassFocusId,
+} from "../services/builderDeepLinks";
 import { useCharacterStore } from "../store/characterStore";
 import { useSourceStore } from "../store/sourceStore";
 
@@ -51,12 +60,23 @@ export function CharacterBuilderPage() {
   const activeSourceKeys = useSourceStore((state) => state.activeSourceKeys);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const characters = useCharacterStore((state) => state.characters);
   const updateCharacter = useCharacterStore((state) => state.updateCharacter);
   const draft = useMemo(() => characters.find((entry) => entry.id === id), [characters, id]);
   const [abilityMethod, setAbilityMethod] = useState<AbilityMethod>("manual");
-  const wizardView = useWizardV2State(draft, activeSourceKeys, generation);
-  const spellManagementView = useSpellManagement(draft, activeSourceKeys, generation);
+  const levelUpTargetContext = useMemo(
+    () => (draft ? parseLevelUpTargetContextFromSearchParams(draft, searchParams) : undefined),
+    [draft, searchParams],
+  );
+  const builderContextOverrides = useMemo<CharacterEngineQueryContext>(
+    () => ({
+      levelUpTargetContext,
+    }),
+    [levelUpTargetContext],
+  );
+  const wizardView = useWizardV2State(draft, activeSourceKeys, generation, builderContextOverrides);
+  const spellManagementView = useSpellManagement(draft, activeSourceKeys, generation, builderContextOverrides);
 
   if (!id || !draft) {
     return (
@@ -103,6 +123,9 @@ export function CharacterBuilderPage() {
   const validations = wizardView.wizard.validations;
   const completion = wizardView.wizard.completion;
   const visibleSteps = wizardView.wizardUi.steps;
+  const effectiveBuilderLevel = wizardView.engine.effectiveLevel;
+  const persistedBuilderLevel = wizardView.engine.persistedLevel;
+  const previewingLevelUp = Boolean(levelUpTargetContext);
 
   const [currentStepId, setCurrentStepId] = useState<WizardStepId>(() => {
     const key = `${WIZARD_STEP_STORAGE_PREFIX}${draft.id}`;
@@ -163,8 +186,50 @@ export function CharacterBuilderPage() {
             : validation.pending
               ? "pending"
               : "completed",
-    };
+      };
   });
+
+  const deepLinkStep = searchParams.get("step");
+  const deepLinkFocusId = searchParams.get("focus");
+
+  useEffect(() => {
+    if (!deepLinkStep) {
+      return;
+    }
+    if (!STEP_IDS.includes(deepLinkStep as WizardStepId)) {
+      return;
+    }
+    const visibleStepIds = new Set(visibleSteps.map((step) => step.id));
+    if (!visibleStepIds.has(deepLinkStep as WizardStepId)) {
+      return;
+    }
+    if (currentStepId !== deepLinkStep) {
+      setCurrentStepId(deepLinkStep as WizardStepId);
+    }
+  }, [currentStepId, deepLinkStep, visibleSteps]);
+
+  useEffect(() => {
+    if (!deepLinkFocusId || typeof window === "undefined") {
+      return;
+    }
+    const focusTarget = document.getElementById(deepLinkFocusId);
+    if (!focusTarget) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      focusTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusable =
+        focusTarget instanceof HTMLElement && focusTarget.matches("button, input, select, textarea, a, [tabindex]")
+          ? focusTarget
+          : focusTarget.querySelector<HTMLElement>("button, input, select, textarea, a, [tabindex]");
+      focusTarget.classList.add("ring-2", "ring-indigo-400", "ring-offset-2");
+      focusable?.focus({ preventScroll: true });
+      window.setTimeout(() => {
+        focusTarget.classList.remove("ring-2", "ring-indigo-400", "ring-offset-2");
+      }, 1800);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentStepId, deepLinkFocusId]);
 
   return (
     <div className="space-y-4">
@@ -208,11 +273,18 @@ export function CharacterBuilderPage() {
             ))}
           </div>
         ) : null}
+        {previewingLevelUp ? (
+          <div className="mb-3 rounded border border-indigo-300 bg-indigo-50 p-2 text-xs text-indigo-900">
+            Previewing unresolved level-up choices for level {effectiveBuilderLevel}. The character remains level {persistedBuilderLevel} until the level-up is confirmed from the sheet.
+          </div>
+        ) : null}
 
         {currentStepId === "class" ? (
           <ClassStep
             classes={classes}
             draft={draft}
+            effectiveLevel={effectiveBuilderLevel}
+            previewingLevelUp={previewingLevelUp}
             resolveSubclassesForClass={wizardView.resolveSubclassesForClass}
             subclassOptions={subclassOptions}
             updateCharacter={updateCharacter}
@@ -252,6 +324,7 @@ export function CharacterBuilderPage() {
           <div className="space-y-4">
             <LevelUpChoicesStep
               draft={draft}
+              effectiveLevel={effectiveBuilderLevel}
               progression={progression}
               updateCharacter={updateCharacter}
             />
@@ -350,6 +423,7 @@ export function CharacterBuilderPage() {
               appliedRules={appliedRules}
               completion={completion}
               draft={draft}
+              effectiveLevel={effectiveBuilderLevel}
               progression={progression}
               ruleChoices={visibleCanonicalChoices}
               requiredChoices={requiredChoices}
@@ -413,12 +487,16 @@ export function CharacterBuilderPage() {
 
 function ClassStep({
   draft,
+  effectiveLevel,
+  previewingLevelUp,
   classes,
   resolveSubclassesForClass,
   subclassOptions,
   updateCharacter,
 }: {
   draft: CharacterDraft;
+  effectiveLevel: number;
+  previewingLevelUp: boolean;
   classes: ClassDefinition[];
   resolveSubclassesForClass: (classId: string, classLevel?: number) => SubclassDefinition[];
   subclassOptions: SubclassDefinition[];
@@ -487,6 +565,9 @@ function ClassStep({
             +
           </button>
         </div>
+        {previewingLevelUp && effectiveLevel !== draft.classSelection.level ? (
+          <p className="mt-1 text-xs text-indigo-700">Preview target level {effectiveLevel}. Saved level remains {draft.classSelection.level} until confirm.</p>
+        ) : null}
       </FormField>
       <FormField label="Provider">
         <select
@@ -526,7 +607,7 @@ function ClassStep({
             updateCharacter(draft.id, (current) => {
               const classId = event.target.value || undefined;
               const subclasses = classId
-                ? resolveSubclassesForClass(classId, current.classSelection.level)
+                ? resolveSubclassesForClass(classId, previewingLevelUp ? effectiveLevel : current.classSelection.level)
                 : [];
               const keepsCurrentSubclass = subclasses.some((entry) => entry.id === current.subclassSelection.subclassId);
               return {
@@ -550,6 +631,7 @@ function ClassStep({
       </FormField>
       <FormField label="Subclass">
         <select
+          id={buildSubclassFocusId()}
           className={inputClassName()}
           disabled={!draft.classSelection.classId}
           value={draft.subclassSelection.subclassId ?? ""}
@@ -861,14 +943,16 @@ function AbilitiesStep({
 
 function LevelUpChoicesStep({
   draft,
+  effectiveLevel,
   progression,
   updateCharacter,
 }: {
   draft: CharacterDraft;
+  effectiveLevel: number;
   progression: LevelProgressionResult;
   updateCharacter: (id: string, updater: (current: CharacterDraft) => CharacterDraft) => void;
 }) {
-  const hpLevels = Array.from({ length: Math.max(0, draft.classSelection.level - 1) }, (_, index) => index + 2);
+  const hpLevels = Array.from({ length: Math.max(0, effectiveLevel - 1) }, (_, index) => index + 2);
   const abilityPairs: Array<[keyof AbilityScores, keyof AbilityScores]> = [];
   for (let leftIndex = 0; leftIndex < ABILITY_KEYS.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < ABILITY_KEYS.length; rightIndex += 1) {
@@ -894,7 +978,7 @@ function LevelUpChoicesStep({
               const state = draft.levelUp?.hpGainByLevel?.[hpGainKey(level)];
               const method = state?.method ?? "fixed/default";
               return (
-                <div key={level} className="rounded border border-slate-200 p-2">
+                <div id={buildHpGainFocusId(level)} key={level} className="rounded border border-slate-200 p-2" tabIndex={-1}>
                   <p className="text-xs font-medium text-slate-700">Level {level}</p>
                   <div className="mt-1 grid gap-2 sm:grid-cols-[minmax(0,1fr),96px]">
                     <select
@@ -946,7 +1030,7 @@ function LevelUpChoicesStep({
               const asiState = draft.levelUp?.abilityScoreIncreases?.[choice.id];
               const statusLabel = choice.satisfied ? "complete" : "pending";
               return (
-                <div key={choice.id} className="rounded border border-slate-200 p-3">
+                <div id={buildAsiChoiceFocusId(choice.id)} key={choice.id} className="rounded border border-slate-200 p-3" tabIndex={-1}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-medium">Level {choice.level}</p>
@@ -1136,7 +1220,12 @@ function GenericRuleChoicesStep({
                   ? "bg-slate-100 text-slate-500"
                 : "bg-amber-100 text-amber-800";
           return (
-            <div key={choice.id} className={`rounded border border-slate-200 p-2 text-sm ${choice.parentChoiceId ? "ml-4 border-l-4" : ""}`}>
+            <div
+              id={buildRuleChoiceFocusId(choice.id)}
+              key={choice.id}
+              className={`rounded border border-slate-200 p-2 text-sm ${choice.parentChoiceId ? "ml-4 border-l-4" : ""}`}
+              tabIndex={-1}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">{formatChoiceType(choice.choiceType)}</p>
@@ -1202,7 +1291,7 @@ function SkillsStep({
             (_, index) => getFeatureChoiceValue(draft.featureChoices, `${choiceState.choiceKeyPrefix}:${index}`) ?? "",
           );
           return (
-            <div key={choiceState.id} className="rounded border border-slate-200 p-3">
+            <div id={buildSkillChoiceFocusId(choiceState.id)} key={choiceState.id} className="rounded border border-slate-200 p-3" tabIndex={-1}>
               <h3 className="text-sm font-semibold text-slate-900">{choiceState.title}</h3>
               <p className="mt-1 text-xs text-slate-600">
                 Required: {choiceState.requiredCount} · Missing: {choiceState.missingCount}
@@ -1354,6 +1443,7 @@ function EquipmentStep({
 
 function ReviewStep({
   draft,
+  effectiveLevel,
   selectedClass,
   selectedSubclass,
   selectedSpecies,
@@ -1369,6 +1459,7 @@ function ReviewStep({
   setCurrentStepId,
 }: {
   draft: CharacterDraft;
+  effectiveLevel: number;
   selectedClass?: string;
   selectedSubclass?: string;
   selectedSpecies?: string;
@@ -1397,6 +1488,9 @@ function ReviewStep({
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="rounded border border-slate-200 p-3 text-sm">
           <h3 className="font-semibold">Summary</h3>
+          {effectiveLevel !== draft.classSelection.level ? (
+            <p className="mt-1 text-xs text-indigo-700">Previewing level {effectiveLevel}. Saved level remains {draft.classSelection.level} until confirm.</p>
+          ) : null}
           <dl className="mt-2 grid grid-cols-2 gap-1">
             <dt className="text-slate-600">Name</dt>
             <dd>{draft.name || "—"}</dd>
@@ -1405,7 +1499,7 @@ function ReviewStep({
             <dt className="text-slate-600">Rules Mode</dt>
             <dd>{draft.rulesMode}</dd>
             <dt className="text-slate-600">Level</dt>
-            <dd>{draft.classSelection.level}</dd>
+            <dd>{effectiveLevel}</dd>
             <dt className="text-slate-600">Class</dt>
             <dd>{selectedClass ?? "—"}</dd>
             <dt className="text-slate-600">Subclass</dt>

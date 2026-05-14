@@ -36,13 +36,15 @@ export interface WizardV2ViewState {
 export function resolveWizardV2ViewState(
   draft: CharacterDraft | undefined,
   activeSourceKeys: string[],
+  contextOverrides: CharacterEngineQueryContext = {},
 ): WizardV2ViewState | undefined {
   if (!draft) {
     return undefined;
   }
   const context: CharacterEngineQueryContext = {
-    provider: draft.provider,
-    rulesMode: draft.rulesMode,
+    provider: contextOverrides.provider ?? draft.provider,
+    rulesMode: contextOverrides.rulesMode ?? draft.rulesMode,
+    levelUpTargetContext: contextOverrides.levelUpTargetContext,
   };
   const coreRegistry = createMpmbCoreRegistry(contentSnapshot, activeSourceKeys);
   const snapshot = resolveSnapshotForCoreContext(coreRegistry, context);
@@ -57,7 +59,7 @@ export function resolveWizardV2ViewState(
     ? resolveSubclassesForClassFromSnapshot(snapshot, selectedClass.id, {
       provider: context.provider ?? draft.provider,
       rulesMode: context.rulesMode ?? draft.rulesMode,
-    }, draft.classSelection.level)
+    }, engine.effectiveLevel)
     : [];
   const selectedSubclass = subclassOptions.find((entry) => entry.id === draft.subclassSelection.subclassId);
   const selectedSpecies = draft.speciesSelection.speciesId
@@ -80,7 +82,7 @@ export function resolveWizardV2ViewState(
     selectedSubclass,
     selectedSpecies,
     selectedBackground,
-    resolveSubclassesForClass: (classId: string, classLevel = draft.classSelection.level) =>
+    resolveSubclassesForClass: (classId: string, classLevel = engine.effectiveLevel) =>
       resolveSubclassesForClassFromSnapshot(snapshot, classId, {
         provider: context.provider ?? draft.provider,
         rulesMode: context.rulesMode ?? draft.rulesMode,
@@ -111,6 +113,10 @@ export function useWizardV2State(
   draft: CharacterDraft | undefined,
   activeSourceKeys: string[],
   generation = 0,
+  contextOverrides: CharacterEngineQueryContext = {},
 ): WizardV2ViewState | undefined {
-  return useMemo(() => resolveWizardV2ViewState(draft, activeSourceKeys), [draft, activeSourceKeys, generation]);
+  return useMemo(
+    () => resolveWizardV2ViewState(draft, activeSourceKeys, contextOverrides),
+    [draft, activeSourceKeys, generation, contextOverrides],
+  );
 }

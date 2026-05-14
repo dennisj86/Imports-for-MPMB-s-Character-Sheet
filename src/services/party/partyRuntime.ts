@@ -4,6 +4,7 @@ import type { PartyStorageAdapter } from "./partyStorage";
 interface ActivePartyRuntime {
   partyId: string;
   storage: PartyStorageAdapter;
+  onLocalUpdate?: (timestamp: string) => void;
   onSaveError?: (error: unknown) => void;
   onSaveSuccess?: () => void;
 }
@@ -34,6 +35,7 @@ export function saveCharacterToActiveParty(character: CharacterDraft): void {
     return;
   }
   const runtime = activeRuntime;
+  runtime.onLocalUpdate?.(character.updatedAt);
   void runtime.storage
     .saveCharacter(runtime.partyId, character)
     .then(() => runtime.onSaveSuccess?.())

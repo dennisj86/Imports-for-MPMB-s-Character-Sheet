@@ -21,6 +21,8 @@ export interface PartyBundle {
     source?: PartyStorageMode;
     persisted?: boolean;
     loadedAt?: string;
+    storagePath?: string;
+    serverInfo?: string;
   };
 }
 

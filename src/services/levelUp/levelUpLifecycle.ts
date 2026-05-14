@@ -1,15 +1,30 @@
 import type { CharacterActionResourceState, CharacterResource } from "../../domain/actionResources";
 import type { CharacterDraft, CharacterLevelSource, LevelUpUndoSnapshotState } from "../../domain/character";
 import type { CharacterEngineState } from "../characterEngine";
+import type { BuilderDeepLinkTarget } from "../builderDeepLinks";
+import { resolveBuilderDeepLinkTarget } from "../builderDeepLinks";
 import { normalizeCharacterXpTrackingState } from "./xpProgression";
 
 export type LevelUpChoicePreviewStatus = "pending" | "complete" | "unsupported" | "blocked";
+export type LevelUpOpenEntryClassification = "critical-blocker" | "pending-choice" | "unsupported-manual" | "informational";
 
 export interface LevelUpChoicePreviewEntry {
   id: string;
   label: string;
   status: LevelUpChoicePreviewStatus;
   detail: string;
+  classification: LevelUpOpenEntryClassification;
+  builderTarget?: BuilderDeepLinkTarget;
+  manualHint?: string;
+}
+
+export interface LevelUpOpenEntry {
+  id: string;
+  label: string;
+  detail: string;
+  classification: LevelUpOpenEntryClassification;
+  builderTarget?: BuilderDeepLinkTarget;
+  manualHint?: string;
 }
 
 export interface LevelUpPreviewDiff {
@@ -38,8 +53,11 @@ export interface LevelUpPreviewDiff {
   }>;
   spellPreparationChanges: string[];
   choiceStatuses: LevelUpChoicePreviewEntry[];
+  openEntries: LevelUpOpenEntry[];
   warnings: string[];
   unsupportedNotes: string[];
+  canConfirm: boolean;
+  confirmLabel: string;
 }
 
 function clampLevel(value: number): number {
@@ -54,6 +72,26 @@ function toChoiceStatus(status: string): LevelUpChoicePreviewStatus {
   if (status === "unsupported") return "unsupported";
   if (status === "blocked" || status === "needs-builder") return "blocked";
   return "pending";
+}
+
+function toOpenEntryClassification(status: LevelUpChoicePreviewStatus): LevelUpOpenEntryClassification {
+  if (status === "unsupported") {
+    return "unsupported-manual";
+  }
+  if (status === "pending" || status === "blocked") {
+    return "pending-choice";
+  }
+  return "informational";
+}
+
+function warningClassification(warning: string): LevelUpOpenEntryClassification {
+  if (/no class selected|target level is not higher/i.test(warning)) {
+    return "critical-blocker";
+  }
+  if (/manual|unsupported|not implemented/i.test(warning)) {
+    return "unsupported-manual";
+  }
+  return "informational";
 }
 
 function mapResourceById(resources: CharacterResource[]): Map<string, CharacterResource> {
@@ -96,19 +134,42 @@ function spellPreparationDiff(before: CharacterEngineState, after: CharacterEngi
 function progressionChoiceEntries(after: CharacterEngineState): LevelUpChoicePreviewEntry[] {
   const choices: LevelUpChoicePreviewEntry[] = [];
   for (const choice of after.ruleEngine.choiceSurface.choices.filter((entry) => entry.playerVisible)) {
+    const status = toChoiceStatus(choice.status);
+    const detail = `${choice.selectedCount}/${choice.requiredCount} selected (${choice.options.length} option(s)).`;
     choices.push({
       id: choice.id,
       label: choice.label,
-      status: toChoiceStatus(choice.status),
-      detail: `${choice.selectedCount}/${choice.requiredCount} selected (${choice.options.length} option(s)).`,
+      status,
+      detail,
+      classification: toOpenEntryClassification(status),
+      builderTarget: status === "complete"
+        ? undefined
+        : resolveBuilderDeepLinkTarget({
+          id: choice.id,
+          label: choice.label,
+          detail,
+          kind: choice.choiceType,
+        }),
+      manualHint: status === "unsupported"
+        ? "Structured automation data is incomplete for this rule choice. Resolve it from the local rule text and table handling."
+        : undefined,
     });
   }
   for (const pending of after.progression.pendingChoices.filter((entry) => entry.required && !entry.satisfied)) {
+    const detail = pending.notes.join(" ").trim() || `${pending.source} level ${pending.level}`;
     choices.push({
-      id: `progression:${pending.id}`,
+      id: pending.id,
       label: pending.description,
       status: "pending",
-      detail: pending.notes.join(" ").trim() || `${pending.source} level ${pending.level}`,
+      detail,
+      classification: "pending-choice",
+      builderTarget: resolveBuilderDeepLinkTarget({
+        id: pending.id,
+        label: pending.description,
+        detail,
+        source: pending.source,
+        kind: pending.kind,
+      }),
     });
   }
   if (after.progression.subclassRequirement?.required && !after.progression.subclassRequirement.satisfied) {
@@ -117,6 +178,13 @@ function progressionChoiceEntries(after: CharacterEngineState): LevelUpChoicePre
       label: `Subclass required at level ${after.progression.subclassRequirement.unlockLevel}`,
       status: "pending",
       detail: "Choose a subclass in the builder.",
+      classification: "pending-choice",
+      builderTarget: resolveBuilderDeepLinkTarget({
+        id: "progression:subclass-selection",
+        label: `Subclass required at level ${after.progression.subclassRequirement.unlockLevel}`,
+        detail: "Choose a subclass in the builder.",
+        kind: "subclass-selection",
+      }),
     });
   }
   return choices;
@@ -187,6 +255,39 @@ export function buildLevelUpPreviewDiff(before: CharacterEngineState, after: Cha
   if (!after.progression.unlockedFeatures.length) {
     warnings.push("No structured feature unlocks were detected for this level.");
   }
+  const openEntries: LevelUpOpenEntry[] = [
+    ...choiceStatuses
+      .filter((entry) => entry.status !== "complete")
+      .map((entry) => ({
+        id: entry.id,
+        label: entry.label,
+        detail: entry.detail,
+        classification: entry.classification,
+        builderTarget: entry.builderTarget,
+        manualHint: entry.manualHint,
+      })),
+    ...warnings.map((warning, index) => ({
+      id: `warning:${index}`,
+      label: "Level-Up Warning",
+      detail: warning,
+      classification: warningClassification(warning),
+    })),
+    ...unsupportedNotes
+      .filter((note) => !choiceStatuses.some((entry) => `${entry.label}: ${entry.detail}` === note))
+      .map((note, index) => ({
+        id: `unsupported-note:${index}`,
+        label: "Manual Resolution",
+        detail: note,
+        classification: "unsupported-manual" as const,
+        manualHint: note,
+      })),
+  ];
+  const canConfirm = !openEntries.some((entry) => entry.classification === "critical-blocker");
+  const confirmLabel = canConfirm
+    ? openEntries.some((entry) => entry.classification === "pending-choice" || entry.classification === "unsupported-manual")
+      ? "Level up with unresolved choices"
+      : "Confirm Level-Up"
+    : "Resolve critical blockers to level up";
   return {
     fromLevel: beforeLevel,
     toLevel: afterLevel,
@@ -203,8 +304,11 @@ export function buildLevelUpPreviewDiff(before: CharacterEngineState, after: Cha
     spellSlotChanges,
     spellPreparationChanges: spellPreparationDiff(before, after),
     choiceStatuses,
+    openEntries,
     warnings,
     unsupportedNotes,
+    canConfirm,
+    confirmLabel,
   };
 }
 

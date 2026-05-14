@@ -43,6 +43,8 @@ function createEmptyBundle(partyId) {
       source: "shared-server",
       persisted: false,
       loadedAt: now,
+      storagePath: STORE_DIR,
+      serverInfo: `http://${HOST}:${PORT}`,
     },
   };
 }
@@ -57,6 +59,8 @@ async function readBundle(partyId) {
         source: "shared-server",
         persisted: true,
         loadedAt: nowIso(),
+        storagePath: STORE_DIR,
+        serverInfo: `http://${HOST}:${PORT}`,
       },
     };
   } catch (error) {
@@ -94,6 +98,8 @@ async function writeBundle(bundle) {
       source: "shared-server",
       persisted: true,
       loadedAt: nowIso(),
+      storagePath: STORE_DIR,
+      serverInfo: `http://${HOST}:${PORT}`,
     },
   };
   const tempPath = tempFilePath(partyId);
@@ -141,6 +147,8 @@ function normalizeBundle(partyId, input) {
       source: "shared-server",
       persisted: Boolean(input?.storageMeta?.persisted),
       loadedAt: nowIso(),
+      storagePath: STORE_DIR,
+      serverInfo: `http://${HOST}:${PORT}`,
     },
   };
 }
@@ -173,6 +181,8 @@ function mergeBundles(existing, incoming) {
       source: "shared-server",
       persisted: true,
       loadedAt: nowIso(),
+      storagePath: STORE_DIR,
+      serverInfo: `http://${HOST}:${PORT}`,
     },
   };
 }
@@ -252,7 +262,7 @@ async function handleApi(request, response, pathname) {
           version: Math.max(Number(existing.party.version ?? 1), Number(incoming.party.version ?? 1)),
         }, incoming.party.characterIds),
         exportedAt: nowIso(),
-        storageMeta: { source: "shared-server", persisted: true, loadedAt: nowIso() },
+        storageMeta: { source: "shared-server", persisted: true, loadedAt: nowIso(), storagePath: STORE_DIR, serverInfo: `http://${HOST}:${PORT}` },
       }
       : mergeBundles(existing, incoming);
     await writeBundle(bundle);
